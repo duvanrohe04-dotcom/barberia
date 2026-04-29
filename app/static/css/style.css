@@ -263,7 +263,7 @@ tr:hover td{background:rgba(212,175,55,0.03)}
 .alert-box{background:rgba(192,57,43,0.09);border:1px solid rgba(192,57,43,0.27);color:var(--red-bright);padding:10px 13px;border-radius:8px;font-size:13px;display:none;margin-bottom:13px}
 .cancel-section{background:var(--dark-card);border:1px solid var(--dark-border);border-radius:22px;padding:36px;max-width:560px;margin:0 auto;box-shadow:var(--shadow);position:relative;overflow:hidden}
 .cancel-section::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--red-bright),var(--red))}
-.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:none;align-items:center;justify-content:center;z-index:2000;padding:20px;backdrop-filter:blur(6px)}
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:none;align-items:center;justify-content:center;z-index:9998;padding:20px;backdrop-filter:blur(6px)}
 .modal-ov.open{display:flex;animation:fadeIn .3s}
 .modal{background:var(--dark-card);border:2px solid var(--gold);border-radius:22px;padding:36px;max-width:440px;width:100%;text-align:center;animation:slideUp .3s}
 .modal-icon{font-size:54px;margin-bottom:14px}
