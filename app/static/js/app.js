@@ -1734,7 +1734,8 @@ let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPrompt = e;
-  document.getElementById('installBtn').style.display = 'inline-block';
+  const installBtn = document.getElementById('installBtn');
+  if (installBtn) installBtn.style.display = 'inline-block';
 });
 
 function installPWA() {
@@ -1746,7 +1747,8 @@ function installPWA() {
   deferredPrompt.userChoice.then((choiceResult) => {
     if (choiceResult.outcome === 'accepted') {
       showToast('✅ App instalada correctamente', 'ok');
-      document.getElementById('installBtn').style.display = 'none';
+      const ib = document.getElementById('installBtn');
+      if (ib) ib.style.display = 'none';
     }
     deferredPrompt = null;
   });
