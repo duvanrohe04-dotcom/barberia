@@ -15,19 +15,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function showToast(msg, type=false){
   const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'toast show' + (type===true?' err': type==='ok'?' ok': type==='error'?' err': type==='neutral'?' neutral':'');
+  if(!t) return;
+
   clearTimeout(t._t);
 
-  // Posicionar el toast cerca del centro visible de la pantalla
-  const scrollY = window.scrollY || window.pageYOffset;
-  const viewH   = window.innerHeight;
-  // Siempre visible: lo fijamos en la parte inferior del viewport actual
-  t.style.top    = '';
-  t.style.bottom = '24px';
+  t.textContent = msg;
 
-  const duration = type==='ok' ? 6000 : 4200;
-  t._t = setTimeout(()=>{ t.className='toast'; }, duration);
+  // Mapear tipo a clase CSS
+  let cls = 'toast';
+  if(type === true  || type === 'error')  cls += ' err';
+  else if(type === 'ok')                  cls += ' ok';
+  else if(type === 'neutral')             cls += ' neutral';
+
+  // Forzar reflow para reiniciar animación si ya estaba visible
+  t.className = 'toast';
+  void t.offsetHeight;
+
+  t.className = cls + ' show';
+
+  const duration = (type === 'ok') ? 5000 : 4000;
+  t._t = setTimeout(() => { t.className = 'toast'; }, duration);
 }
 
 function closeErrorModal(){
@@ -41,7 +48,7 @@ function closeModal(id){
   const modal = document.getElementById(id);
   if(modal) {
     modal.classList.remove('open');
-    // Restaurar scroll del body
+    modal.style.display = 'none';
     document.body.style.overflow = '';
   }
 }

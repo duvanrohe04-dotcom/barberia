@@ -19,27 +19,35 @@ _db_initialized = False
 
 
 def weekly_reset(app):
-    """Elimina citas completadas/canceladas y todas las reseñas. Conserva citas pendientes."""
+    """Elimina citas completadas/canceladas y reseñas. Conserva citas pendientes y tarjetas de fidelidad activas."""
     try:
         with app.app_context():
-            from app.models import Appointment, Review
-            from datetime import datetime
-            
-            print(f"\n[Reset semanal] ⏰ Iniciando reset semanal a las {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-            
+            from app.models import Appointment, Review, InactiveDay
+            from datetime import datetime, date
+
+            now = datetime.now()
+            print(f"\n[Reset semanal] ⏰ Iniciando reset semanal a las {now.strftime('%Y-%m-%d %H:%M:%S')}")
+
             # Eliminar citas completadas y canceladas
             deleted_appts = Appointment.query.filter(
                 Appointment.status.in_(['Completado', 'Cancelado'])
             ).delete(synchronize_session=False)
-            
+
             # Eliminar todas las reseñas
             deleted_reviews = Review.query.delete(synchronize_session=False)
-            
+
+            # Eliminar días inactivos que ya pasaron (mantener solo futuros)
+            today_str = date.today().isoformat()
+            deleted_inactive = InactiveDay.query.filter(
+                InactiveDay.date < today_str
+            ).delete(synchronize_session=False)
+
             db.session.commit()
-            
+
             print(f"[Reset semanal] ✅ Completado:")
             print(f"  - Citas eliminadas: {deleted_appts}")
             print(f"  - Reseñas eliminadas: {deleted_reviews}")
+            print(f"  - Días inactivos pasados eliminados: {deleted_inactive}")
             print(f"[Reset semanal] Dashboard reiniciado correctamente\n")
     except Exception as e:
         print(f"[Reset semanal] ❌ Error: {str(e)}\n")
@@ -52,34 +60,35 @@ def complete_expired_appointments(app):
         with app.app_context():
             from app.models import Appointment
             from datetime import datetime, date
-            today = date.today().isoformat()
-            
-            # Obtener citas pendientes de hoy o en el pasado
+
+            now = datetime.now()
+            today_str = date.today().isoformat()
+
+            # Obtener citas pendientes de hoy o días anteriores
             expired = Appointment.query.filter(
                 Appointment.status == 'Pendiente',
-                Appointment.date <= today
+                Appointment.date <= today_str
             ).all()
-            
+
             completed_count = 0
             for appt in expired:
-                # Calcular hora de finalización
-                h, m = map(int, appt.time.split(':'))
-                start_minutes = h * 60 + m
-                duration = appt.duration_minutes or 60
-                end_minutes = start_minutes + duration
-                end_hour = end_minutes // 60
-                end_min = end_minutes % 60
-                end_time = f"{end_hour:02d}:{end_min:02d}"
-                
-                # Obtener hora actual
-                now = datetime.now()
-                current_time = f"{now.hour:02d}:{now.minute:02d}"
-                
-                # Si la hora actual es mayor o igual a la hora de finalización, completar
-                if current_time >= end_time:
-                    appt.status = 'Completado'
-                    completed_count += 1
-            
+                try:
+                    h, m = map(int, appt.time.split(':'))
+                    duration = appt.duration_minutes or 60
+                    # Construir datetime completo de fin de la cita
+                    from datetime import datetime as dt
+                    appt_start = dt.strptime(f"{appt.date} {appt.time}", "%Y-%m-%d %H:%M")
+                    appt_end = appt_start.replace(
+                        hour=(h * 60 + m + duration) // 60,
+                        minute=(h * 60 + m + duration) % 60
+                    )
+                    # Si ya pasó la hora de finalización, completar
+                    if now >= appt_end:
+                        appt.status = 'Completado'
+                        completed_count += 1
+                except Exception:
+                    pass
+
             if completed_count > 0:
                 db.session.commit()
                 print(f"[Auto-completar] ✅ {completed_count} cita(s) completada(s) automáticamente")
@@ -133,16 +142,26 @@ def create_app():
 
     # ── Configuración ──────────────────────────────────────────
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-change-in-production')
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
-        'DATABASE_URL', 'sqlite:///barberking.db'
-    )
+
+    database_url = os.environ.get('DATABASE_URL', 'sqlite:///barberking.db')
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-        'pool_size': 10,
-        'pool_recycle': 300,
-        'pool_pre_ping': True,
-        'max_overflow': 20,
-    }
+
+    # Opciones de pool solo para bases de datos que lo soportan (PostgreSQL, MySQL)
+    # SQLite no soporta pool_size ni max_overflow
+    if not database_url.startswith('sqlite'):
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+            'pool_size': 10,
+            'pool_recycle': 300,
+            'pool_pre_ping': True,
+            'max_overflow': 20,
+        }
+    else:
+        # SQLite: solo check_same_thread=False para evitar errores con múltiples threads
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+            'connect_args': {'check_same_thread': False},
+            'pool_pre_ping': True,
+        }
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
     app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FLASK_ENV') == 'production'
@@ -210,8 +229,15 @@ def create_app():
                 seed_data()
                 _db_initialized = True
 
-    # Iniciar scheduler solo una vez (evitar doble arranque en modo debug)
-    if not app.debug or os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+    # Iniciar scheduler solo en el proceso principal (no en workers de gunicorn)
+    # WERKZEUG_RUN_MAIN=true → proceso recargado en dev
+    # SERVER_SOFTWARE no definido → proceso principal en producción con gunicorn
+    is_main_process = (
+        not app.debug or os.environ.get('WERKZEUG_RUN_MAIN') == 'true'
+    )
+    # En gunicorn, solo el worker con GUNICORN_WORKER_ID=0 o sin esa variable arranca el scheduler
+    worker_id = os.environ.get('GUNICORN_WORKER_ID', '0')
+    if is_main_process and worker_id == '0':
         _start_scheduler(app)
 
     return app

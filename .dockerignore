@@ -1,0 +1,29 @@
+# No copiar la base de datos local al contenedor
+# Los datos reales vienen del volumen Docker
+instance/*.db
+instance/*.sqlite3
+
+# No copiar uploads locales
+app/static/uploads/*
+!app/static/uploads/.gitkeep
+
+# No copiar entorno virtual
+venv/
+.venv/
+
+# No copiar archivos de caché
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# No copiar archivos de desarrollo
+.env
+.git/
+.gitignore
+*.md
+
+# No copiar archivos del sistema
+.DS_Store
+Thumbs.db

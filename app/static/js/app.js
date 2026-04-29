@@ -616,16 +616,20 @@ async function submitBooking(){
     if(isFemale) rows += `<div class="mdr" style="color:var(--pink)"><span>💅 Abono (20%)</span><span>$${abono.toLocaleString()}</span></div>`;
     rows += `<div class="mdr" style="font-weight:700"><span>Total</span><span>$${total.toLocaleString()}</span></div>`;
     
-    // Verificar fidelidad SOLO para barberos (género masculino)
+    // Tarjeta de fidelidad SOLO para barberos (género masculino)
     if (!isFemale) {
-      rows += `<div class="mdr" style="background:rgba(212,175,55,0.1);border:1px solid var(--gold);border-radius:8px;padding:10px;margin-top:8px">
-        <div style="font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">💳 Tarjeta de Fidelidad</div>
-        <div style="font-size:14px;color:var(--text-light)">
+      const isReady = newCount >= 10;
+      rows += `<div style="background:rgba(212,175,55,0.1);border:1px solid var(--gold);border-radius:8px;padding:12px;margin-top:10px">
+        <div style="font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">💳 Tarjeta de Fidelidad</div>
+        <div style="font-size:14px;color:var(--text-light);margin-bottom:6px">
           Llevas <span style="color:var(--gold);font-weight:700">${newCount}</span> de <span style="color:var(--gold);font-weight:700">10</span> cortes
         </div>
-        ${nextFreeCut === 0 
-          ? `<div style="color:var(--green);font-weight:700;margin-top:4px">🎉 ¡Listo para tu corte gratis!</div>`
-          : `<div style="font-size:12px;color:var(--text-muted)">Faltan <span style="color:var(--gold)">${nextFreeCut}</span> cortes para el siguiente gratis</div>`
+        <div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:8px">
+          ${Array.from({length:10},(_,i)=>`<span style="font-size:18px">${i < newCount ? '✂️' : '⬜'}</span>`).join('')}
+        </div>
+        ${isReady
+          ? `<div style="color:var(--green);font-weight:700;font-size:13px;background:rgba(39,174,96,0.15);padding:8px;border-radius:6px;text-align:center">🎉 ¡Tienes un corte gratis! Díselo al barbero.</div>`
+          : `<div style="font-size:12px;color:var(--text-muted)">Faltan <span style="color:var(--gold);font-weight:700">${nextFreeCut}</span> corte${nextFreeCut===1?'':'s'} para el siguiente gratis</div>`
         }
       </div>`;
     }
@@ -651,35 +655,75 @@ async function submitBooking(){
 // ══ CANCEL ═════════════════════════════════════════════════════
 async function searchCancel(){
   const name = document.getElementById('cancelName').value.trim().toLowerCase();
-  const phone = document.getElementById('cancelPhone').value.trim();
+  // Limpiar teléfono: quitar espacios, guiones y el prefijo +57
+  const phone = document.getElementById('cancelPhone').value.trim().replace(/[\s\-\(\)]/g,'').replace(/^\+57/,'');
   const res = document.getElementById('cancelResults');
   if(!name||!phone){ showToast('📋 Por favor ingresa tu nombre y teléfono', 'error'); return; }
-  const r = await fetch(`/api/appointments/search?name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}`);
-  const found = await r.json();
-  if(!found.length){
-    res.innerHTML=`<div style="background:rgba(192,57,43,0.09);border:1px solid rgba(192,57,43,0.27);color:var(--red-bright);padding:14px;border-radius:10px;font-size:14px;text-align:center;margin-top:12px">😔 No encontramos citas pendientes con esos datos.</div>`;
-    return;
+
+  // Mostrar estado de carga
+  res.innerHTML=`<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px">🔍 Buscando...</div>`;
+
+  try {
+    const r = await fetch(`/api/appointments/search?name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}`);
+    if(!r.ok){ throw new Error('Error del servidor'); }
+    const found = await r.json();
+    if(!found.length){
+      res.innerHTML=`<div style="background:rgba(192,57,43,0.09);border:1px solid rgba(192,57,43,0.27);color:var(--red-bright);padding:14px;border-radius:10px;font-size:14px;text-align:center;margin-top:12px">😔 No encontramos citas pendientes con esos datos.<br><span style="font-size:12px;opacity:.7">Verifica que el nombre y teléfono sean exactamente los que usaste al reservar.</span></div>`;
+      return;
+    }
+    res.innerHTML=`<div style="margin-top:16px;display:flex;flex-direction:column;gap:10px">`+
+      found.map(a=>`
+        <div style="background:var(--dark-bg);border:1px solid var(--dark-border);border-radius:12px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div>
+            <div style="font-family:var(--font-serif);font-weight:700;font-size:15px;margin-bottom:4px">${a.service}</div>
+            <div style="font-size:13px;color:var(--text-muted)">${a.gender==='female'?'💅':'🧔'} ${a.staff} · 📅 ${fmtDate(a.date)} · 🕐 ${a.time}</div>
+            <div style="font-size:13px;color:var(--gold);margin-top:3px">${a.total}</div>
+          </div>
+          <button onclick="doCancel(${a.id}, this)" style="background:linear-gradient(135deg,var(--red-bright),var(--red));color:#fff;border:none;padding:10px 20px;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer;font-family:var(--font-body);white-space:nowrap">✖ Cancelar</button>
+        </div>`).join('')+`</div>`;
+  } catch(e) {
+    res.innerHTML=`<div style="background:rgba(192,57,43,0.09);border:1px solid rgba(192,57,43,0.27);color:var(--red-bright);padding:14px;border-radius:10px;font-size:14px;text-align:center;margin-top:12px">❌ Error al buscar. Intenta de nuevo.</div>`;
   }
-  res.innerHTML=`<div style="margin-top:16px;display:flex;flex-direction:column;gap:10px">`+
-    found.map(a=>`
-      <div style="background:var(--dark-bg);border:1px solid var(--dark-border);border-radius:12px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
-        <div>
-          <div style="font-family:var(--font-serif);font-weight:700;font-size:15px;margin-bottom:4px">${a.service}</div>
-          <div style="font-size:13px;color:var(--text-muted)">${a.gender==='female'?'💅':'🧔'} ${a.staff} · 📅 ${fmtDate(a.date)} · 🕐 ${a.time}</div>
-          <div style="font-size:13px;color:var(--gold);margin-top:3px">${a.total}</div>
-        </div>
-        <button onclick="doCancel(${a.id})" style="background:linear-gradient(135deg,var(--red-bright),var(--red));color:#fff;border:none;padding:10px 20px;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer;font-family:var(--font-body);white-space:nowrap">✖ Cancelar</button>
-      </div>`).join('')+`</div>`;
 }
 
-async function doCancel(id){
-  if(!confirm('¿Cancelar esta cita?')) return;
-  await fetch(`/api/appointments/${id}/cancel`, {method:'POST'});
-  document.getElementById('cancelName').value='';
-  document.getElementById('cancelPhone').value='';
-  document.getElementById('cancelResults').innerHTML='';
-  document.getElementById('cancelModal').classList.add('open');
-  buildTimeGrid();
+async function doCancel(id, btn){
+  if(!confirm('¿Seguro que deseas cancelar esta cita?')) return;
+
+  // Deshabilitar botón para evitar doble clic
+  if(btn){ btn.disabled=true; btn.textContent='Cancelando...'; }
+
+  try {
+    const r = await fetch(`/api/appointments/${id}/cancel`, {method:'POST'});
+    const data = await r.json();
+
+    if(!r.ok || !data.success){
+      showToast('❌ ' + (data.message||'No pudimos cancelar la cita'), 'error');
+      if(btn){ btn.disabled=false; btn.textContent='✖ Cancelar'; }
+      return;
+    }
+
+    // Limpiar formulario
+    document.getElementById('cancelName').value='';
+    document.getElementById('cancelPhone').value='';
+    document.getElementById('cancelResults').innerHTML='';
+
+    // Mostrar modal de confirmación
+    const modal = document.getElementById('cancelModal');
+    modal.style.display='flex';
+    modal.style.position='fixed';
+    modal.style.inset='0';
+    modal.style.zIndex='99999';
+    modal.style.background='rgba(0,0,0,0.85)';
+    modal.style.alignItems='center';
+    modal.style.justifyContent='center';
+    modal.classList.add('open');
+    document.body.style.overflow='hidden';
+
+    buildTimeGrid();
+  } catch(e) {
+    showToast('❌ Error de conexión. Intenta de nuevo.', 'error');
+    if(btn){ btn.disabled=false; btn.textContent='✖ Cancelar'; }
+  }
 }
 
 // ══ ADMIN TABS ═════════════════════════════════════════════════
@@ -710,19 +754,36 @@ async function renderDash(){
   const done=appts.filter(a=>a.status==='Completado').length;
   const canc=appts.filter(a=>a.status==='Cancelado').length;
   const rev=appts.filter(a=>a.status==='Completado').reduce((s,a)=>s+parseInt((a.total||'0').replace(/\D/g,'')),0);
+
+  // Verificar estado del scheduler
+  let schedulerHtml = '';
+  try {
+    const sRes = await fetch('/api/scheduler/status');
+    if(sRes.ok){
+      const sData = await sRes.json();
+      if(sData.running){
+        const resetJob = (sData.jobs||[]).find(j=>j.id==='weekly_reset');
+        const nextReset = resetJob ? resetJob.next_run : 'N/A';
+        schedulerHtml = `<div class="astat" style="border-color:var(--green)"><div class="astat-n" style="color:var(--green);font-size:20px">✅</div><div class="astat-l">Reset activo</div><div style="font-size:9px;color:var(--text-muted);margin-top:3px">${nextReset}</div></div>`;
+      } else {
+        schedulerHtml = `<div class="astat" style="border-color:var(--red-bright)"><div class="astat-n" style="color:var(--red-bright);font-size:20px">⚠️</div><div class="astat-l">Reset inactivo</div></div>`;
+      }
+    }
+  } catch(e) {}
+
   document.getElementById('astats').innerHTML=`
     <div class="astat"><div class="astat-n">${tot}</div><div class="astat-l">Total Citas</div></div>
     <div class="astat"><div class="astat-n" style="color:var(--gold)">${pend}</div><div class="astat-l">Pendientes</div></div>
     <div class="astat"><div class="astat-n" style="color:var(--green)">${done}</div><div class="astat-l">Completadas</div></div>
     <div class="astat"><div class="astat-n" style="color:var(--red-bright)">${canc}</div><div class="astat-l">Canceladas</div></div>
-    <div class="astat"><div class="astat-n">$${rev.toLocaleString()}</div><div class="astat-l">Ingresos</div></div>
-    <div class="astat"><div class="astat-n">${barbers.length+stylists.length}</div><div class="astat-l">Personal</div></div>`;
+    <div class="astat"><div class="astat-n">${rev.toLocaleString()}</div><div class="astat-l">Ingresos</div></div>
+    <div class="astat"><div class="astat-n">${barbers.length+stylists.length}</div><div class="astat-l">Personal</div></div>
+    ${schedulerHtml}`;
   document.getElementById('heroClients').textContent='100+';
   document.getElementById('heroStaff').textContent=(barbers.length+stylists.length)+'+';
   document.getElementById('brbStatsGrid').innerHTML=barbers.map(b=>staffStatCard(b,appts,'male')).join('');
   document.getElementById('styStatsGrid').innerHTML=stylists.map(s=>staffStatCard(s,appts,'female')).join('');
 }
-
 function staffStatCard(p, appts, gender){
   const isFemale=gender==='female';
   const pa=appts.filter(a=>a.staff===p.name);

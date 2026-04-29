@@ -11,11 +11,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar código
+# Copiar código (sin la DB local ni uploads)
 COPY . .
 
+# Eliminar cualquier DB local que haya sido copiada accidentalmente
+# Los datos reales vienen del volumen Docker, no del código
+RUN rm -f /app/instance/*.db /app/instance/*.sqlite3
+
 # Crear carpetas que serán montadas como volúmenes
-# y asegurarse de que existan con los permisos correctos
 RUN mkdir -p /app/instance /app/app/static/uploads
 
 # Usuario no-root por seguridad
@@ -24,4 +27,4 @@ USER appuser
 
 EXPOSE 81
 
-CMD ["gunicorn", "--bind", "0.0.0.0:81", "--workers", "4", "--threads", "2", "--timeout", "60", "run:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:81", "--workers", "2", "--threads", "2", "--timeout", "60", "--preload", "run:app"]

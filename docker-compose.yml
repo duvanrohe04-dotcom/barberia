@@ -11,7 +11,10 @@ services:
       - barberking_db:/app/instance
       # Persistir las imágenes subidas entre deploys
       - barberking_uploads:/app/app/static/uploads
-    command: gunicorn --bind 0.0.0.0:81 --workers 1 --timeout 60 run:app
+    # --preload: carga la app UNA vez antes de bifurcar workers
+    # Garantiza que el scheduler solo se inicia una vez
+    # --workers 2: suficiente para producción con SQLite
+    command: gunicorn --bind 0.0.0.0:81 --workers 2 --threads 2 --timeout 60 --preload run:app
 
 volumes:
   barberking_db:

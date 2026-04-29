@@ -119,27 +119,8 @@ def get_fidelity_cards():
 @api_bp.route('/appointments', methods=['GET'])
 @login_required
 def get_appointments():
-    from datetime import datetime, timedelta
-    
-    # Auto-completar citas pendientes que ya pasaron
-    now = datetime.now()
-    pending = Appointment.query.filter_by(status='Pendiente').all()
-    
-    for appt in pending:
-        try:
-            # Parsear fecha y hora de la cita
-            appt_datetime = datetime.strptime(f"{appt.date} {appt.time}", "%Y-%m-%d %H:%M")
-            # Agregar la duración para obtener hora de finalización
-            end_datetime = appt_datetime + timedelta(minutes=appt.duration_minutes)
-            
-            # Si ya pasó la hora de finalización, marcar como completada
-            if now > end_datetime:
-                appt.status = 'Completado'
-        except:
-            pass
-    
-    db.session.commit()
-    
+    # El scheduler ya completa las citas vencidas cada 15 minutos
+    # Solo retornar las citas ordenadas
     appts = Appointment.query.order_by(Appointment.date, Appointment.time).all()
     return jsonify([_appt_dict(a) for a in appts])
 
@@ -352,13 +333,24 @@ def delete_appointment(appt_id):
 def search_appointments():
     name  = _safe_str(request.args.get('name', ''), 100).lower()
     phone = _safe_str(request.args.get('phone', ''), 20)
+    # Limpiar teléfono: quitar espacios, guiones y prefijo +57
+    phone = phone.replace(' ', '').replace('-', '').replace('(', '').replace(')', '')
+    if phone.startswith('+57'):
+        phone = phone[3:]
     if not name or not phone:
         return jsonify([])
+    # Buscar por nombre exacto (lowercase) y teléfono
+    # También intentar con el teléfono con prefijo por si fue guardado así
     results = Appointment.query.filter(
         Appointment.status == 'Pendiente'
     ).filter(
-        db.func.lower(Appointment.client_name) == name,
-        Appointment.client_phone == phone
+        db.func.lower(Appointment.client_name) == name
+    ).filter(
+        db.or_(
+            Appointment.client_phone == phone,
+            Appointment.client_phone == '+57' + phone,
+            Appointment.client_phone == '57' + phone,
+        )
     ).all()
     return jsonify([_appt_dict(a) for a in results])
 
@@ -608,6 +600,24 @@ _CONFIG_KEYS = {'ubicacion', 'telefono', 'wa', 'ig', 'shop_name', 'shop_logo',
 def get_config():
     rows = ShopConfig.query.all()
     return jsonify({r.key: r.value for r in rows})
+
+
+@api_bp.route('/scheduler/status', methods=['GET'])
+@login_required
+def scheduler_status():
+    """Admin: verificar estado del scheduler y próxima ejecución del reset semanal."""
+    from app import _scheduler
+    from datetime import datetime
+    if _scheduler is None or not _scheduler.running:
+        return jsonify({'running': False, 'message': '⚠️ Scheduler no está corriendo'})
+    jobs = []
+    for job in _scheduler.get_jobs():
+        next_run = job.next_run_time
+        jobs.append({
+            'id': job.id,
+            'next_run': next_run.strftime('%Y-%m-%d %H:%M:%S') if next_run else 'N/A'
+        })
+    return jsonify({'running': True, 'jobs': jobs})
 
 @api_bp.route('/config', methods=['POST'])
 @login_required
