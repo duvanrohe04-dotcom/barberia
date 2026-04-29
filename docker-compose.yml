@@ -6,6 +6,9 @@ services:
     container_name: barberking_web
     restart: always
     env_file: .env
+    environment:
+      # Zona horaria de Colombia (UTC-5)
+      - TZ=America/Bogota
     volumes:
       # Persistir la base de datos SQLite entre deploys
       - barberking_db:/app/instance

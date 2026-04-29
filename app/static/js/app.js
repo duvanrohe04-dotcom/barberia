@@ -19,6 +19,7 @@ async function init(){
   applyLogoEverywhere();
   applyNameEverywhere();
   applyConfig();
+  checkDownloadAvailability();
   // Actualizar contador de profesionales en el hero
   const heroStaff = document.getElementById('heroStaff');
   if(heroStaff) heroStaff.textContent = (barbers.length + stylists.length) + '+';
@@ -1755,6 +1756,26 @@ function installPWA() {
 }
 
 // ══ DOWNLOAD BY OS ════════════════════════════════════════════
+// Check if downloads are available on page load
+async function checkDownloadAvailability() {
+  try {
+    const res = await fetch('/api/download-available');
+    if (res.ok) {
+      const data = await res.json();
+      if (!data.android && !data.pc) {
+        // Hide download button if no files available
+        document.querySelectorAll('.btn-out').forEach(btn => {
+          if (btn.textContent.includes('Descargar App')) {
+            btn.style.display = 'none';
+          }
+        });
+      }
+    }
+  } catch (e) {
+    // Silently fail - button will still show but download may fail
+  }
+}
+
 function downloadApp() {
   // Scroll al inicio para que vea el mensaje
   window.scrollTo({top: 0, behavior: 'smooth'});

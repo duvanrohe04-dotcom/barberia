@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, send_from_directory, current_app
+from flask import Blueprint, render_template, send_from_directory, current_app, jsonify
 from app.models import Service, Staff, Appointment
 import os
 
@@ -22,6 +22,9 @@ def index():
 def download_android():
     """Descarga la app para Android (APK)."""
     downloads_dir = os.path.join(current_app.root_path, 'static', 'downloads')
+    filepath = os.path.join(downloads_dir, 'app-android.apk')
+    if not os.path.exists(filepath):
+        return jsonify({'success': False, 'message': 'La app para Android aún no está disponible'}), 404
     return send_from_directory(downloads_dir, 'app-android.apk', as_attachment=True)
 
 
@@ -29,4 +32,17 @@ def download_android():
 def download_pc():
     """Descarga la app para PC (ZIP o EXE)."""
     downloads_dir = os.path.join(current_app.root_path, 'static', 'downloads')
+    filepath = os.path.join(downloads_dir, 'app-windows.zip')
+    if not os.path.exists(filepath):
+        return jsonify({'success': False, 'message': 'La app para PC aún no está disponible'}), 404
     return send_from_directory(downloads_dir, 'app-windows.zip', as_attachment=True)
+
+
+@main_bp.route('/api/download-available')
+def download_available():
+    """Verifica si los archivos de descarga están disponibles."""
+    downloads_dir = os.path.join(current_app.root_path, 'static', 'downloads')
+    return jsonify({
+        'android': os.path.exists(os.path.join(downloads_dir, 'app-android.apk')),
+        'pc': os.path.exists(os.path.join(downloads_dir, 'app-windows.zip'))
+    })

@@ -1,5 +1,12 @@
 FROM python:3.11-slim
 
+# Configurar zona horaria de Colombia (UTC-5)
+ENV TZ=America/Bogota
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    tzdata && \
+    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
+    echo $TZ > /etc/timezone
+
 WORKDIR /app
 
 # Dependencias del sistema
