@@ -1665,30 +1665,37 @@ function downloadApp() {
   const ua = navigator.userAgent.toLowerCase();
   let downloadUrl = '';
   let osName = '';
+  let message = '';
 
   if (/iphone|ipad|ipod/.test(ua)) {
     // iOS - mostrar instrucciones claras
-    showToast('🍎 iOS: En Safari toca Compartir → "Añadir a pantalla de inicio"', 'neutral');
+    message = '🍎 iPhone: En Safari toca Compartir → "Añadir a pantalla de inicio"';
+    showToast(message, 'neutral');
     return;
   } else if (/android/.test(ua)) {
     downloadUrl = '/static/downloads/app-android.apk';
     osName = 'Android';
+    message = `⬇️ Descargando para ${osName}...`;
   } else if (/windows|win32|win64/.test(ua)) {
     downloadUrl = '/static/downloads/app-windows.zip';
     osName = 'Windows';
+    message = `⬇️ Descargando para ${osName}...`;
   } else if (/linux/.test(ua)) {
     downloadUrl = '/static/downloads/app-windows.zip';
     osName = 'Linux';
+    message = `⬇️ Descargando para ${osName}...`;
   } else if (/mac|osx/.test(ua)) {
     downloadUrl = '/static/downloads/app-windows.zip';
     osName = 'Mac';
+    message = `⬇️ Descargando para ${osName}...`;
   } else {
     downloadUrl = '/static/downloads/app-android.apk';
     osName = 'tu dispositivo';
+    message = `⬇️ Descargando para ${osName}...`;
   }
 
   if (downloadUrl) {
-    showToast(`⬇️ Descargando para ${osName}...`, 'ok');
+    showToast(message, 'ok');
     setTimeout(() => {
       const link = document.createElement('a');
       link.href = downloadUrl;
