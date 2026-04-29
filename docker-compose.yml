@@ -6,8 +6,6 @@ services:
     container_name: barberking_web
     restart: always
     env_file: .env
-    ports:
-      - "81:81"
     networks:
       - barkerking_net
     command: gunicorn --bind 0.0.0.0:81 --workers 4 --threads 2 --timeout 60 run:app
