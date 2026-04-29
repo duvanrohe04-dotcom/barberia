@@ -1696,14 +1696,36 @@ function downloadApp() {
 
   if (downloadUrl) {
     showToast(message, 'ok');
-    setTimeout(() => {
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = '';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }, 300);
+    
+    // Usar fetch para descargar con mejor manejo de errores
+    fetch(downloadUrl)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`Error HTTP: ${response.status}`);
+        }
+        return response.blob();
+      })
+      .then(blob => {
+        // Crear URL del blob
+        const blobUrl = window.URL.createObjectURL(blob);
+        
+        // Crear elemento de descarga
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = downloadUrl.split('/').pop(); // Nombre del archivo
+        document.body.appendChild(link);
+        link.click();
+        
+        // Limpiar
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
+        
+        showToast(`✅ Descarga completada para ${osName}`, 'ok');
+      })
+      .catch(error => {
+        console.error('Error en descarga:', error);
+        showToast(`❌ Error al descargar. Intenta de nuevo.`, 'error');
+      });
   }
 }
 
