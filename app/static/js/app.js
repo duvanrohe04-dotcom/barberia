@@ -315,7 +315,7 @@ async function buildTimeGrid(){
     const currentMinute = now.getMinutes();
     const currentTotalMinutes = currentHour * 60 + currentMinute;
     
-    console.log(`⏰ Hora actual: ${currentHour}:${currentMinute} (${currentTotalMinutes} minutos)`);
+    console.log(`⏰ Hora actual: ${currentHour}:${String(currentMinute).padStart(2,'0')} (${currentTotalMinutes} minutos)`);
     
     // Filtrar slots que ya pasaron (agregar 30 minutos de margen)
     availableSlots = allSlots.filter(slot => {
@@ -354,8 +354,18 @@ async function buildTimeGrid(){
   // Obtener slots tomados para el staff seleccionado
   const staffMember = (isFemale?stylists:barbers).find(p=>p.id===selStaff);
   const staffParam = staffMember ? `&staff=${encodeURIComponent(staffMember.name)}` : '';
-  const res = await fetch(`/api/appointments/taken?date=${date}${staffParam}`);
-  const taken = await res.json(); // array de slots bloqueados "HH:MM"
+  
+  let taken = [];
+  try {
+    const res = await fetch(`/api/appointments/taken?date=${date}${staffParam}`);
+    if(res.ok) {
+      taken = await res.json();
+    }
+  } catch(e) {
+    console.error('Error obteniendo slots tomados:', e);
+  }
+  
+  console.log(`📅 Fecha: ${date}, Slots tomados: ${taken.length}`, taken);
 
   // Un slot está disponible si él y los siguientes (durSlots-1) están libres y consecutivos
   const schedule = dow===0
