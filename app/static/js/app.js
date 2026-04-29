@@ -1462,3 +1462,41 @@ function installPWA() {
     deferredPrompt = null;
   });
 }
+
+// ══ DOWNLOAD BY OS ════════════════════════════════════════════
+function downloadApp() {
+  const ua = navigator.userAgent.toLowerCase();
+  let downloadUrl = '';
+  let osName = '';
+
+  if (/iphone|ipad|ipod/.test(ua)) {
+    // iOS - mostrar instrucciones
+    showToast('📱 Para iOS: Abre en Safari y usa "Compartir" > "Agregar a pantalla de inicio"', 'ok');
+    return;
+  } else if (/android/.test(ua)) {
+    downloadUrl = '/static/downloads/app-android.apk';
+    osName = 'Android';
+  } else if (/windows|win32/.test(ua)) {
+    downloadUrl = '/static/downloads/app-windows.zip';
+    osName = 'Windows';
+  } else if (/linux/.test(ua)) {
+    downloadUrl = '/static/downloads/app-windows.zip';
+    osName = 'Linux';
+  } else if (/mac|osx/.test(ua)) {
+    downloadUrl = '/static/downloads/app-windows.zip';
+    osName = 'Mac';
+  } else {
+    downloadUrl = '/static/downloads/app-android.apk';
+    osName = 'Desconocido';
+  }
+
+  if (downloadUrl) {
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = true;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast(`✅ Descargando para ${osName}...`, 'ok');
+  }
+}

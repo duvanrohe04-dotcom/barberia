@@ -48,7 +48,7 @@
             <div class="hero-ctas">
               <button class="btn-gold" onclick="goSec('genderSec')">✂ Reservar Cita</button>
               <button class="btn-out" onclick="goSec('cancelSec')">Cancelar Cita</button>
-              <button class="btn-out" id="installBtn" style="display:none" onclick="installPWA()">📱 Instalar App</button>
+              <button class="btn-out" onclick="downloadApp()">📱 Descargar App</button>
             </div>
             <div class="social-row">
               <span class="social-label">💈 Barbero</span>
@@ -388,15 +388,6 @@
     <div class="footer-name" id="footerName">BARBERKING</div>
     <p class="footer-tag">Tu estilo, nuestra pasión — Lun–Sáb: 8am–9pm · Dom: 8am–12pm</p>
      <p class="footer-info" id="footerInfo">📍 Bogotá, Colombia &nbsp;|&nbsp; 📞 +57 310 000 0000</p>
-     <!-- Botones de descarga -->
-     <div class="footer-downloads">
-       <a href="{{ url_for('static', filename='downloads/app-android.apk') }}" class="dl-btn android" download>
-         <span class="dl-icon">🤖</span> Descargar Android
-       </a>
-       <a href="{{ url_for('static', filename='downloads/app-windows.zip') }}" class="dl-btn windows" download>
-         <span class="dl-icon">🪟</span> Descargar Windows
-       </a>
-     </div>
    </footer>
 </div>
 
