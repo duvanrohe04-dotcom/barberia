@@ -305,12 +305,19 @@ async function buildTimeGrid(){
   }
 
   // Filtrar horas pasadas si la fecha es hoy
-  const today = new Date().toISOString().split('T')[0];
+  // Obtener la fecha de hoy en formato local (YYYY-MM-DD)
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const today = `${year}-${month}-${day}`;
+  
   const isToday = date === today;
   let availableSlots = allSlots;
   
+  console.log(`📅 Hoy (local): ${today}, Seleccionado: ${date}, ¿Es hoy?: ${isToday}`);
+  
   if(isToday) {
-    const now = new Date();
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
     const currentTotalMinutes = currentHour * 60 + currentMinute;
