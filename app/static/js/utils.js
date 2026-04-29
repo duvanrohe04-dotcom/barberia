@@ -18,6 +18,14 @@ function showToast(msg, type=false){
   t.textContent = msg;
   t.className = 'toast show' + (type===true?' err': type==='ok'?' ok': type==='error'?' err': type==='neutral'?' neutral':'');
   clearTimeout(t._t);
+
+  // Posicionar el toast cerca del centro visible de la pantalla
+  const scrollY = window.scrollY || window.pageYOffset;
+  const viewH   = window.innerHeight;
+  // Siempre visible: lo fijamos en la parte inferior del viewport actual
+  t.style.top    = '';
+  t.style.bottom = '24px';
+
   const duration = type==='ok' ? 6000 : 4200;
   t._t = setTimeout(()=>{ t.className='toast'; }, duration);
 }

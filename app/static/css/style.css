@@ -275,12 +275,12 @@ tr:hover td{background:rgba(212,175,55,0.03)}
 .mdr span:last-child{color:var(--gold);font-weight:600}
 .modal-close{background:var(--gold);color:#000;border:none;padding:11px 36px;border-radius:var(--radius);font-weight:700;font-size:14px;cursor:pointer;font-family:var(--font-body);transition:all .2s}
 .modal-close:hover{transform:scale(1.04)}
-.toast{position:fixed;bottom:24px;right:24px;background:var(--dark-card);border:2px solid var(--gold);color:var(--text-light);padding:16px 22px;border-radius:var(--radius);box-shadow:0 12px 32px rgba(0,0,0,.6);z-index:3000;font-size:14px;font-weight:600;max-width:320px;transform:translateY(100px);opacity:0;transition:all .3s ease-out;border-left:5px solid var(--gold);line-height:1.5}
-.toast.show{transform:translateY(0);opacity:1;animation:toastSlideIn .4s ease-out}
-.toast.err{border-color:var(--red-bright);border-left-color:var(--red-bright);background:rgba(192,57,43,0.15)}
-.toast.ok{border-color:var(--green);border-left-color:var(--green);background:rgba(39,174,96,0.15)}
-.toast.neutral{border-color:var(--gold);border-left-color:var(--gold);background:rgba(212,175,55,0.15)}
-@keyframes toastSlideIn{from{transform:translateY(100px);opacity:0}to{transform:translateY(0);opacity:1}}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--dark-card);border:2px solid var(--gold);color:var(--text-light);padding:16px 24px;border-radius:var(--radius);box-shadow:0 12px 40px rgba(0,0,0,.7);z-index:99999;font-size:15px;font-weight:600;max-width:380px;width:calc(100% - 40px);opacity:0;transition:transform .35s ease-out, opacity .35s ease-out;border-left:5px solid var(--gold);line-height:1.5;text-align:center}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.toast.err{border-color:var(--red-bright);border-left-color:var(--red-bright);background:rgba(30,10,10,0.97);color:#fff}
+.toast.ok{border-color:var(--green);border-left-color:var(--green);background:rgba(10,30,15,0.97);color:#fff}
+.toast.neutral{border-color:var(--gold);border-left-color:var(--gold);background:rgba(25,20,5,0.97);color:#fff}
+@keyframes toastSlideIn{from{transform:translateX(-50%) translateY(100px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
 .wave{height:4px;background:linear-gradient(90deg,var(--gold),var(--red),var(--gold))}
 .sep{border:none;border-top:1px solid var(--dark-border)}
 .scroll-sec{scroll-margin-top:68px}

@@ -440,21 +440,28 @@ function pickTime(t){
     b.classList.toggle('pink-sel', active && isFemale);
   });
   updateSummary();
-  
-  // Scroll automático a la sección de confirmación cuando se selecciona hora
+
+  // Scroll directo al botón de confirmar reservación
   setTimeout(() => {
-    const bookingSection = document.getElementById('booking');
-    if(bookingSection){
-      // Scroll suave a la sección de confirmación
-      bookingSection.scrollIntoView({behavior: 'smooth', block: 'start'});
-      
-      // Enfocar el campo de nombre para que el usuario pueda empezar a escribir
-      const nameInput = document.getElementById('cName');
-      if(nameInput && !nameInput.value){
-        setTimeout(() => nameInput.focus(), 500);
-      }
+    const subBtn = document.getElementById('subBtn');
+    if(subBtn){
+      subBtn.scrollIntoView({behavior: 'smooth', block: 'center'});
+      // Efecto visual en el botón para llamar la atención
+      subBtn.style.transform = 'scale(1.04)';
+      subBtn.style.boxShadow = isFemale
+        ? '0 0 0 4px rgba(233,30,140,0.4), 0 12px 28px rgba(233,30,140,0.4)'
+        : '0 0 0 4px rgba(212,175,55,0.4), 0 12px 28px rgba(212,175,55,0.4)';
+      setTimeout(() => {
+        subBtn.style.transform = '';
+        subBtn.style.boxShadow = '';
+      }, 900);
     }
-  }, 100);
+    // Enfocar nombre si está vacío
+    const nameInput = document.getElementById('cName');
+    if(nameInput && !nameInput.value){
+      setTimeout(() => nameInput.focus(), 600);
+    }
+  }, 150);
 }
 
 function takenMsg(){ showToast('😔 Ese horario ya está ocupado. Elige otra hora.', 'error'); }
@@ -1573,13 +1580,13 @@ function downloadApp() {
   let osName = '';
 
   if (/iphone|ipad|ipod/.test(ua)) {
-    // iOS - mostrar instrucciones
-    showToast('📱 Para iOS: Abre en Safari y usa "Compartir" > "Agregar a pantalla de inicio"', 'ok');
+    // iOS - mostrar instrucciones claras
+    showToast('🍎 iOS: En Safari toca Compartir → "Añadir a pantalla de inicio"', 'neutral');
     return;
   } else if (/android/.test(ua)) {
     downloadUrl = '/static/downloads/app-android.apk';
     osName = 'Android';
-  } else if (/windows|win32/.test(ua)) {
+  } else if (/windows|win32|win64/.test(ua)) {
     downloadUrl = '/static/downloads/app-windows.zip';
     osName = 'Windows';
   } else if (/linux/.test(ua)) {
@@ -1590,17 +1597,19 @@ function downloadApp() {
     osName = 'Mac';
   } else {
     downloadUrl = '/static/downloads/app-android.apk';
-    osName = 'Desconocido';
+    osName = 'tu dispositivo';
   }
 
   if (downloadUrl) {
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.download = true;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    showToast(`✅ Descargando para ${osName}...`, 'ok');
+    showToast(`⬇️ Descargando para ${osName}...`, 'ok');
+    setTimeout(() => {
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = '';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }, 300);
   }
 }
 
