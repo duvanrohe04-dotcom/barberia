@@ -6,4 +6,15 @@ services:
     container_name: barberking_web
     restart: always
     env_file: .env
+    volumes:
+      # Persistir la base de datos SQLite entre deploys
+      - barberking_db:/app/instance
+      # Persistir las imágenes subidas entre deploys
+      - barberking_uploads:/app/app/static/uploads
     command: gunicorn --bind 0.0.0.0:81 --workers 1 --timeout 60 run:app
+
+volumes:
+  barberking_db:
+    driver: local
+  barberking_uploads:
+    driver: local

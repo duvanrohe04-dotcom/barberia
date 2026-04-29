@@ -14,6 +14,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copiar código
 COPY . .
 
+# Crear carpetas que serán montadas como volúmenes
+# y asegurarse de que existan con los permisos correctos
+RUN mkdir -p /app/instance /app/app/static/uploads
+
 # Usuario no-root por seguridad
 RUN useradd -m appuser && chown -R appuser /app
 USER appuser

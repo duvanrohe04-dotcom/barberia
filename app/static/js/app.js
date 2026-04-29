@@ -1,4 +1,4 @@
-// ══ STATE ══════════════════════════════════════════════════════
+﻿// ══ STATE ══════════════════════════════════════════════════════
 console.log('🔧 app.js cargado correctamente');
 let selSrv=null, selStaff=null, selTime=null, selGender=null;
 let services=[], servicesF=[], barbers=[], stylists=[];
@@ -600,7 +600,7 @@ async function submitBooking(){
   }
   const currentCount = fidelityData.count || 0;
   const newCount = currentCount + 1;
-  const nextFreeCut = 10 - currentCount; // Falta para llegar a 10 (que es cuando se gana el gratis)
+  const nextFreeCut = 10 - newCount; // cuántos faltan DESPUÉS de esta reserva
 
   document.getElementById('okDets').innerHTML = (()=>{
     const abono = isFemale ? Math.round(srv.price*0.20) : 0;
@@ -1328,24 +1328,27 @@ async function renderFidelityCards(){
   const data = await res.json();
   const el = document.getElementById('fidelityCardsList');
   if(!data.cards.length){
-    el.innerHTML='<p style="color:var(--text-muted);font-size:13px">No hay tarjetas de fidelidad con más de 6 cortes aún.</p>';
+    el.innerHTML='<p style="color:var(--text-muted);font-size:13px">No hay tarjetas de fidelidad registradas aún.</p>';
     return;
   }
   el.innerHTML=data.cards.map(c=>`
-    <div style="background:var(--dark-card);border:1px solid ${c.count === 10 ? 'var(--green)' : 'var(--dark-border)'};border-radius:12px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;${c.count === 10 ? 'box-shadow:0 0 10px rgba(46,204,113,0.3)' : ''}">
+    <div style="background:var(--dark-card);border:1px solid ${c.count >= 10 ? 'var(--green)' : 'var(--dark-border)'};border-radius:12px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;${c.count >= 10 ? 'box-shadow:0 0 10px rgba(46,204,113,0.3)' : ''}">
       <div>
         <div style="font-family:var(--font-serif);font-weight:700;font-size:15px;margin-bottom:4px">
           ${c.name}
-          ${c.count === 10 ? ' <span style="color:var(--green);font-size:12px;font-weight:700">⭐ LISTO PARA GRATIS</span>' : ''}
+          ${c.count >= 10 ? ' <span style="color:var(--green);font-size:12px;font-weight:700">⭐ LISTO PARA GRATIS</span>' : ''}
         </div>
         <div style="font-size:13px;color:var(--text-muted)">📞 ${c.phone} · 👤 ${c.staff}</div>
-        <div style="font-size:13px;color:var(--gold);margin-top:3px">📅 Última visita: ${c.last_visit}</div>
+        <div style="font-size:13px;color:var(--gold);margin-top:3px">📅 Última visita: ${c.last_visit||'—'}</div>
+        <div style="display:flex;gap:2px;flex-wrap:wrap;margin-top:6px">
+          ${Array.from({length:10},(_,i)=>`<span style="font-size:14px">${i < c.count ? '✂️' : '⬜'}</span>`).join('')}
+        </div>
       </div>
       <div style="text-align:right">
-        <div style="font-size:24px;font-family:var(--font-display);color:${c.count === 10 ? 'var(--green)' : 'var(--gold)'}">${c.count}</div>
-        <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">Cortes completados</div>
-        <div style="font-size:12px;color:${c.count === 10 ? 'var(--green)' : 'var(--green)'};margin-top:4px;font-weight:${c.count === 10 ? '700' : '400'}">
-          ${c.count === 10 ? '🎉 ¡CORTE GRATIS!' : `🎁 ${11-c.count} para gratis`}
+        <div style="font-size:28px;font-family:var(--font-display);color:${c.count >= 10 ? 'var(--green)' : 'var(--gold)'}">${c.count}/10</div>
+        <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">Cortes</div>
+        <div style="font-size:12px;margin-top:4px;font-weight:${c.count >= 10 ? '700' : '400'};color:${c.count >= 10 ? 'var(--green)' : 'var(--text-muted)'}">
+          ${c.count >= 10 ? '🎉 ¡CORTE GRATIS!' : `🎁 Faltan ${10-c.count}`}
         </div>
       </div>
     </div>`).join('');
@@ -1648,3 +1651,4 @@ switchView = function(v) {
     stopDashboardAutoRefresh();
   }
 };
+

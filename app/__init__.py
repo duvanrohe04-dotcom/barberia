@@ -266,6 +266,13 @@ def _migrate_db():
                 print("[Migración] ✅ Tabla fidelity_progress creada")
             except Exception as e:
                 print(f"[Migración] fidelity_progress: {e}")
+        else:
+            # Limpiar registros con 0 cortes que puedan existir de ciclos anteriores
+            try:
+                conn.execute(text("DELETE FROM fidelity_progress WHERE current_cuts <= 0"))
+                conn.commit()
+            except Exception:
+                pass
 
         # Tabla inactive_days
         if 'inactive_days' not in existing_tables:

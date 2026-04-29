@@ -95,14 +95,13 @@ def get_fidelity_count():
 @api_bp.route('/appointments/fidelity/cards', methods=['GET'])
 @login_required
 def get_fidelity_cards():
-    """Obtiene las tarjetas de fidelidad con más de 6 cortes completados (solo barberos)."""
+    """Obtiene todas las tarjetas de fidelidad activas (solo barberos)."""
     from app.models import FidelityProgress
     
-    # Obtener todos los registros de progreso con más de 6 cortes, ordenados por número de cortes (mayor a menor)
+    # Mostrar todos los clientes con al menos 1 corte, ordenados por número de cortes (mayor a menor)
     progress_records = FidelityProgress.query.filter(
-        FidelityProgress.current_cuts > 6
-    ).order_by(FidelityProgress.current_cuts.desc()).all()
-    
+        FidelityProgress.current_cuts >= 1
+    ).order_by(FidelityProgress.current_cuts.desc()).all()    
     # Convertir a formato esperado por el frontend
     result = []
     for record in progress_records:
@@ -266,11 +265,9 @@ def complete_appointment(appt_id):
         # 3. Corte gratis: reiniciar contador a 0 para nuevo ciclo
         
         if appt.is_free_cut:
-            # Corte gratis completado: reiniciar contador a 0
+            # Corte gratis completado: eliminar el registro para reiniciar el ciclo limpiamente
             if progress:
-                progress.current_cuts = 0
-                progress.last_visit = appt.date
-                progress.updated_at = datetime.utcnow()
+                db.session.delete(progress)
         else:
             # Corte pagado: incrementar contador
             if not progress:
