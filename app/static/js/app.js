@@ -387,7 +387,9 @@ async function buildTimeGrid(){
     `<p style="color:var(--text-muted);font-size:11px;grid-column:1/-1;margin-bottom:4px">${schedule} · Duración: ${durLabel}</p>`+
     availableSlots.map((t,idx)=>{
       // Verificar si este slot y los siguientes necesarios están libres
-      const needed = availableSlots.slice(idx, idx + durSlots);
+      // Buscar en allSlots para obtener los índices correctos
+      const startIdx = allSlots.indexOf(t);
+      const needed = allSlots.slice(startIdx, startIdx + durSlots);
       const isBlocked = needed.length < durSlots || needed.some(s=>taken.includes(s));
       const h = parseInt(t); const m = t.split(':')[1];
       const ampm = h<12 ? `${h}:${m} am` : h===12 ? `12:${m} pm` : `${h-12}:${m} pm`;
@@ -576,7 +578,7 @@ async function submitBooking(){
   }
   const currentCount = fidelityData.count || 0;
   const newCount = currentCount + 1;
-  const nextFreeCut = 11 - newCount;
+  const nextFreeCut = 10 - currentCount; // Falta para llegar a 10 (que es cuando se gana el gratis)
 
   document.getElementById('okDets').innerHTML = (()=>{
     const abono = isFemale ? Math.round(srv.price*0.20) : 0;
@@ -597,7 +599,7 @@ async function submitBooking(){
       rows += `<div class="mdr" style="background:rgba(212,175,55,0.1);border:1px solid var(--gold);border-radius:8px;padding:10px;margin-top:8px">
         <div style="font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">💳 Tarjeta de Fidelidad</div>
         <div style="font-size:14px;color:var(--text-light)">
-          Llevas <span style="color:var(--gold);font-weight:700">${newCount}</span> de <span style="color:var(--gold);font-weight:700">11</span> cortes
+          Llevas <span style="color:var(--gold);font-weight:700">${newCount}</span> de <span style="color:var(--gold);font-weight:700">10</span> cortes
         </div>
         ${nextFreeCut === 0 
           ? `<div style="color:var(--green);font-weight:700;margin-top:4px">🎉 ¡Listo para tu corte gratis!</div>`
@@ -1517,3 +1519,39 @@ function downloadApp() {
     showToast(`✅ Descargando para ${osName}...`, 'ok');
   }
 }
+
+
+// ══ AUTO-REFRESH DASHBOARD ═════════════════════════════════════
+let dashboardRefreshInterval = null;
+
+function startDashboardAutoRefresh() {
+  // Actualizar dashboard cada 30 segundos si está en vista admin
+  dashboardRefreshInterval = setInterval(() => {
+    const adminView = document.getElementById('adminView');
+    const dashTab = document.getElementById('tab-dash');
+    
+    // Solo actualizar si está visible el admin y la pestaña de dashboard
+    if(adminView && adminView.style.display === 'block' && dashTab && dashTab.classList.contains('on')) {
+      console.log('🔄 Actualizando dashboard...');
+      renderDash();
+    }
+  }, 30000); // 30 segundos
+}
+
+function stopDashboardAutoRefresh() {
+  if(dashboardRefreshInterval) {
+    clearInterval(dashboardRefreshInterval);
+    dashboardRefreshInterval = null;
+  }
+}
+
+// Iniciar auto-refresh cuando se entra a admin
+const originalSwitchView = switchView;
+switchView = function(v) {
+  originalSwitchView(v);
+  if(v === 'admin') {
+    startDashboardAutoRefresh();
+  } else {
+    stopDashboardAutoRefresh();
+  }
+};

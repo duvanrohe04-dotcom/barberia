@@ -26,6 +26,11 @@ def _allowed_time(date_str, time_str, gender):
         h = int(time_str.split(':')[0])
         m = int(time_str.split(':')[1])
         total = h * 60 + m
+        
+        # Validar que sea un slot válido de 15 minutos
+        if m % 15 != 0:
+            return False
+        
         if dow == 6:  # domingo
             if gender == 'female':
                 return False

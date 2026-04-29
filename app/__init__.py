@@ -20,64 +20,91 @@ _db_initialized = False
 
 def weekly_reset(app):
     """Elimina citas completadas/canceladas y todas las reseñas. Conserva citas pendientes."""
-    with app.app_context():
-        from app.models import Appointment, Review
-        from datetime import date
-        today = date.today().isoformat()
-        deleted_appts = Appointment.query.filter(
-            Appointment.status.in_(['Completado', 'Cancelado'])
-        ).delete(synchronize_session=False)
-        deleted_reviews = Review.query.delete(synchronize_session=False)
-        db.session.commit()
-        print(f"[Reset semanal] Citas eliminadas: {deleted_appts} | Reseñas eliminadas: {deleted_reviews}")
+    try:
+        with app.app_context():
+            from app.models import Appointment, Review
+            from datetime import datetime
+            
+            print(f"\n[Reset semanal] ⏰ Iniciando reset semanal a las {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            
+            # Eliminar citas completadas y canceladas
+            deleted_appts = Appointment.query.filter(
+                Appointment.status.in_(['Completado', 'Cancelado'])
+            ).delete(synchronize_session=False)
+            
+            # Eliminar todas las reseñas
+            deleted_reviews = Review.query.delete(synchronize_session=False)
+            
+            db.session.commit()
+            
+            print(f"[Reset semanal] ✅ Completado:")
+            print(f"  - Citas eliminadas: {deleted_appts}")
+            print(f"  - Reseñas eliminadas: {deleted_reviews}")
+            print(f"[Reset semanal] Dashboard reiniciado correctamente\n")
+    except Exception as e:
+        print(f"[Reset semanal] ❌ Error: {str(e)}\n")
+        db.session.rollback()
 
 
 def complete_expired_appointments(app):
     """Completa automáticamente las citas que ya pasaron su hora + duración."""
-    with app.app_context():
-        from app.models import Appointment
-        from datetime import datetime, date
-        today = date.today().isoformat()
-        
-        # Obtener citas pendientes de hoy o en el pasado
-        expired = Appointment.query.filter(
-            Appointment.status == 'Pendiente',
-            Appointment.date <= today
-        ).all()
-        
-        completed_count = 0
-        for appt in expired:
-            # Calcular hora de finalización
-            h, m = map(int, appt.time.split(':'))
-            start_minutes = h * 60 + m
-            duration = appt.duration_minutes or 60
-            end_minutes = start_minutes + duration
-            end_hour = end_minutes // 60
-            end_min = end_minutes % 60
-            end_time = f"{end_hour:02d}:{end_min:02d}"
+    try:
+        with app.app_context():
+            from app.models import Appointment
+            from datetime import datetime, date
+            today = date.today().isoformat()
             
-            # Obtener hora actual
-            now = datetime.now()
-            current_time = f"{now.hour:02d}:{now.minute:02d}"
+            # Obtener citas pendientes de hoy o en el pasado
+            expired = Appointment.query.filter(
+                Appointment.status == 'Pendiente',
+                Appointment.date <= today
+            ).all()
             
-            # Si la hora actual es mayor o igual a la hora de finalización, completar
-            if current_time >= end_time:
-                appt.status = 'Completado'
-                completed_count += 1
-        
-        if completed_count > 0:
-            db.session.commit()
-            print(f"[Completado automático] {completed_count} cita(s) completada(s)")
+            completed_count = 0
+            for appt in expired:
+                # Calcular hora de finalización
+                h, m = map(int, appt.time.split(':'))
+                start_minutes = h * 60 + m
+                duration = appt.duration_minutes or 60
+                end_minutes = start_minutes + duration
+                end_hour = end_minutes // 60
+                end_min = end_minutes % 60
+                end_time = f"{end_hour:02d}:{end_min:02d}"
+                
+                # Obtener hora actual
+                now = datetime.now()
+                current_time = f"{now.hour:02d}:{now.minute:02d}"
+                
+                # Si la hora actual es mayor o igual a la hora de finalización, completar
+                if current_time >= end_time:
+                    appt.status = 'Completado'
+                    completed_count += 1
+            
+            if completed_count > 0:
+                db.session.commit()
+                print(f"[Auto-completar] ✅ {completed_count} cita(s) completada(s) automáticamente")
+    except Exception as e:
+        print(f"[Auto-completar] ❌ Error: {str(e)}")
+        db.session.rollback()
 
+
+_scheduler = None
 
 def _start_scheduler(app):
+    global _scheduler
     from apscheduler.schedulers.background import BackgroundScheduler
     from apscheduler.triggers.cron import CronTrigger
     from apscheduler.triggers.interval import IntervalTrigger
-    scheduler = BackgroundScheduler(daemon=True)
+    
+    # Evitar iniciar múltiples schedulers
+    if _scheduler is not None and _scheduler.running:
+        print("[Scheduler] Ya está en ejecución, no se inicia de nuevo")
+        return _scheduler
+    
+    _scheduler = BackgroundScheduler(daemon=True)
     
     # Completar citas vencidas cada 15 minutos
-    scheduler.add_job(
+    _scheduler.add_job(
         func=complete_expired_appointments,
         args=[app],
         trigger=IntervalTrigger(minutes=15),
@@ -86,7 +113,7 @@ def _start_scheduler(app):
     )
     
     # Cada domingo a las 3:00 am
-    scheduler.add_job(
+    _scheduler.add_job(
         func=weekly_reset,
         args=[app],
         trigger=CronTrigger(day_of_week='sun', hour=3, minute=0),
@@ -94,8 +121,11 @@ def _start_scheduler(app):
         replace_existing=True
     )
     
-    scheduler.start()
-    return scheduler
+    _scheduler.start()
+    print("[Scheduler] ✅ Iniciado correctamente")
+    print("[Scheduler] - Completar citas vencidas: cada 15 minutos")
+    print("[Scheduler] - Reset semanal: Domingos a las 3:00 AM")
+    return _scheduler
 
 
 def create_app():
