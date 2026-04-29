@@ -1,10 +1,10 @@
-const CACHE_NAME = 'barberking-v37';
+const CACHE_NAME = 'barberking-v47';
 const urlsToCache = [
   '/',
-  '/static/css/style.css',
-  '/static/js/app.js',
-  '/static/js/particles.js',
-  '/static/js/utils.js'
+  '/static/css/style.css?v=47',
+  '/static/js/app.js?v=47',
+  '/static/js/particles.js?v=47',
+  '/static/js/utils.js?v=47'
 ];
 
 self.addEventListener('install', event => {
@@ -17,10 +17,17 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('fetch', event => {
+  // Ignorar requests que no sean GET o sean de extensiones
+  if (event.request.method !== 'GET') return;
+  if (event.request.url.startsWith('chrome-extension://')) return;
+
   event.respondWith(
     // Siempre intentar red primero, caché como fallback
     fetch(event.request)
       .then(response => {
+        if (!response || response.status !== 200 || response.type !== 'basic') {
+          return response;
+        }
         // Guardar copia fresca en caché
         const responseClone = response.clone();
         caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));

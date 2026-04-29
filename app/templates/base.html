@@ -8,12 +8,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="icon" type="image/png" href="{{ url_for('static', filename='icons/icon-192.png') }}">
-<link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
 <title>{% block title %}JS Barbershop{% endblock %}</title>
 <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=11">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=47">
 </head>
 <body>
 <!-- Canvas de partículas (fondo global) -->
@@ -23,15 +22,17 @@
 <div class="toast" id="toast"></div>
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/static/sw.js')
-    .then(() => console.log('Service Worker registrado'))
-    .catch(err => console.log('Error al registrar Service Worker:', err));
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/static/sw.js?v=47')
+      .then(reg => console.log('Service Worker registrado'))
+      .catch(err => console.warn('Service Worker no disponible:', err));
+  });
 }
 </script>
-<script src="{{ url_for('static', filename='js/utils.js') }}?v=11"></script>
-<script src="{{ url_for('static', filename='js/particles.js') }}?v=2"></script>
+<script src="{{ url_for('static', filename='js/utils.js') }}?v=47"></script>
+<script src="{{ url_for('static', filename='js/particles.js') }}?v=47"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>
 
-<!-- ✅ Actualización v35: Soporte para mensajes toast mejorados -->
+<!-- ✅ Actualización v47: Cache busting + timezone fix -->
