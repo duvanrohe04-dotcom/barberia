@@ -360,10 +360,16 @@ def search_appointments():
         phone = phone[3:]
     if not name or not phone:
         return jsonify([])
+    
+    from datetime import date as dt_date
+    today_str = dt_date.today().isoformat()
+    
     # Buscar por nombre exacto (lowercase) y teléfono
     # También intentar con el teléfono con prefijo por si fue guardado así
+    # Solo buscar citas pendientes cuya fecha sea hoy o en el futuro
     results = Appointment.query.filter(
-        Appointment.status == 'Pendiente'
+        Appointment.status == 'Pendiente',
+        Appointment.date >= today_str  # Solo citas de hoy en adelante
     ).filter(
         db.func.lower(Appointment.client_name) == name
     ).filter(
@@ -802,38 +808,45 @@ def delete_inactive_day(day_id):
 @api_bp.route('/reset-appointments', methods=['POST'])
 @login_required
 def reset_appointments():
-    """Admin: Eliminar TODAS las citas de la base de datos."""
+    """Admin: Reiniciar dashboard - Elimina citas completadas/canceladas, reseñas y días inactivos pasados.
+    Mantiene citas pendientes y tarjetas de fidelidad."""
     try:
-        # Eliminar todas las citas
-        deleted_count = Appointment.query.delete()
+        from app.models import FidelityProgress, InactiveDay
+        from datetime import date as dt_date
         
-        # Eliminar todos los registros de fidelidad
-        from app.models import FidelityProgress
-        fidelity_count = FidelityProgress.query.delete()
+        # Eliminar solo citas completadas y canceladas (mantener pendientes)
+        deleted_appointments = Appointment.query.filter(
+            Appointment.status.in_(['Completado', 'Cancelado'])
+        ).delete(synchronize_session=False)
+        
+        # NO eliminar tarjetas de fidelidad (se mantienen)
+        fidelity_count = 0
         
         # Eliminar todas las reseñas
         review_count = Review.query.delete()
         
-        # Eliminar todos los días inactivos
-        from app.models import InactiveDay
-        inactive_count = InactiveDay.query.delete()
+        # Eliminar solo días inactivos pasados (mantener futuros)
+        today_str = dt_date.today().isoformat()
+        inactive_count = InactiveDay.query.filter(
+            InactiveDay.date < today_str
+        ).delete(synchronize_session=False)
         
         db.session.commit()
         
         return jsonify({
             'success': True,
-            'message': f'✅ Base de datos limpiada correctamente',
+            'message': f'✅ Dashboard reiniciado correctamente',
             'deleted': {
-                'appointments': deleted_count,
-                'fidelity_cards': fidelity_count,
+                'completed_cancelled_appointments': deleted_appointments,
+                'fidelity_cards_kept': FidelityProgress.query.count(),
                 'reviews': review_count,
-                'inactive_days': inactive_count
+                'past_inactive_days': inactive_count
             }
         })
     except Exception as e:
         db.session.rollback()
         return jsonify({
             'success': False,
-            'message': f'❌ Error al limpiar la base de datos: {str(e)}'
+            'message': f'❌ Error al reiniciar el dashboard: {str(e)}'
         }), 500
 

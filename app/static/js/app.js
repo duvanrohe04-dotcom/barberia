@@ -1328,14 +1328,16 @@ function saveCreds(){
 // ══ RESET DATABASE ═════════════════════════════════════════════
 async function resetDatabase(){
   const confirmed = confirm(
-    '⚠️ ADVERTENCIA ⚠️\n\n' +
-    'Esta acción eliminará PERMANENTEMENTE:\n' +
-    '• Todas las citas (pendientes, completadas y canceladas)\n' +
-    '• Todas las tarjetas de fidelidad\n' +
+    '⚠️ REINICIAR DASHBOARD ⚠️\n\n' +
+    'Esta acción eliminará:\n' +
+    '• Citas COMPLETADAS y CANCELADAS\n' +
     '• Todas las reseñas\n' +
-    '• Todos los días inactivos\n\n' +
+    '• Días inactivos pasados\n\n' +
+    'Se MANTENDRÁN:\n' +
+    '• Citas PENDIENTES\n' +
+    '• Tarjetas de fidelidad\n\n' +
     'Esta acción NO se puede deshacer.\n\n' +
-    '¿Estás COMPLETAMENTE SEGURO de que deseas continuar?'
+    '¿Estás seguro de que deseas continuar?'
   );
   
   if(!confirmed) return;
@@ -1343,14 +1345,15 @@ async function resetDatabase(){
   // Segunda confirmación
   const doubleConfirm = confirm(
     '🚨 ÚLTIMA CONFIRMACIÓN 🚨\n\n' +
-    'Vas a BORRAR TODA LA INFORMACIÓN de la base de datos.\n\n' +
+    'Vas a reiniciar el dashboard eliminando citas completadas/canceladas y reseñas.\n' +
+    'Las citas pendientes y tarjetas de fidelidad se mantendrán.\n\n' +
     '¿Realmente deseas continuar?'
   );
   
   if(!doubleConfirm) return;
   
   try {
-    showToast('🔄 Limpiando base de datos...', 'neutral');
+    showToast('🔄 Reiniciando dashboard...', 'neutral');
     
     const res = await fetch('/api/reset-appointments', {
       method: 'POST',
@@ -1360,27 +1363,27 @@ async function resetDatabase(){
     const data = await res.json();
     
     if(data.success){
-      showToast('✅ Base de datos limpiada correctamente', 'ok');
+      showToast('✅ Dashboard reiniciado correctamente', 'ok');
       
       // Mostrar detalles de lo eliminado
       const details = data.deleted;
       alert(
-        '✅ Base de datos limpiada exitosamente\n\n' +
-        `📋 Citas eliminadas: ${details.appointments}\n` +
-        `💳 Tarjetas de fidelidad: ${details.fidelity_cards}\n` +
+        '✅ Dashboard reiniciado exitosamente\n\n' +
+        `📋 Citas completadas/canceladas eliminadas: ${details.completed_cancelled_appointments}\n` +
+        `💳 Tarjetas de fidelidad conservadas: ${details.fidelity_cards_kept}\n` +
         `⭐ Reseñas eliminadas: ${details.reviews}\n` +
-        `🚫 Días inactivos: ${details.inactive_days}`
+        `🚫 Días inactivos pasados eliminados: ${details.past_inactive_days}`
       );
       
       // Recargar el dashboard
       renderDash();
       renderTable();
     } else {
-      showToast('❌ ' + (data.message || 'Error al limpiar la base de datos'), 'error');
+      showToast('❌ ' + (data.message || 'Error al reiniciar el dashboard'), 'error');
     }
   } catch(error) {
-    console.error('Error al limpiar base de datos:', error);
-    showToast('❌ Error al limpiar la base de datos', 'error');
+    console.error('Error al reiniciar dashboard:', error);
+    showToast('❌ Error al reiniciar el dashboard', 'error');
   }
 }
 

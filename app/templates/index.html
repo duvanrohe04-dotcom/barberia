@@ -678,14 +678,15 @@
         <button class="save-btn" onclick="saveCreds()">🔐 Actualizar Credenciales</button>
       </div>
 
-      <!-- LIMPIAR BASE DE DATOS -->
+      <!-- REINICIAR DASHBOARD -->
       <div class="brand-editor" style="margin-top:16px;border-left:3px solid var(--red-bright)">
-        <h3 style="color:var(--red-bright)">⚠️ Zona de Peligro</h3>
+        <h3 style="color:var(--red-bright)">⚠️ Reiniciar Dashboard</h3>
         <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">
-          Esta acción eliminará TODAS las citas, tarjetas de fidelidad, reseñas y días inactivos de la base de datos. 
+          Esta acción eliminará las citas <strong>completadas y canceladas</strong>, las reseñas y los días inactivos pasados.<br>
+          <strong style="color:var(--green)">Se mantienen:</strong> Citas pendientes y tarjetas de fidelidad.<br>
           <strong style="color:var(--red-bright)">Esta acción NO se puede deshacer.</strong>
         </p>
-        <button class="save-btn" style="background:var(--red-bright)" onclick="resetDatabase()">🗑️ Limpiar Base de Datos</button>
+        <button class="save-btn" style="background:var(--red-bright)" onclick="resetDatabase()">🔄 Reiniciar Dashboard</button>
       </div>
     </div>
 
