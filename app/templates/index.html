@@ -387,8 +387,17 @@
     <div class="footer-logo-box" id="footerLogoBox"><span>💈</span></div>
     <div class="footer-name" id="footerName">BARBERKING</div>
     <p class="footer-tag">Tu estilo, nuestra pasión — Lun–Sáb: 8am–9pm · Dom: 8am–12pm</p>
-    <p class="footer-info" id="footerInfo">📍 Bogotá, Colombia &nbsp;|&nbsp; 📞 +57 310 000 0000</p>
-  </footer>
+     <p class="footer-info" id="footerInfo">📍 Bogotá, Colombia &nbsp;|&nbsp; 📞 +57 310 000 0000</p>
+     <!-- Botones de descarga -->
+     <div class="footer-downloads">
+       <a href="{{ url_for('static', filename='downloads/app-android.apk') }}" class="dl-btn android" download>
+         <span class="dl-icon">🤖</span> Descargar Android
+       </a>
+       <a href="{{ url_for('static', filename='downloads/app-windows.zip') }}" class="dl-btn windows" download>
+         <span class="dl-icon">🪟</span> Descargar Windows
+       </a>
+     </div>
+   </footer>
 </div>
 
 <!-- ADMIN VIEW -->
