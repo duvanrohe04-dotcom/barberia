@@ -1,0 +1,54 @@
+{
+  "version": "1.0",
+  "name": "BarberKing",
+  "description": "Sistema de gestión de barbería con tarjeta de fidelidad",
+  "services": [
+    {
+      "name": "barberking_db",
+      "image": "postgres:16-alpine",
+      "environment": {
+        "POSTGRES_USER": "${POSTGRES_USER}",
+        "POSTGRES_PASSWORD": "${POSTGRES_PASSWORD}",
+        "POSTGRES_DB": "${POSTGRES_DB}"
+      },
+      "volumes": ["postgres_data:/var/lib/postgresql/data"],
+      "healthcheck": {
+        "test": ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"],
+        "interval": 10,
+        "timeout": 5,
+        "retries": 5
+      }
+    },
+    {
+      "name": "barberking_web",
+      "build": ".",
+      "environment": {
+        "FLASK_ENV": "${FLASK_ENV}",
+        "SECRET_KEY": "${SECRET_KEY}",
+        "POSTGRES_USER": "${POSTGRES_USER}",
+        "POSTGRES_PASSWORD": "${POSTGRES_PASSWORD}",
+        "POSTGRES_DB": "${POSTGRES_DB}"
+      },
+      "ports": ["81:81"],
+      "depends_on": ["barberking_db"],
+      "command": "gunicorn --bind 0.0.0.0:81 --workers 4 --threads 2 --timeout 60 run:app"
+    },
+    {
+      "name": "barberking_nginx",
+      "image": "nginx:alpine",
+      "ports": ["80:80"],
+      "volumes": ["./nginx.conf:/etc/nginx/conf.d/default.conf:ro"],
+      "depends_on": ["barberking_web"]
+    }
+  ],
+  "volumes": {
+    "postgres_data": {}
+  },
+  "environment": {
+    "FLASK_ENV": "production",
+    "SECRET_KEY": "cambia-esto-por-una-clave-segura-de-64-caracteres",
+    "POSTGRES_USER": "barberking",
+    "POSTGRES_PASSWORD": "barberking_pass_2024",
+    "POSTGRES_DB": "barberking_db"
+  }
+}

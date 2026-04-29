@@ -1,0 +1,731 @@
+{% extends 'base.html' %}
+{% block title %}BarberKing | Barbería & Estilismo{% endblock %}
+
+{% block body %}
+<!-- RIBBON -->
+<div class="ribbon">
+  <div class="ribbon-inner">
+    <div class="ribbon-brand" onclick="goSec('hero')">
+      <div class="ribbon-logo-wrap" id="ribbonLogoWrap"><span>💈</span></div>
+      <span id="ribbonName">BARBERKING</span>
+    </div>
+    <div class="ribbon-right">
+      <button class="rbtn ghost" id="themeBtn" onclick="toggleTheme()">🌙</button>
+      <!-- Acceso admin -->
+      <span id="adminKeyBtn" onclick="toggleLoginPanel(event)" title="Panel de Administrador" style="cursor:pointer;font-size:14px;padding:5px 8px;transition:all .2s;user-select:none;border-radius:50%;background:transparent;border:2px solid rgba(212,175,55,0.5);color:var(--gold);z-index:1001" onmouseover="this.style.transform='scale(1.15)';this.style.borderColor='rgba(212,175,55,0.7)'" onmouseout="this.style.transform='scale(1)';this.style.borderColor='rgba(212,175,55,0.5)'">🔑</span>
+      <div id="adminZone" style="display:none;align-items:center;gap:8px">
+        <span class="admin-badge">Admin</span>
+        <button class="rbtn red" onclick="doLogout()">Salir</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Panel login oculto -->
+<div id="loginPanel" onclick="event.stopPropagation()">
+  <div>
+    <input id="rUser" placeholder="Usuario" type="text" onkeydown="if(event.key==='Enter')doLogin(event)">
+    <input id="rPass" placeholder="Contraseña" type="password" onkeydown="if(event.key==='Enter')doLogin(event)">
+    <button type="button" onclick="doLogin(event)">Entrar</button>
+  </div>
+</div>
+<div id="clientView">
+  <div class="wave"></div>
+
+  <!-- HERO -->
+  <section id="hero" class="scroll-sec">
+    <div class="hero">
+      <div class="hero-bg"></div>
+      <div class="hero-stripes"></div>
+      <div class="hero-content">
+        <div>
+          <div class="hero-tag">✦ ARTE · ESTILO · PRECISIÓN ✦</div>
+          <h1 class="hero-title">
+            <span class="acc" id="heroAcc">BARBER</span>
+            <span class="out" id="heroOut">KING</span>
+          </h1>
+          <p class="hero-sub"><em>Estilo que inspira,<br>manos que transforman.</em></p>
+          <div class="hero-actions">
+            <div class="hero-ctas">
+              <button class="btn-gold" onclick="goSec('genderSec')">✂ Reservar Cita</button>
+              <button class="btn-out" onclick="goSec('cancelSec')">Cancelar Cita</button>
+              <button class="btn-out" id="installBtn" style="display:none" onclick="installPWA()">📱 Instalar App</button>
+            </div>
+            <div class="social-row">
+              <span class="social-label">💈 Barbero</span>
+              <a class="social-btn wa-btn" href="#" onclick="return openWa(event)">
+                <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.118 1.528 5.845L0 24l6.335-1.508A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.006-1.371l-.36-.213-3.76.895.952-3.653-.234-.374A9.818 9.818 0 1112 21.818z"/></svg>
+                WhatsApp
+              </a>
+              <a class="social-btn ig-btn" href="#" onclick="return openIg(event)">
+                <svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+                Instagram
+              </a>
+            </div>
+            <div class="social-row">
+              <span class="social-label">💅 Estilista</span>
+              <a class="social-btn wa-btn" href="#" onclick="return openWaSty(event)">
+                <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.118 1.528 5.845L0 24l6.335-1.508A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.006-1.371l-.36-.213-3.76.895.952-3.653-.234-.374A9.818 9.818 0 1112 21.818z"/></svg>
+                WhatsApp
+              </a>
+              <a class="social-btn ig-btn" href="#" onclick="return openIgSty(event)">
+                <svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+                Instagram
+              </a>
+            </div>
+          </div>
+        </div>
+        <div class="hero-visual">
+          <div class="hero-circle">
+            <span id="heroLogoEl" style="font-size:105px">💈</span>
+          </div>
+          <!-- FIDELITY MESSAGE -->
+          <div class="hero-fidelity">
+            <div class="fidelity-icon">🎁</div>
+            <div class="fidelity-content">
+              <div class="fidelity-title">¡Corte número 11 gratis!</div>
+              <div class="fidelity-text">Solicita tu tarjeta de fidelidad y canjea un corte gratis cada vez que completes 10.</div>
+            </div>
+          </div>
+          <div class="hero-stats">
+            <div class="stat-card"><div class="stat-n" id="heroClients">100+</div><div class="stat-l">Clientes felices</div></div>
+            <div class="stat-card"><div class="stat-n" id="heroStaff">9+</div><div class="stat-l">Profesionales</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- GENDER SELECTOR -->
+  <section id="genderSec" class="scroll-sec">
+    <div class="gender-select-wrap">
+      <div class="gender-inner">
+        <div class="gender-tag">✦ ELIGE TU EXPERIENCIA ✦</div>
+        <div class="gender-title">¿PARA QUIÉN ES <span style="color:var(--gold)">LA CITA?</span></div>
+        <p class="gender-sub">Cada cliente merece una atención única — dinos quién eres</p>
+        <div class="gender-btns">
+
+          <div class="gender-btn male" id="gBtnMale" onclick="setGender('male')">
+            <div class="gender-check">✔</div>
+            <div class="gender-btn-deco male-deco"></div>
+            <div class="gender-btn-icon" id="maleIconWrap">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 264 280" width="100" height="106">
+                <!-- Fondo circular -->
+                <circle cx="132" cy="132" r="120" fill="url(#maleBg)" opacity=".15"/>
+                <!-- Cuerpo / traje -->
+                <path d="M0 280 C0 280 0 210 40 190 L80 210 L132 195 L184 210 L224 190 C264 210 264 280 264 280Z" fill="#1a1a2e"/>
+                <!-- Camisa blanca -->
+                <path d="M108 195 L132 215 L156 195 L152 190 L132 208 L112 190Z" fill="#f5f0e8"/>
+                <!-- Corbata dorada -->
+                <path d="M126 190 L132 205 L138 190 L136 184 L128 184Z" fill="#D4AF37"/>
+                <path d="M128 184 L136 184 L134 176 L130 176Z" fill="#c8960c"/>
+                <!-- Solapas traje -->
+                <path d="M80 210 L55 220 L62 245 L132 215Z" fill="#252545"/>
+                <path d="M184 210 L209 220 L202 245 L132 215Z" fill="#252545"/>
+                <!-- Pañuelo -->
+                <path d="M196 218 L208 214 L210 224 L198 226Z" fill="#f5f0e8"/>
+                <!-- Botones -->
+                <circle cx="132" cy="248" r="4" fill="#111"/>
+                <circle cx="132" cy="262" r="4" fill="#111"/>
+                <!-- Cuello -->
+                <rect x="116" y="168" width="32" height="22" rx="4" fill="#FDBCB4"/>
+                <!-- Cabeza -->
+                <ellipse cx="132" cy="120" rx="56" ry="60" fill="#FDBCB4"/>
+                <!-- Orejas -->
+                <ellipse cx="76" cy="122" rx="10" ry="13" fill="#F0A898"/>
+                <ellipse cx="188" cy="122" rx="10" ry="13" fill="#F0A898"/>
+                <!-- Cabello rubio clásico -->
+                <path d="M76 100 Q76 60 132 58 Q188 60 188 100 L184 108 Q176 72 132 70 Q88 72 80 108Z" fill="#c8960c"/>
+                <path d="M76 100 L76 116 Q80 88 88 80" fill="#b8860b"/>
+                <!-- Flequillo -->
+                <path d="M80 94 Q100 76 132 74 Q164 76 184 94" fill="#d4a820"/>
+                <!-- Cejas -->
+                <path d="M100 104 Q112 99 124 102" stroke="#8B6914" stroke-width="5" fill="none" stroke-linecap="round"/>
+                <path d="M140 102 Q152 99 164 104" stroke="#8B6914" stroke-width="5" fill="none" stroke-linecap="round"/>
+                <!-- Ojos -->
+                <ellipse cx="110" cy="118" rx="12" ry="13" fill="white"/>
+                <ellipse cx="154" cy="118" rx="12" ry="13" fill="white"/>
+                <circle cx="112" cy="120" r="8" fill="#6b3a00"/>
+                <circle cx="156" cy="120" r="8" fill="#6b3a00"/>
+                <circle cx="114" cy="117" r="3" fill="white"/>
+                <circle cx="158" cy="117" r="3" fill="white"/>
+                <!-- Nariz -->
+                <path d="M126 136 Q132 144 138 136" stroke="#d4956a" stroke-width="3" fill="none" stroke-linecap="round"/>
+                <circle cx="124" cy="138" r="3" fill="#d4956a" opacity=".4"/>
+                <circle cx="140" cy="138" r="3" fill="#d4956a" opacity=".4"/>
+                <!-- Boca -->
+                <path d="M112 154 Q132 164 152 154" stroke="#c0724a" stroke-width="4" fill="none" stroke-linecap="round"/>
+                <defs>
+                  <linearGradient id="maleBg" x1="0" y1="0" x2="264" y2="280" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stop-color="#D4AF37"/>
+                    <stop offset="100%" stop-color="#c0392b"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+            <div class="gender-btn-label">HOMBRE</div>
+            <div class="gender-btn-sub">Cortes · Barba · Fade · Diseños</div>
+            <div class="gender-btn-cta male-cta">Ver servicios →</div>
+          </div>
+
+          <div class="gender-btn female" id="gBtnFemale" onclick="setGender('female')">
+            <div class="gender-check">✔</div>
+            <div class="gender-btn-deco female-deco"></div>
+            <div class="gender-btn-icon" id="femaleIconWrap">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 264 280" width="116" height="124">
+                <!-- Fondo circular -->
+                <circle cx="132" cy="132" r="120" fill="url(#femaleBg)" opacity=".15"/>
+                <!-- Vestido dorado -->
+                <path d="M0 280 C0 280 5 205 45 188 L88 205 L132 192 L176 205 L219 188 C259 205 264 280 264 280Z" fill="url(#dressFill)"/>
+                <!-- Tirantes -->
+                <path d="M96 192 L88 172" stroke="#c8960c" stroke-width="7" stroke-linecap="round"/>
+                <path d="M168 192 L176 172" stroke="#c8960c" stroke-width="7" stroke-linecap="round"/>
+                <!-- Collar -->
+                <path d="M96 168 Q132 180 168 168" stroke="#D4AF37" stroke-width="5" fill="none" stroke-linecap="round"/>
+                <circle cx="132" cy="178" r="7" fill="#D4AF37"/>
+                <circle cx="132" cy="178" r="3.5" fill="#f5d060"/>
+                <!-- Cuello -->
+                <path d="M112 162 Q132 174 152 162 L148 148 Q132 158 116 148Z" fill="#F8D5B0"/>
+                <!-- Cabeza -->
+                <ellipse cx="132" cy="108" rx="56" ry="60" fill="#F8D5B0"/>
+                <!-- Orejas -->
+                <ellipse cx="76" cy="110" rx="10" ry="13" fill="#F0C898"/>
+                <ellipse cx="188" cy="110" rx="10" ry="13" fill="#F0C898"/>
+                <!-- Aretes dorados -->
+                <circle cx="70" cy="122" r="8" fill="url(#earringGrad)"/>
+                <circle cx="194" cy="122" r="8" fill="url(#earringGrad)"/>
+                <circle cx="70" cy="122" r="4" fill="#f5d060"/>
+                <circle cx="194" cy="122" r="4" fill="#f5d060"/>
+                <!-- Cabello rubio ondulado -->
+                <path d="M76 90 Q74 58 132 54 Q190 58 188 90" fill="#c8960c"/>
+                <path d="M76 90 Q68 108 72 128 Q68 112 72 96" fill="#b8860b"/>
+                <path d="M188 90 Q196 108 192 128 Q196 112 192 96" fill="#b8860b"/>
+                <!-- Ondas -->
+                <path d="M76 78 Q88 64 100 78 Q112 92 124 78 Q136 64 148 78 Q160 92 172 78 Q184 64 188 72" fill="#d4a820" opacity=".8"/>
+                <path d="M72 100 Q82 86 92 100 Q102 114 112 100" fill="#c8960c" opacity=".7"/>
+                <path d="M192 100 Q182 86 172 100 Q162 114 152 100" fill="#c8960c" opacity=".7"/>
+                <!-- Cejas finas elegantes -->
+                <path d="M98 94 Q110 88 122 92" stroke="#8B6914" stroke-width="4" fill="none" stroke-linecap="round"/>
+                <path d="M142 92 Q154 88 166 94" stroke="#8B6914" stroke-width="4" fill="none" stroke-linecap="round"/>
+                <!-- Ojos grandes -->
+                <ellipse cx="110" cy="108" rx="13" ry="14" fill="white"/>
+                <ellipse cx="154" cy="108" rx="13" ry="14" fill="white"/>
+                <circle cx="112" cy="110" r="9" fill="#6b4500"/>
+                <circle cx="156" cy="110" r="9" fill="#6b4500"/>
+                <circle cx="115" cy="107" r="3.5" fill="white"/>
+                <circle cx="159" cy="107" r="3.5" fill="white"/>
+                <!-- Pestañas -->
+                <path d="M98 100 L93 94 M104 98 L101 91 M110 97 L110 90" stroke="#2d1a00" stroke-width="2.5" stroke-linecap="round"/>
+                <path d="M142 97 L140 90 M148 98 L151 91 M154 100 L159 94" stroke="#2d1a00" stroke-width="2.5" stroke-linecap="round"/>
+                <!-- Nariz -->
+                <path d="M126 124 Q132 130 138 124" stroke="#d4956a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+                <!-- Labios -->
+                <path d="M108 140 Q120 134 132 136 Q144 134 156 140 Q144 150 132 148 Q120 150 108 140Z" fill="#8B2252"/>
+                <path d="M108 140 Q132 144 156 140" stroke="#6b1a3a" stroke-width="1" fill="none"/>
+                <defs>
+                  <linearGradient id="femaleBg" x1="0" y1="0" x2="264" y2="280" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stop-color="#E91E8C"/>
+                    <stop offset="100%" stop-color="#D4AF37"/>
+                  </linearGradient>
+                  <linearGradient id="dressFill" x1="0" y1="188" x2="264" y2="280" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stop-color="#D4AF37"/>
+                    <stop offset="50%" stop-color="#c8960c"/>
+                    <stop offset="100%" stop-color="#8B6914"/>
+                  </linearGradient>
+                  <linearGradient id="earringGrad" x1="62" y1="114" x2="78" y2="130" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stop-color="#f5d060"/>
+                    <stop offset="100%" stop-color="#D4AF37"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+            <div class="gender-btn-label">MUJER</div>
+            <div class="gender-btn-sub">Tintes · Keratina · Uñas · Peinados</div>
+            <div class="gender-btn-cta female-cta">Ver servicios →</div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SERVICES -->
+  <section id="services" class="scroll-sec" style="display:none">
+    <div class="section">
+      <div class="sec-hdr">
+        <div class="sec-tag" id="srvSecTag">Nuestros Servicios</div>
+        <h2 class="sec-title" id="srvSecTitle">ELIGE TU <span class="g">ESTILO</span></h2>
+        <p class="sec-sub" id="srvSecSub">Selecciona el servicio que deseas</p>
+        <div class="divider" id="srvDivider"></div>
+      </div>
+      <div class="srv-grid" id="srvGrid"></div>
+    </div>
+  </section>
+
+  <div class="sep" id="sepStaff" style="display:none"></div>
+
+  <!-- STAFF -->
+  <section id="staff" class="scroll-sec" style="display:none">
+    <div class="section">
+      <div class="sec-hdr">
+        <div class="sec-tag" id="staffSecTag">El Equipo</div>
+        <h2 class="sec-title" id="staffSecTitle">NUESTROS <span class="g">MAESTROS</span></h2>
+        <p class="sec-sub" id="staffSecSub">Escoge con quién quieres tu servicio</p>
+        <div class="divider" id="staffDivider"></div>
+      </div>
+      <div class="brb-grid" id="staffGrid"></div>
+    </div>
+  </section>
+
+  <div class="wave" id="waveBook" style="display:none"></div>
+
+  <!-- BOOKING -->
+  <section id="booking" class="scroll-sec" style="display:none">
+    <div class="section">
+      <div class="sec-hdr">
+        <div class="sec-tag" id="bookSecTag">Reservaciones</div>
+        <h2 class="sec-title">AGENDA TU <span class="g" id="bookSecAccent">CITA</span></h2>
+        <p class="sec-sub">Completa tus datos y escoge el momento perfecto</p>
+        <div class="divider" id="bookDivider"></div>
+      </div>
+      <div class="book-wrap" id="bookWrap">
+        <div id="selAlert" class="alert-box"></div>
+        <div class="book-form">
+          <div class="frow">
+            <div class="fg">
+              <label class="flabel">Nombre completo *</label>
+              <input type="text" class="fc" id="cName" placeholder="Ej. Carlos Ramírez">
+            </div>
+            <div class="fg">
+              <label class="flabel">Teléfono *</label>
+              <input type="tel" class="fc" id="cPhone" placeholder="Ej. 3001234567">
+            </div>
+          </div>
+          <div class="fg">
+            <label class="flabel">Fecha de la cita *</label>
+            <input type="date" class="fc" id="bDate" onchange="buildTimeGrid()">
+          </div>
+          <div class="fg">
+            <label class="flabel">Selecciona la hora *</label>
+            <div class="time-grid" id="tGrid"><p style="color:var(--text-muted);font-size:12px;grid-column:1/-1">Selecciona primero una fecha.</p></div>
+          </div>
+          <div class="sum-box" id="sumBox"></div>
+          <button class="sub-btn" id="subBtn" onclick="console.log('🔘 Botón clickeado'); submitBooking()">✂ CONFIRMAR RESERVACIÓN</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="sep"></div>
+
+  <!-- CANCEL -->
+  <section id="cancelSec" class="scroll-sec">
+    <div class="section">
+      <div class="sec-hdr">
+        <div class="sec-tag">Cancelaciones</div>
+        <h2 class="sec-title">CANCELAR <span class="g">CITA</span></h2>
+        <p class="sec-sub">Ingresa tu nombre y teléfono para consultar y cancelar tu cita</p>
+        <div class="divider"></div>
+      </div>
+      <div class="cancel-section">
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div class="fg">
+            <label class="flabel">Tu nombre completo</label>
+            <input type="text" class="fc" id="cancelName" placeholder="Ej. Carlos Ramírez">
+          </div>
+          <div class="fg">
+            <label class="flabel">Tu teléfono</label>
+            <input type="tel" class="fc" id="cancelPhone" placeholder="Ej. 3001234567">
+          </div>
+          <button class="sub-btn" style="background:linear-gradient(135deg,var(--red-bright),var(--red))" onclick="searchCancel()">🔍 Buscar mi cita</button>
+          <div id="cancelResults"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RESEÑAS CLIENTES -->
+  <div class="wave" style="background:linear-gradient(90deg,var(--gold),var(--red),var(--gold))"></div>
+  <section id="reviewsSec" class="scroll-sec">
+    <div class="section">
+      <div class="sec-hdr">
+        <div class="sec-tag">⭐ Opiniones</div>
+        <h2 class="sec-title">LO QUE DICEN <span class="g">NUESTROS CLIENTES</span></h2>
+        <p class="sec-sub">Experiencias reales de quienes confían en nosotros</p>
+        <div class="divider"></div>
+      </div>
+      <!-- Formulario para dejar reseña -->
+      <div class="review-form-wrap">
+        <h3 class="review-form-title">✍ Deja tu reseña</h3>
+        <div class="review-form">
+          <div class="fg">
+            <label class="flabel">Tu nombre</label>
+            <input type="text" class="fc" id="rvName" placeholder="Ej. Carlos Ramírez" maxlength="100">
+          </div>
+          <div class="fg">
+            <label class="flabel">Calificación</label>
+            <div class="star-picker" id="starPicker">
+              <span class="star" data-v="1" onclick="pickStar(1)">★</span>
+              <span class="star" data-v="2" onclick="pickStar(2)">★</span>
+              <span class="star" data-v="3" onclick="pickStar(3)">★</span>
+              <span class="star" data-v="4" onclick="pickStar(4)">★</span>
+              <span class="star" data-v="5" onclick="pickStar(5)">★</span>
+            </div>
+          </div>
+          <div class="fg">
+            <label class="flabel">Comentario (opcional)</label>
+            <textarea class="fc" id="rvComment" placeholder="Cuéntanos tu experiencia..." rows="3" maxlength="500" style="resize:vertical"></textarea>
+          </div>
+          <button class="sub-btn" onclick="submitReview()" style="margin-top:4px">⭐ Enviar Reseña</button>
+        </div>
+      </div>
+      <!-- Grid de reseñas públicas -->
+      <div class="reviews-grid" id="reviewsGrid"></div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="footer-logo-box" id="footerLogoBox"><span>💈</span></div>
+    <div class="footer-name" id="footerName">BARBERKING</div>
+    <p class="footer-tag">Tu estilo, nuestra pasión — Lun–Sáb: 8am–9pm · Dom: 8am–12pm</p>
+    <p class="footer-info" id="footerInfo">📍 Bogotá, Colombia &nbsp;|&nbsp; 📞 +57 310 000 0000</p>
+  </footer>
+</div>
+
+<!-- ADMIN VIEW -->
+<div id="adminView" style="display:none">
+  <div class="admin-wrap">
+    <div class="admin-topbar">
+      <div class="admin-logo-box" id="adminLogoBox"><span>💈</span></div>
+      <div class="admin-shop-name" id="adminShopName">BARBERKING</div>
+    </div>
+    <div class="admin-tabs">
+      <button class="atab on" onclick="setTab('dash')">📊 Dashboard</button>
+      <button class="atab" onclick="setTab('citas')">📋 Citas</button>
+      <button class="atab" onclick="setTab('servicios')">✂ Servicios Hombre</button>
+      <button class="atab" onclick="setTab('barberos')">💈 Barberos</button>
+      <button class="atab" onclick="setTab('estilistas')">💅 Estilistas</button>
+      <button class="atab" onclick="setTab('srvmujer')">👩 Servicios Mujer</button>
+      <button class="atab" onclick="setTab('inactivos')">🚫 Días Inactivos</button>
+      <button class="atab" onclick="setTab('marca')">🏷 Marca</button>
+      <button class="atab" onclick="setTab('resenas')">⭐ Reseñas</button>
+      <button class="atab" onclick="setTab('fidelidad')">💳 Tarjetas Fidelidad</button>
+      <button class="atab" onclick="setTab('config')">⚙ Config</button>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="acontent on" id="tab-dash">
+      <div class="astats" id="astats"></div>
+      <div class="brb-stats-section">
+        <div class="brb-stats-title">Estadísticas por Barbero</div>
+        <div class="brb-stats-grid" id="brbStatsGrid"></div>
+      </div>
+      <div class="section-divider"></div>
+      <div class="brb-stats-section">
+        <div class="brb-stats-title" style="color:var(--pink)">Estadísticas por Estilista</div>
+        <div class="brb-stats-grid" id="styStatsGrid"></div>
+      </div>
+    </div>
+
+    <!-- CITAS -->
+    <div class="acontent" id="tab-citas">
+      <div class="filter-bar">
+        <input class="fi" id="fName" placeholder="Buscar cliente..." oninput="renderTable()">
+        <select class="fi" id="fStaff" onchange="renderTable()"><option value="">Todo el personal</option></select>
+        <select class="fi" id="fStatus" onchange="renderTable()">
+          <option value="">Todos los estados</option>
+          <option>Pendiente</option><option>Completado</option><option>Cancelado</option>
+        </select>
+        <select class="fi" id="fGender" onchange="renderTable()">
+          <option value="">Todos</option>
+          <option value="male">Hombre</option><option value="female">Mujer</option>
+        </select>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>#</th><th>Cliente</th><th>Teléfono</th><th>Género</th>
+            <th>Servicio</th><th>Personal</th><th>Fecha</th><th>Hora</th><th>Duración</th>
+            <th>Total</th><th>Estado</th><th>Acción</th>
+          </tr></thead>
+          <tbody id="tBody"></tbody>
+        </table>
+        <div class="no-data" id="noData" style="display:none">No hay citas registradas.</div>
+      </div>
+    </div>
+
+    <!-- SERVICIOS HOMBRE -->
+    <div class="acontent" id="tab-servicios">
+      <div class="edit-list" id="srvList"></div>
+      <button class="add-row" onclick="addSrv()">+ Agregar Servicio</button>
+      <button class="save-btn" onclick="saveSrv()">💾 Guardar Servicios</button>
+    </div>
+
+    <!-- BARBEROS -->
+    <div class="acontent" id="tab-barberos">
+      <div class="edit-list" id="brbList"></div>
+      <button class="add-row" onclick="addBrb()">+ Agregar Barbero</button>
+      <button class="save-btn" onclick="saveBrb()">💾 Guardar Barberos</button>
+    </div>
+
+    <!-- ESTILISTAS -->
+    <div class="acontent" id="tab-estilistas">
+      <div class="edit-list" id="styList"></div>
+      <button class="add-row pink" onclick="addSty()">+ Agregar Estilista</button>
+      <button class="save-btn pink" onclick="saveSty()">💾 Guardar Estilistas</button>
+    </div>
+
+    <!-- SERVICIOS MUJER -->
+    <div class="acontent" id="tab-srvmujer">
+      <div class="edit-list" id="srvFList"></div>
+      <button class="add-row pink" onclick="addSrvF()">+ Agregar Servicio</button>
+      <button class="save-btn pink" onclick="saveSrvF()">💾 Guardar Servicios</button>
+    </div>
+
+    <!-- DÍAS INACTIVOS -->
+    <div class="acontent" id="tab-inactivos">
+      <div class="brand-editor">
+        <h3>🚫 Gestionar Días Inactivos</h3>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">
+          Marca los días en que los barberos o estilistas no estarán disponibles. Los clientes verán un mensaje indicando que el profesional no está en servicio.
+        </p>
+
+        <!-- Selector de empleado y fecha -->
+        <div class="frow">
+          <div class="fg">
+            <label class="flabel">Seleccionar profesional *</label>
+            <select class="ei" id="inactiveStaffSelect">
+              <option value="">-- Elige un barbero o estilista --</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label class="flabel">Seleccionar fecha *</label>
+            <input type="date" class="ei" id="inactiveDateInput">
+          </div>
+        </div>
+
+        <!-- Motivo (opcional) -->
+        <div class="fg">
+          <label class="flabel">Motivo (opcional)</label>
+          <input type="text" class="ei" id="inactiveReasonInput" placeholder="Ej: Vacaciones, enfermedad, capacitación...">
+        </div>
+
+        <!-- Botón para agregar -->
+        <button class="save-btn" onclick="addInactiveDay()">➕ Marcar como inactivo</button>
+
+        <!-- Mensaje de resultado -->
+        <div id="inactiveMsg" style="display:none;padding:12px;border-radius:8px;font-size:13px;margin-top:12px"></div>
+      </div>
+
+      <!-- Lista de días inactivos -->
+      <div class="brand-editor" style="margin-top:20px">
+        <h3>📅 Días inactivos registrados</h3>
+        <div id="inactiveDaysList" style="display:flex;flex-direction:column;gap:10px;max-height:600px;overflow-y:auto">
+          <div style="color:var(--text-muted);font-size:13px;text-align:center;padding:30px">Cargando...</div>
+        </div>
+      </div>
+    </div>
+    <div class="acontent" id="tab-marca">
+      <div class="brand-editor">
+        <h3>Nombre del negocio</h3>
+        <div class="brand-preview">
+          <div class="logo-prev" id="logoPrev"><span>💈</span></div>
+          <div>
+            <div style="font-family:var(--font-display);font-size:22px;color:var(--gold)" id="prevName">BARBERKING</div>
+            <div style="font-size:11px;color:var(--text-muted)">Vista previa</div>
+          </div>
+        </div>
+        <div class="fg" style="margin-bottom:12px">
+          <label class="flabel">Nombre</label>
+          <input class="ei" id="shopNameInput" value="BARBERKING">
+        </div>
+        <button class="save-btn" onclick="saveShopName()">💾 Guardar Nombre</button>
+      </div>
+      <div class="brand-editor">
+        <h3>Logo del negocio</h3>
+        <div class="img-tabs">
+          <button class="itab on" onclick="switchLogoTab('url')">URL</button>
+          <button class="itab" onclick="switchLogoTab('file')">Archivo</button>
+        </div>
+        <div class="img-panel on" id="logo-url-panel">
+          <input class="ei" id="logoUrlInput" placeholder="https://...">
+          <button class="save-btn" onclick="applyLogoUrl()">Aplicar</button>
+        </div>
+        <div class="img-panel" id="logo-file-panel">
+          <input type="file" accept="image/*" onchange="applyLogoFile(this)">
+        </div>
+        <button class="rbtn ghost" style="margin-top:8px" onclick="removeLogo()">Quitar logo</button>
+      </div>
+
+      <!-- Imagen botón Hombre -->
+      <div class="brand-editor">
+        <h3>Imagen botón — Hombre</h3>
+        <div class="brand-preview">
+          <div class="logo-prev" id="prevMaleIcon" style="border-color:var(--gold)">🧔</div>
+          <div>
+            <div style="font-size:12px;color:var(--text-muted)">Vista previa del ícono masculino</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Recomendado: imagen cuadrada PNG/WebP</div>
+          </div>
+        </div>
+        <div class="img-tabs">
+          <button class="itab on" onclick="switchGenderTab('male','url')">URL</button>
+          <button class="itab" onclick="switchGenderTab('male','file')">Archivo</button>
+        </div>
+        <div class="img-panel on" id="male-url-panel">
+          <input class="ei" id="maleIconUrl" placeholder="https://...">
+          <button class="save-btn" onclick="applyGenderIcon('male')">Aplicar</button>
+        </div>
+        <div class="img-panel" id="male-file-panel">
+          <input type="file" accept="image/*" onchange="applyGenderIconFile('male',this)">
+        </div>
+        <button class="rbtn ghost" style="margin-top:8px" onclick="removeGenderIcon('male')">Quitar imagen</button>
+      </div>
+
+      <!-- Imagen botón Mujer -->
+      <div class="brand-editor">
+        <h3>Imagen botón — Mujer</h3>
+        <div class="brand-preview">
+          <div class="logo-prev" id="prevFemaleIcon" style="border-color:var(--pink)">💁‍♀️</div>
+          <div>
+            <div style="font-size:12px;color:var(--text-muted)">Vista previa del ícono femenino</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Recomendado: imagen cuadrada PNG/WebP</div>
+          </div>
+        </div>
+        <div class="img-tabs">
+          <button class="itab on" onclick="switchGenderTab('female','url')">URL</button>
+          <button class="itab" onclick="switchGenderTab('female','file')">Archivo</button>
+        </div>
+        <div class="img-panel on" id="female-url-panel">
+          <input class="ei" id="femaleIconUrl" placeholder="https://...">
+          <button class="save-btn" onclick="applyGenderIcon('female')">Aplicar</button>
+        </div>
+        <div class="img-panel" id="female-file-panel">
+          <input type="file" accept="image/*" onchange="applyGenderIconFile('female',this)">
+        </div>
+        <button class="rbtn ghost" style="margin-top:8px" onclick="removeGenderIcon('female')">Quitar imagen</button>
+      </div>
+    </div>
+
+    <!-- RESEÑAS ADMIN -->
+    <div class="acontent" id="tab-resenas">
+      <div style="margin-bottom:14px;font-size:13px;color:var(--text-muted)">
+        Se muestran todas las reseñas. Las de ⭐4–5 estrellas aparecen automáticamente en la sección pública.
+      </div>
+      <div id="adminReviewsList"></div>
+    </div>
+
+    <!-- CONFIG -->
+    <div class="acontent" id="tab-config">
+      <div class="brand-editor">
+        <h3>Información del negocio</h3>
+        <div class="fg" style="margin-bottom:10px">
+          <label class="flabel">Ubicación</label>
+          <input class="ei" id="cfgUbicacion" placeholder="📍 Ciudad, País">
+        </div>
+        <div class="fg" style="margin-bottom:10px">
+          <label class="flabel">Teléfono</label>
+          <input class="ei" id="cfgTelefono" placeholder="+57 310 000 0000">
+        </div>
+        <button class="save-btn" onclick="saveCfg()" style="margin-bottom:0">💾 Guardar Info</button>
+      </div>
+
+      <!-- Redes Barbero -->
+      <div class="brand-editor" style="margin-top:16px;border-left:3px solid var(--gold)">
+        <h3>💈 Redes Sociales — Barbero</h3>
+        <div class="fg" style="margin-bottom:10px">
+          <label class="flabel">WhatsApp Barbero (número)</label>
+          <input class="ei" id="cfgWa" placeholder="573100000000">
+        </div>
+        <div class="fg" style="margin-bottom:12px">
+          <label class="flabel">Instagram Barbero (usuario o URL)</label>
+          <input class="ei" id="cfgIg" placeholder="barberking">
+        </div>
+        <button class="save-btn" onclick="saveSocialBrb()">💾 Guardar Redes Barbero</button>
+      </div>
+
+      <!-- Redes Estilista -->
+      <div class="brand-editor" style="margin-top:16px;border-left:3px solid var(--pink)">
+        <h3 style="color:var(--pink)">💅 Redes Sociales — Estilista</h3>
+        <div class="fg" style="margin-bottom:10px">
+          <label class="flabel">WhatsApp Estilista (número)</label>
+          <input class="ei" id="cfgWaSty" placeholder="573100000000">
+        </div>
+        <div class="fg" style="margin-bottom:12px">
+          <label class="flabel">Instagram Estilista (usuario o URL)</label>
+          <input class="ei" id="cfgIgSty" placeholder="barberking_estilismo">
+        </div>
+        <button class="save-btn pink" onclick="saveSocialSty()">💾 Guardar Redes Estilista</button>
+      </div>
+
+      <div class="brand-editor" style="margin-top:16px">
+        <h3>Cambiar credenciales de acceso</h3>
+        <div class="fg" style="margin-bottom:10px">
+          <label class="flabel">Nuevo usuario</label>
+          <input class="ei" id="newUser" placeholder="admin">
+        </div>
+        <div class="fg" style="margin-bottom:10px">
+          <label class="flabel">Nueva contraseña</label>
+          <input class="ei" id="newPass" type="password" placeholder="••••••">
+        </div>
+        <div class="fg" style="margin-bottom:12px">
+          <label class="flabel">Confirmar contraseña</label>
+          <input class="ei" id="confPass" type="password" placeholder="••••••">
+        </div>
+        <div id="credMsg" style="display:none;padding:10px;border-radius:8px;font-size:13px;margin-bottom:10px"></div>
+        <button class="save-btn" onclick="saveCreds()">🔐 Actualizar Credenciales</button>
+      </div>
+    </div>
+
+    <!-- TARJETAS DE FIDELIDAD -->
+    <div class="acontent" id="tab-fidelidad">
+      <div class="brand-editor">
+        <h3>💳 Tarjetas de Fidelidad</h3>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">
+          Clientes que han completado más de 6 cortes con el mismo barbero
+        </p>
+        <div id="fidelityCardsList" style="display:flex;flex-direction:column;gap:12px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- NAV DOTS -->
+<div class="nav-dots" id="navDots">
+  <div class="ndot on" onclick="goSec('hero')" title="Inicio"></div>
+  <div class="ndot" onclick="goSec('genderSec')" title="Género"></div>
+  <div class="ndot" onclick="goSec('services')" title="Servicios"></div>
+  <div class="ndot" onclick="goSec('staff')" title="Equipo"></div>
+  <div class="ndot" onclick="goSec('booking')" title="Reservar"></div>
+  <div class="ndot" onclick="goSec('cancelSec')" title="Cancelar"></div>
+</div>
+
+<!-- MODALS -->
+<div class="modal-ov" id="okModal">
+  <div class="modal">
+    <div class="modal-icon">🎉</div>
+    <div class="modal-title" style="color:var(--gold)">¡RESERVADO!</div>
+    <p class="modal-msg">Tu cita ha sido confirmada. ¡Te esperamos con mucho gusto!</p>
+    <div class="modal-dets" id="okDets"></div>
+    <button class="modal-close" onclick="closeBookingModal()">¡Perfecto, gracias!</button>
+  </div>
+</div>
+<div class="modal-ov" id="cancelModal">
+  <div class="modal">
+    <div class="modal-icon">✅</div>
+    <div class="modal-title" style="color:var(--red-bright)">CANCELADA</div>
+    <p class="modal-msg">Tu cita ha sido cancelada correctamente. ¡Esperamos verte pronto!</p>
+    <button class="modal-close" style="background:var(--red-bright)" onclick="closeModal('cancelModal')">Entendido</button>
+  </div>
+</div>
+<div class="modal-ov" id="errorModal">
+  <div class="modal">
+    <div class="modal-icon">⚠️</div>
+    <div class="modal-title" style="color:var(--red-bright)">ERROR</div>
+    <p class="modal-msg" id="errorMessage">Mensaje de error</p>
+    <button class="modal-close" style="background:var(--red-bright)" onclick="closeErrorModal()">Entendido, seleccionar otra fecha</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/app.js') }}?v=25"></script>
+{% endblock %}
