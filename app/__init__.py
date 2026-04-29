@@ -1,4 +1,5 @@
 import os
+import threading
 from flask import Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
@@ -11,6 +12,10 @@ load_dotenv()
 db = SQLAlchemy()
 login_manager = LoginManager()
 limiter = Limiter(key_func=get_remote_address, default_limits=["200 per minute"])
+
+# Lock para evitar race conditions en inicialización de DB
+_db_init_lock = threading.Lock()
+_db_initialized = False
 
 
 def weekly_reset(app):
@@ -163,11 +168,23 @@ def create_app():
     app.register_blueprint(api_bp, url_prefix='/api')
 
     with app.app_context():
-        db.create_all()
-        # Migración segura: agrega columnas nuevas si no existen
-        _migrate_db()
-        from app.models import seed_data, ShopConfig  # noqa: F401 – ensures table creation
-        seed_data()
+        global _db_initialized
+        with _db_init_lock:
+            if not _db_initialized:
+                try:
+                    db.create_all()
+                except Exception as e:
+                    # Ignorar errores de tablas ya existentes
+                    if 'already exists' not in str(e):
+                        raise
+                # Migración segura: agrega columnas nuevas si no existen
+                try:
+                    _migrate_db()
+                except Exception:
+                    pass  # Ignorar errores de migración ya aplicadas
+                from app.models import seed_data, ShopConfig  # noqa: F401 – ensures table creation
+                seed_data()
+                _db_initialized = True
 
     # Iniciar scheduler solo una vez (evitar doble arranque en modo debug)
     if not app.debug or os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
