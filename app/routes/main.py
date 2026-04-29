@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, send_from_directory
+from flask import Blueprint, render_template, send_from_directory, current_app
 from app.models import Service, Staff, Appointment
 import os
 
@@ -21,10 +21,12 @@ def index():
 @main_bp.route('/download/android')
 def download_android():
     """Descarga la app para Android (APK)."""
-    return send_from_directory('static/downloads', 'app-android.apk', as_attachment=True)
+    downloads_dir = os.path.join(current_app.root_path, 'static', 'downloads')
+    return send_from_directory(downloads_dir, 'app-android.apk', as_attachment=True)
 
 
 @main_bp.route('/download/pc')
 def download_pc():
     """Descarga la app para PC (ZIP o EXE)."""
-    return send_from_directory('static/downloads', 'app-windows.zip', as_attachment=True)
+    downloads_dir = os.path.join(current_app.root_path, 'static', 'downloads')
+    return send_from_directory(downloads_dir, 'app-windows.zip', as_attachment=True)

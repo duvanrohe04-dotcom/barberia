@@ -3,7 +3,7 @@ console.log('🔧 app.js cargado correctamente');
 let selSrv=null, selStaff=null, selTime=null, selGender=null;
 let services=[], servicesF=[], barbers=[], stylists=[];
 let cfg={ubicacion:'📍 Bogotá, Colombia', telefono:'+57 310 000 0000', wa:'', ig:'', wa_sty:'', ig_sty:''};
-let shopName='BARBERKING', shopLogo=null;
+let shopName='JS BARBERSHOP', shopLogo=null;
 let srvImgBuf={}, brbImgBuf={}, styImgBuf={}, srvFImgBuf={};
 
 // ══ INIT ═══════════════════════════════════════════════════════
@@ -1675,23 +1675,23 @@ function downloadApp() {
     showToast(message, 'neutral');
     return;
   } else if (/android/.test(ua)) {
-    downloadUrl = '/static/downloads/app-android.apk';
+    downloadUrl = '/download/android';
     osName = 'Android';
     message = `⬇️ Descargando para ${osName}...`;
   } else if (/windows|win32|win64/.test(ua)) {
-    downloadUrl = '/static/downloads/app-windows.zip';
+    downloadUrl = '/download/pc';
     osName = 'Windows';
     message = `⬇️ Descargando para ${osName}...`;
   } else if (/linux/.test(ua)) {
-    downloadUrl = '/static/downloads/app-windows.zip';
+    downloadUrl = '/download/pc';
     osName = 'Linux';
     message = `⬇️ Descargando para ${osName}...`;
   } else if (/mac|osx/.test(ua)) {
-    downloadUrl = '/static/downloads/app-windows.zip';
+    downloadUrl = '/download/pc';
     osName = 'Mac';
     message = `⬇️ Descargando para ${osName}...`;
   } else {
-    downloadUrl = '/static/downloads/app-android.apk';
+    downloadUrl = '/download/android';
     osName = 'tu dispositivo';
     message = `⬇️ Descargando para ${osName}...`;
   }
@@ -1699,29 +1699,24 @@ function downloadApp() {
   if (downloadUrl) {
     showToast(message, 'ok');
     
-    fetch(downloadUrl)
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`Error HTTP: ${response.status}`);
-        }
-        return response.blob();
-      })
-      .then(blob => {
-        const blobUrl = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = blobUrl;
-        link.download = downloadUrl.split('/').pop();
-        document.body.appendChild(link);
-        link.click();
+    try {
+      // Crear un enlace temporal y hacer clic en él para iniciar la descarga
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = ''; // Forzar descarga
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      
+      // Limpiar después de un momento
+      setTimeout(() => {
         document.body.removeChild(link);
-        window.URL.revokeObjectURL(blobUrl);
-        
-        showToast(`✅ Descarga completada para ${osName}`, 'ok');
-      })
-      .catch(error => {
-        console.error('Error en descarga:', error);
-        showToast(`❌ Error al descargar. Intenta de nuevo.`, 'error');
-      });
+        showToast(`✅ Descarga iniciada para ${osName}`, 'ok');
+      }, 500);
+    } catch (error) {
+      console.error('Error al iniciar descarga:', error);
+      showToast('❌ Error al descargar. Por favor intenta de nuevo.', 'error');
+    }
   }
 }
 

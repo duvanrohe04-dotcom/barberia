@@ -1,7 +1,7 @@
 {
-  "name": "BarberKing",
-  "short_name": "BarberKing",
-  "description": "Aplicación de barbería BarberKing",
+  "name": "JS Barbershop",
+  "short_name": "JS Barbershop",
+  "description": "Aplicación de barbería JS Barbershop",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",
