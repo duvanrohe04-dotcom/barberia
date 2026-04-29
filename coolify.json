@@ -7,13 +7,13 @@
       "name": "barberking_db",
       "image": "postgres:16-alpine",
       "environment": {
-        "POSTGRES_USER": "${POSTGRES_USER}",
-        "POSTGRES_PASSWORD": "${POSTGRES_PASSWORD}",
-        "POSTGRES_DB": "${POSTGRES_DB}"
+        "POSTGRES_USER": "barberking",
+        "POSTGRES_PASSWORD": "barberking_pass_2024",
+        "POSTGRES_DB": "barberking_db"
       },
       "volumes": ["postgres_data:/var/lib/postgresql/data"],
       "healthcheck": {
-        "test": ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"],
+        "test": ["CMD-SHELL", "pg_isready -U barberking -d barberking_db"],
         "interval": 10,
         "timeout": 5,
         "retries": 5
@@ -23,11 +23,12 @@
       "name": "barberking_web",
       "build": ".",
       "environment": {
-        "FLASK_ENV": "${FLASK_ENV}",
-        "SECRET_KEY": "${SECRET_KEY}",
-        "POSTGRES_USER": "${POSTGRES_USER}",
-        "POSTGRES_PASSWORD": "${POSTGRES_PASSWORD}",
-        "POSTGRES_DB": "${POSTGRES_DB}"
+        "FLASK_ENV": "production",
+        "SECRET_KEY": "dev-secret-key-change-in-production",
+        "POSTGRES_USER": "barberking",
+        "POSTGRES_PASSWORD": "barberking_pass_2024",
+        "POSTGRES_DB": "barberking_db",
+        "DATABASE_URL": "postgresql://barberking:barberking_pass_2024@barberking_db:5432/barberking_db"
       },
       "ports": ["81:81"],
       "depends_on": ["barberking_db"],
@@ -43,12 +44,5 @@
   ],
   "volumes": {
     "postgres_data": {}
-  },
-  "environment": {
-    "FLASK_ENV": "production",
-    "SECRET_KEY": "cambia-esto-por-una-clave-segura-de-64-caracteres",
-    "POSTGRES_USER": "barberking",
-    "POSTGRES_PASSWORD": "barberking_pass_2024",
-    "POSTGRES_DB": "barberking_db"
   }
 }
