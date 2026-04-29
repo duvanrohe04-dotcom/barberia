@@ -389,8 +389,7 @@ def taken_slots():
     if not _valid_date(date):
         return jsonify([])
     
-    from datetime import datetime, date as dt_date
-    from app import db
+    from datetime import datetime
     
     # Solo buscar citas pendientes para la fecha especificada
     query = Appointment.query.filter(
@@ -403,30 +402,32 @@ def taken_slots():
     
     # Auto-completar citas que ya pasaron su hora de finalización
     now = datetime.now()
+    changed = False
     for a in appts:
         try:
             h, m = map(int, a.time.split(':'))
             duration = a.duration_minutes or 60
-            appt_start = datetime.strptime(a.date + ' ' + a.time, "%Y-%m-%d %H:%M")
+            appt_start = datetime.strptime(f"{a.date} {a.time}", "%Y-%m-%d %H:%M")
             from datetime import timedelta
             appt_end = appt_start + timedelta(minutes=duration)
             if now >= appt_end:
                 a.status = 'Completado'
+                changed = True
         except:
             pass
     
-    db.session.commit()
+    if changed:
+        db.session.commit()
+        # Volver a consultar solo las citas pendientes que no han pasado
+        query = Appointment.query.filter(
+            Appointment.date == date,
+            Appointment.status == 'Pendiente'
+        )
+        if staff_name:
+            query = query.filter(Appointment.staff_name == staff_name)
+        appts = query.all()
     
-    # Volver a consultar solo las citas pendientes que no han pasado
-    query = Appointment.query.filter(
-        Appointment.date == date,
-        Appointment.status == 'Pendiente'
-    )
-    if staff_name:
-        query = query.filter(Appointment.staff_name == staff_name)
-    appts = query.all()
-    
-    # Calcular todos los slots bloqueados por cada cita
+    # Calcular todos los slots bloqueados por cada cita pendiente
     blocked = set()
     for a in appts:
         h, m = map(int, a.time.split(':'))
