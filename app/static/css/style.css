@@ -149,7 +149,7 @@ tr:hover td{background:rgba(212,175,55,0.03)}
 .hero-ctas{display:flex;gap:12px;flex-wrap:wrap}
 .btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold-dark));color:#000;border:none;padding:14px 32px;border-radius:var(--radius);font-weight:700;font-size:14px;cursor:pointer;font-family:var(--font-body);transition:all .3s;text-transform:uppercase;letter-spacing:1px}
 .btn-gold:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(212,175,55,0.4)}
-.btn-out{background:transparent;color:var(--text-light);border:2px solid rgba(245,240,232,0.3);padding:12px 30px;border-radius:var(--radius);font-weight:600;font-size:14px;cursor:pointer;font-family:var(--font-body);transition:all .3s}
+.btn-out{background:transparent;color:var(--text-light);border:2px solid rgba(245,240,232,0.3);padding:12px 30px;border-radius:var(--radius);font-weight:600;font-size:14px;cursor:pointer;font-family:var(--font-body);transition:all .3s;display:inline-block;white-space:nowrap;min-width:fit-content}
 .btn-out:hover{border-color:var(--gold);color:var(--gold)}
 .social-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .social-label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:2px;font-weight:600}
