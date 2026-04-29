@@ -1662,13 +1662,15 @@ function installPWA() {
 
 // ══ DOWNLOAD BY OS ════════════════════════════════════════════
 function downloadApp() {
+  // Scroll al inicio para que vea el mensaje
+  window.scrollTo({top: 0, behavior: 'smooth'});
+  
   const ua = navigator.userAgent.toLowerCase();
   let downloadUrl = '';
   let osName = '';
   let message = '';
 
   if (/iphone|ipad|ipod/.test(ua)) {
-    // iOS - mostrar instrucciones claras
     message = '🍎 iPhone: En Safari toca Compartir → "Añadir a pantalla de inicio"';
     showToast(message, 'neutral');
     return;
@@ -1697,7 +1699,6 @@ function downloadApp() {
   if (downloadUrl) {
     showToast(message, 'ok');
     
-    // Usar fetch para descargar con mejor manejo de errores
     fetch(downloadUrl)
       .then(response => {
         if (!response.ok) {
@@ -1706,17 +1707,12 @@ function downloadApp() {
         return response.blob();
       })
       .then(blob => {
-        // Crear URL del blob
         const blobUrl = window.URL.createObjectURL(blob);
-        
-        // Crear elemento de descarga
         const link = document.createElement('a');
         link.href = blobUrl;
-        link.download = downloadUrl.split('/').pop(); // Nombre del archivo
+        link.download = downloadUrl.split('/').pop();
         document.body.appendChild(link);
         link.click();
-        
-        // Limpiar
         document.body.removeChild(link);
         window.URL.revokeObjectURL(blobUrl);
         
