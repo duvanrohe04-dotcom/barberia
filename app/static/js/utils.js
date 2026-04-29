@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function showToast(msg, type=false){
   const t = document.getElementById('toast');
   t.textContent = msg;
-  t.className = 'toast show' + (type===true?' err': type==='ok'?' ok':'');
+  t.className = 'toast show' + (type===true?' err': type==='ok'?' ok': type==='error'?' err': type==='neutral'?' neutral':'');
   clearTimeout(t._t);
   const duration = type==='ok' ? 6000 : 4200;
   t._t = setTimeout(()=>{ t.className='toast'; }, duration);

@@ -105,7 +105,7 @@ async function doLogin(e){
     switchView('admin');
     showToast('✅ Bienvenido, Administrador!','ok');
   } else {
-    showToast('❌ ' + (data.message||'Credenciales incorrectas'), true);
+    showToast('🔐 ' + (data.message||'Credenciales incorrectas. Intenta de nuevo.'), 'error');
   }
 }
 
@@ -116,7 +116,7 @@ async function doLogout(){
   document.getElementById('rUser').value='';
   document.getElementById('rPass').value='';
   switchView('client');
-  showToast('👋 Sesión cerrada');
+  showToast('👋 Sesión cerrada correctamente', 'ok');
 }
 
 function switchView(v){
@@ -440,9 +440,24 @@ function pickTime(t){
     b.classList.toggle('pink-sel', active && isFemale);
   });
   updateSummary();
+  
+  // Scroll automático a la sección de confirmación cuando se selecciona hora
+  setTimeout(() => {
+    const bookingSection = document.getElementById('booking');
+    if(bookingSection){
+      // Scroll suave a la sección de confirmación
+      bookingSection.scrollIntoView({behavior: 'smooth', block: 'start'});
+      
+      // Enfocar el campo de nombre para que el usuario pueda empezar a escribir
+      const nameInput = document.getElementById('cName');
+      if(nameInput && !nameInput.value){
+        setTimeout(() => nameInput.focus(), 500);
+      }
+    }
+  }, 100);
 }
 
-function takenMsg(){ showToast('😔 Lo sentimos, ese horario ya está ocupado. Por favor elige otra hora disponible.', true); }
+function takenMsg(){ showToast('😔 Ese horario ya está ocupado. Elige otra hora.', 'error'); }
 
 // ══ SUMMARY ════════════════════════════════════════════════════
 function updateSummary(){
@@ -490,14 +505,14 @@ async function submitBooking(){
   console.log('📝 Datos capturados:', {name, phone, date, selGender, selSrv, selStaff, selTime});
   const al = document.getElementById('selAlert');
   const isFemale = selGender==='female';
-  if(!selGender){ showToast('⚠ Primero indica si eres hombre o mujer', true); goSec('genderSec'); return; }
+  if(!selGender){ showToast('👥 Primero selecciona tu género', 'error'); goSec('genderSec'); return; }
   if(!selSrv){ al.style.display='block'; al.textContent='⚠ Por favor selecciona un servicio.'; goSec('services'); return; }
   if(!selStaff){ al.style.display='block'; al.textContent=`⚠ Por favor selecciona ${isFemale?'una estilista':'un barbero'}.`; goSec('staff'); return; }
   al.style.display='none';
-  if(!name){ showToast('⚠ El nombre completo es obligatorio', true); return; }
-  if(!phone){ showToast('⚠ El teléfono es obligatorio', true); return; }
-  if(!date){ showToast('⚠ Selecciona una fecha', true); return; }
-  if(!selTime){ showToast('⚠ Selecciona una hora disponible', true); return; }
+  if(!name){ showToast('📝 Por favor ingresa tu nombre completo', 'error'); return; }
+  if(!phone){ showToast('📱 Por favor ingresa tu teléfono', 'error'); return; }
+  if(!date){ showToast('📅 Por favor selecciona una fecha', 'error'); return; }
+  if(!selTime){ showToast('🕐 Por favor selecciona una hora', 'error'); return; }
 
   const list = isFemale ? servicesF : services;
   const srv = list.find(s=>s.id===selSrv);
@@ -514,7 +529,7 @@ async function submitBooking(){
     body: JSON.stringify({
       client_name: name, client_phone: phone, gender: selGender,
       service_name: srv.name, staff_name: staffMember.name,
-      date, time: selTime, total: `$${srv.price.toLocaleString()}`
+      date, time: selTime, total: `$${isFemale ? (srv.price + Math.round(srv.price * 0.20)).toLocaleString() : srv.price.toLocaleString()}`
     })
   });
   const data = await res.json();
@@ -631,7 +646,7 @@ async function searchCancel(){
   const name = document.getElementById('cancelName').value.trim().toLowerCase();
   const phone = document.getElementById('cancelPhone').value.trim();
   const res = document.getElementById('cancelResults');
-  if(!name||!phone){ showToast('⚠ Ingresa tu nombre y teléfono', true); return; }
+  if(!name||!phone){ showToast('📋 Por favor ingresa tu nombre y teléfono', 'error'); return; }
   const r = await fetch(`/api/appointments/search?name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}`);
   const found = await r.json();
   if(!found.length){
@@ -672,7 +687,7 @@ function setTab(id){
   if(id==='barberos') renderBrbRows();
   if(id==='estilistas') renderStyRows();
   if(id==='srvmujer') renderSrvFRows();
-  if(id==='inactivos'){ renderInactiveStaffSelect(); renderInactiveDaysList(); }
+  if(id==='inactivos'){ setupInactiveDateInput(); renderInactiveStaffSelect(); renderInactiveDaysList(); }
   if(id==='marca') renderMarca();
   if(id==='resenas') renderAdminReviews();
   if(id==='fidelidad') renderFidelityCards();
@@ -806,7 +821,7 @@ async function delAppt(id){
   fetch(`/api/appointments/${id}`, {method:'DELETE'}).then(()=>{
     renderTable(); renderDash(); buildTimeGrid();
   });
-  showToast('Cita eliminada','ok');
+  showToast('✅ Cita eliminada correctamente','ok');
 }
 
 async function markFreeCut(id){
@@ -817,13 +832,13 @@ async function markFreeCut(id){
     const data = await res.json();
     
     if(res.ok) {
-      showToast('✅ Cita marcada como gratis', 'ok');
+      showToast('🎁 ¡Cita marcada como gratis!', 'ok');
       renderTable(); // Refrescar la tabla
     } else {
-      showToast(`❌ ${data.error}`, true);
+      showToast(`❌ Error: ${data.error}`, 'error');
     }
   } catch(e) {
-    showToast('❌ Error al marcar como gratis', true);
+    showToast('❌ No pudimos marcar la cita como gratis', 'error');
   }
 }
 
@@ -839,10 +854,10 @@ async function cancelAppt(id){
   });
   
   if(res.ok){
-    showToast('✅ Cita cancelada','ok');
+    showToast('✅ Cita cancelada correctamente','ok');
     renderTable(); renderDash(); buildTimeGrid();
   } else {
-    showToast('❌ Error al cancelar','error');
+    showToast('❌ No pudimos cancelar la cita','error');
     if(row){ row.style.opacity='1'; row.style.pointerEvents='auto'; }
   }
 }
@@ -925,7 +940,7 @@ async function loadImgFile(type,i,inp){
   const fd=new FormData(); fd.append('file',f);
   const res=await fetch('/api/upload-image',{method:'POST',body:fd});
   const data=await res.json();
-  if(!data.success){ showToast('❌ Error al subir imagen',true); return; }
+  if(!data.success){ showToast('❌ No pudimos subir la imagen. Intenta de nuevo.','error'); return; }
   buf[i]=data.url;
   document.getElementById(`${type}Thumb-${i}`).innerHTML=`<img src="${data.url}" alt="">`;
   // Actualizar también el input URL para que getImgVal lo tome
@@ -940,7 +955,7 @@ async function delItem(type,i,id){
   if(type==='srvF')  { servicesF.splice(i,1); renderSrvFRows(); renderClientSrv(); }
   if(type==='brb')   { barbers.splice(i,1);   renderBrbRows();  renderClientStaff(); renderFStaff(); renderDash(); }
   if(type==='sty')   { stylists.splice(i,1);  renderStyRows();  renderClientStaff(); renderFStaff(); renderDash(); }
-  showToast('Elemento eliminado','ok');
+  showToast('✅ Elemento eliminado correctamente','ok');
   // Sincronizar con servidor en background (solo si tiene id real)
   if(id){
     const endpoint = (type==='srv'||type==='srvF') ? `/api/services/${id}` : `/api/staff/${id}`;
@@ -969,7 +984,7 @@ async function saveSrv(){
     const d=await res.json(); if(d.appointments_updated) totalUpdated+=d.appointments_updated;
   }
   await loadServices('male'); srvImgBuf={}; renderClientSrv();
-  showToast(totalUpdated?`✅ Guardado · ${totalUpdated} cita(s) actualizadas`:'✅ Servicios hombre guardados','ok');
+  showToast(totalUpdated?`✅ Guardado · ${totalUpdated} cita(s) actualizadas`:'✅ Servicios guardados correctamente','ok');
 }
 
 // ══ BARBEROS ═══════════════════════════════════════════════════
@@ -982,7 +997,7 @@ async function saveBrb(){
     else await fetch('/api/staff',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
   }
   await loadStaff('male'); brbImgBuf={}; renderClientStaff(); renderFStaff(); renderDash();
-  const hs=document.getElementById('heroStaff'); if(hs) hs.textContent=(barbers.length+stylists.length)+'+'; showToast('✅ Barberos guardados','ok');
+  const hs=document.getElementById('heroStaff'); if(hs) hs.textContent=(barbers.length+stylists.length)+'+'; showToast('✅ Barberos guardados correctamente','ok');
 }
 
 // ══ ESTILISTAS ═════════════════════════════════════════════════
@@ -995,7 +1010,7 @@ async function saveSty(){
     else await fetch('/api/staff',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
   }
   await loadStaff('female'); styImgBuf={}; renderClientStaff(); renderFStaff(); renderDash();
-  const hs=document.getElementById('heroStaff'); if(hs) hs.textContent=(barbers.length+stylists.length)+'+'; showToast('✅ Estilistas guardadas','ok');
+  const hs=document.getElementById('heroStaff'); if(hs) hs.textContent=(barbers.length+stylists.length)+'+'; showToast('✅ Estilistas guardadas correctamente','ok');
 }
 
 // ══ SERVICIOS MUJER ════════════════════════════════════════════
@@ -1012,7 +1027,7 @@ async function saveSrvF(){
     const d=await res.json(); if(d.appointments_updated) totalUpdated+=d.appointments_updated;
   }
   await loadServices('female'); srvFImgBuf={}; renderClientSrv();
-  showToast(totalUpdated?`✅ Guardado · ${totalUpdated} cita(s) actualizadas`:'✅ Servicios mujer guardados','ok');
+  showToast(totalUpdated?`✅ Guardado · ${totalUpdated} cita(s) actualizadas`:'✅ Servicios guardados correctamente','ok');
 }
 
 async function reloadAll(){
@@ -1033,7 +1048,7 @@ function renderMarca(){
   if(genderIcons.female && genderIcons.female.startsWith('http'))
     document.getElementById('femaleIconUrl').value = genderIcons.female;
 }
-function saveShopName(){ const v=document.getElementById('shopNameInput').value.trim().toUpperCase(); if(!v){showToast('Escribe un nombre válido',true);return;} shopName=v; applyNameEverywhere(); _postConfig({shop_name:shopName}).then(ok=>{ if(ok) showToast('✅ Nombre actualizado','ok'); }); }
+function saveShopName(){ const v=document.getElementById('shopNameInput').value.trim().toUpperCase(); if(!v){showToast('📝 Por favor ingresa un nombre válido','error');return;} shopName=v; applyNameEverywhere(); _postConfig({shop_name:shopName}).then(ok=>{ if(ok) showToast('✅ Nombre actualizado correctamente','ok'); }); }
 function applyNameEverywhere(){
   ['ribbonName','adminShopName','footerName'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=shopName; });
   document.title=shopName+' | Barbería & Estilismo';
@@ -1048,9 +1063,9 @@ function switchLogoTab(t){
   document.getElementById('logo-url-panel').classList.toggle('on',t==='url');
   document.getElementById('logo-file-panel').classList.toggle('on',t==='file');
 }
-function applyLogoUrl(){ const url=document.getElementById('logoUrlInput').value.trim(); if(!url){showToast('Ingresa una URL válida',true);return;} shopLogo=url; applyLogoEverywhere(); refreshLogoPrev(); _postConfig({shop_logo:shopLogo}).then(ok=>{ if(ok) showToast('✅ Logo actualizado','ok'); }); }
-function applyLogoFile(inp){ const f=inp.files[0]; if(!f) return; const r=new FileReader(); r.onload=e=>{shopLogo=e.target.result;applyLogoEverywhere();refreshLogoPrev();_postConfig({shop_logo:shopLogo}).then(ok=>{ if(ok) showToast('✅ Logo cargado','ok'); });}; r.readAsDataURL(f); }
-function removeLogo(){ shopLogo=null; applyLogoEverywhere(); refreshLogoPrev(); _postConfig({shop_logo:''}).then(ok=>{ if(ok) showToast('Logo quitado'); }); }
+function applyLogoUrl(){ const url=document.getElementById('logoUrlInput').value.trim(); if(!url){showToast('🔗 Por favor ingresa una URL válida','error');return;} shopLogo=url; applyLogoEverywhere(); refreshLogoPrev(); _postConfig({shop_logo:shopLogo}).then(ok=>{ if(ok) showToast('✅ Logo actualizado correctamente','ok'); }); }
+function applyLogoFile(inp){ const f=inp.files[0]; if(!f) return; const r=new FileReader(); r.onload=e=>{shopLogo=e.target.result;applyLogoEverywhere();refreshLogoPrev();_postConfig({shop_logo:shopLogo}).then(ok=>{ if(ok) showToast('✅ Logo cargado correctamente','ok'); });}; r.readAsDataURL(f); }
+function removeLogo(){ shopLogo=null; applyLogoEverywhere(); refreshLogoPrev(); _postConfig({shop_logo:''}).then(ok=>{ if(ok) showToast('✅ Logo quitado correctamente', 'ok'); }); }
 
 // ── Iconos de género ──────────────────────────────────────────
 function switchGenderTab(gender, t){
@@ -1083,12 +1098,12 @@ function applyGenderIcons(){
 async function applyGenderIcon(gender){
   const inputId = gender==='male' ? 'maleIconUrl' : 'femaleIconUrl';
   const url = document.getElementById(inputId).value.trim();
-  if(!url){ showToast('Ingresa una URL válida', true); return; }
+  if(!url){ showToast('🔗 Por favor ingresa una URL válida', 'error'); return; }
   genderIcons[gender] = url;
   applyGenderIcons();
   _refreshGenderPrev(gender);
   const key = gender==='male' ? 'gender_icon_male' : 'gender_icon_female';
-  _postConfig({[key]: url}).then(ok=>{ if(ok) showToast('✅ Imagen actualizada','ok'); });
+  _postConfig({[key]: url}).then(ok=>{ if(ok) showToast('✅ Imagen actualizada correctamente','ok'); });
 }
 
 async function applyGenderIconFile(gender, inp){
@@ -1096,12 +1111,12 @@ async function applyGenderIconFile(gender, inp){
   const fd = new FormData(); fd.append('file', f);
   const res = await fetch('/api/upload-image',{method:'POST',body:fd});
   const data = await res.json();
-  if(!data.success){ showToast('❌ Error al subir imagen', true); return; }
+  if(!data.success){ showToast('❌ No pudimos subir la imagen. Intenta de nuevo.', 'error'); return; }
   genderIcons[gender] = data.url;
   applyGenderIcons();
   _refreshGenderPrev(gender);
   const key = gender==='male' ? 'gender_icon_male' : 'gender_icon_female';
-  _postConfig({[key]: data.url}).then(ok=>{ if(ok) showToast('✅ Imagen cargada','ok'); });
+  _postConfig({[key]: data.url}).then(ok=>{ if(ok) showToast('✅ Imagen cargada correctamente','ok'); });
 }
 
 function removeGenderIcon(gender){
@@ -1112,7 +1127,7 @@ function removeGenderIcon(gender){
     // Recargar página para restaurar SVG original embebido
     const key = gender==='male' ? 'gender_icon_male' : 'gender_icon_female';
     _postConfig({[key]: ''}).then(ok=>{
-      if(ok){ showToast('Imagen quitada'); location.reload(); }
+      if(ok){ showToast('✅ Imagen quitada correctamente', 'ok'); location.reload(); }
     });
   }
 }
@@ -1139,7 +1154,7 @@ function renderConfig(){
 // helper para guardar config con manejo de error
 async function _postConfig(payload){
   const res = await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-  if(!res.ok){ showToast('❌ Sesión expirada. Vuelve a iniciar sesión.',true); return false; }
+  if(!res.ok){ showToast('🔐 Tu sesión expiró. Por favor inicia sesión de nuevo.','error'); return false; }
   return true;
 }
 
@@ -1147,25 +1162,25 @@ function saveCfg(){
   cfg.ubicacion=document.getElementById('cfgUbicacion').value||cfg.ubicacion;
   cfg.telefono=document.getElementById('cfgTelefono').value||cfg.telefono;
   _postConfig({ubicacion:cfg.ubicacion,telefono:cfg.telefono})
-    .then(ok=>{ if(ok){ applyConfig(); showToast('✅ Info guardada','ok'); } });
+    .then(ok=>{ if(ok){ applyConfig(); showToast('✅ Información guardada correctamente','ok'); } });
 }
 function saveSocialBrb(){
   cfg.wa=document.getElementById('cfgWa').value||'';
   cfg.ig=document.getElementById('cfgIg').value||'';
   _postConfig({wa:cfg.wa,ig:cfg.ig})
-    .then(ok=>{ if(ok) showToast('✅ Redes Barbero guardadas','ok'); });
+    .then(ok=>{ if(ok) showToast('✅ Redes del barbero guardadas correctamente','ok'); });
 }
 function saveSocialSty(){
   cfg.wa_sty=document.getElementById('cfgWaSty').value||'';
   cfg.ig_sty=document.getElementById('cfgIgSty').value||'';
   _postConfig({wa_sty:cfg.wa_sty,ig_sty:cfg.ig_sty})
-    .then(ok=>{ if(ok) showToast('✅ Redes Estilista guardadas','ok'); });
+    .then(ok=>{ if(ok) showToast('✅ Redes de la estilista guardadas correctamente','ok'); });
 }
 function applyConfig(){ const el=document.getElementById('footerInfo'); if(el) el.textContent=cfg.ubicacion+' | 📞 '+cfg.telefono; }
-function openWa(e){ const num=cfg.wa.replace(/\D/g,''); if(!num){showToast('El administrador aún no configuró WhatsApp.',true);return false;} window.open('https://wa.me/'+num,'_blank'); return false; }
-function openIg(e){ if(!cfg.ig){showToast('El administrador aún no configuró Instagram.',true);return false;} window.open(cfg.ig.startsWith('http')?cfg.ig:'https://instagram.com/'+cfg.ig,'_blank'); return false; }
-function openWaSty(e){ const num=(cfg.wa_sty||'').replace(/\D/g,''); if(!num){showToast('El administrador aún no configuró WhatsApp de Estilista.',true);return false;} window.open('https://wa.me/'+num,'_blank'); return false; }
-function openIgSty(e){ if(!cfg.ig_sty){showToast('El administrador aún no configuró Instagram de Estilista.',true);return false;} window.open(cfg.ig_sty.startsWith('http')?cfg.ig_sty:'https://instagram.com/'+cfg.ig_sty,'_blank'); return false; }
+function openWa(e){ const num=cfg.wa.replace(/\D/g,''); if(!num){showToast('📱 WhatsApp aún no está configurado','neutral');return false;} window.open('https://wa.me/'+num,'_blank'); return false; }
+function openIg(e){ if(!cfg.ig){showToast('📸 Instagram aún no está configurado','neutral');return false;} window.open(cfg.ig.startsWith('http')?cfg.ig:'https://instagram.com/'+cfg.ig,'_blank'); return false; }
+function openWaSty(e){ const num=(cfg.wa_sty||'').replace(/\D/g,''); if(!num){showToast('📱 WhatsApp de la estilista aún no está configurado','neutral');return false;} window.open('https://wa.me/'+num,'_blank'); return false; }
+function openIgSty(e){ if(!cfg.ig_sty){showToast('📸 Instagram de la estilista aún no está configurado','neutral');return false;} window.open(cfg.ig_sty.startsWith('http')?cfg.ig_sty:'https://instagram.com/'+cfg.ig_sty,'_blank'); return false; }
 function saveCreds(){
   const u=document.getElementById('newUser').value.trim();
   const p=document.getElementById('newPass').value;
@@ -1235,15 +1250,15 @@ function renderPublicReviews(list){
 async function submitReview(){
   const name    = document.getElementById('rvName').value.trim();
   const comment = document.getElementById('rvComment').value.trim();
-  if(!name){ showToast('⚠ Ingresa tu nombre', true); return; }
-  if(!selRating){ showToast('⚠ Selecciona una calificación', true); return; }
+  if(!name){ showToast('📝 Por favor ingresa tu nombre', 'error'); return; }
+  if(!selRating){ showToast('⭐ Por favor selecciona una calificación', 'error'); return; }
   const res = await fetch('/api/reviews',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body: JSON.stringify({client_name:name, rating:selRating, comment})
   });
   const data = await res.json();
-  if(!data.success){ showToast('❌ '+(data.message||'Error al enviar'), true); return; }
+  if(!data.success){ showToast('❌ '+(data.message||'No pudimos enviar tu reseña'), 'error'); return; }
   showToast('✅ ¡Gracias por tu reseña!','ok');
   document.getElementById('rvName').value='';
   document.getElementById('rvComment').value='';
@@ -1339,6 +1354,36 @@ function renderInactiveStaffSelect(){
     allStaff.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
 }
 
+function setupInactiveDateInput(){
+  // Establecer fecha mínima (hoy) para los inputs de fecha
+  const dateStart = document.getElementById('inactiveDateStart');
+  const dateEnd = document.getElementById('inactiveDateEnd');
+  
+  if(dateStart || dateEnd){
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const minDate = `${year}-${month}-${day}`;
+    
+    if(dateStart) dateStart.min = minDate;
+    if(dateEnd) dateEnd.min = minDate;
+    
+    // Cuando se selecciona fecha inicial, establecer como mínimo en fecha final
+    if(dateStart) {
+      dateStart.addEventListener('change', () => {
+        if(dateEnd && dateStart.value) {
+          dateEnd.min = dateStart.value;
+          // Si la fecha final es menor que la inicial, limpiarla
+          if(dateEnd.value && dateEnd.value < dateStart.value) {
+            dateEnd.value = '';
+          }
+        }
+      });
+    }
+  }
+}
+
 async function renderInactiveDaysList(){
   try {
     const res = await fetch('/api/inactive-days', {
@@ -1390,34 +1435,73 @@ async function renderInactiveDaysList(){
 
 async function addInactiveDay(){
   const staffName = document.getElementById('inactiveStaffSelect').value?.trim();
-  const date = document.getElementById('inactiveDateInput').value?.trim();
+  const dateStart = document.getElementById('inactiveDateStart').value?.trim();
+  const dateEnd = document.getElementById('inactiveDateEnd').value?.trim();
   const reason = document.getElementById('inactiveReasonInput').value?.trim() || '';
   
-  if(!staffName || !date){
-    showToast('❌ Por favor selecciona un profesional y una fecha', true);
+  if(!staffName || !dateStart || !dateEnd){
+    showToast('❌ Por favor selecciona un profesional y un rango de fechas', 'error');
+    return;
+  }
+  
+  // Validar que la fecha final sea >= a la inicial
+  if(dateEnd < dateStart){
+    showToast('❌ La fecha final debe ser igual o posterior a la fecha inicial', 'error');
     return;
   }
   
   try {
-    const res = await fetch('/api/inactive-days', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ staff_name: staffName, date: date, reason: reason })
-    });
+    // Generar array de fechas entre dateStart y dateEnd
+    const dates = [];
+    const current = new Date(dateStart + 'T00:00:00');
+    const end = new Date(dateEnd + 'T00:00:00');
     
-    const data = await res.json();
+    while(current <= end){
+      const year = current.getFullYear();
+      const month = String(current.getMonth() + 1).padStart(2, '0');
+      const day = String(current.getDate()).padStart(2, '0');
+      dates.push(`${year}-${month}-${day}`);
+      current.setDate(current.getDate() + 1);
+    }
+    
+    console.log(`📅 Marcando ${dates.length} fecha(s) como inactivas para ${staffName}`);
+    
+    // Enviar cada fecha al servidor
+    let successCount = 0;
+    let errorCount = 0;
+    
+    for(const date of dates){
+      try {
+        const res = await fetch('/api/inactive-days', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ staff_name: staffName, date: date, reason: reason })
+        });
+        
+        const data = await res.json();
+        if(data.success){
+          successCount++;
+        } else {
+          errorCount++;
+        }
+      } catch(e) {
+        errorCount++;
+      }
+    }
+    
     const msgEl = document.getElementById('inactiveMsg');
     
-    if(data.success){
+    if(successCount > 0){
       msgEl.style.display = 'block';
       msgEl.style.background = 'rgba(76, 175, 80, 0.15)';
       msgEl.style.color = 'var(--green)';
       msgEl.style.borderLeft = '4px solid var(--green)';
-      msgEl.innerHTML = `✅ ${data.message}`;
+      msgEl.innerHTML = `✅ ${successCount} fecha(s) marcada(s) como inactiva(s)${errorCount > 0 ? ` (${errorCount} ya existían)` : ''}`;
       
       // Limpiar formulario
       document.getElementById('inactiveStaffSelect').value = '';
-      document.getElementById('inactiveDateInput').value = '';
+      document.getElementById('inactiveDateStart').value = '';
+      document.getElementById('inactiveDateEnd').value = '';
       document.getElementById('inactiveReasonInput').value = '';
       
       // Recargar lista
@@ -1429,11 +1513,11 @@ async function addInactiveDay(){
       msgEl.style.background = 'rgba(244, 67, 54, 0.15)';
       msgEl.style.color = 'var(--red-bright)';
       msgEl.style.borderLeft = '4px solid var(--red-bright)';
-      msgEl.innerHTML = `❌ ${data.message}`;
+      msgEl.innerHTML = `❌ No se pudieron marcar las fechas (todas pueden ya existir)`;
     }
   } catch(e) {
-    console.error('Error al agregar día inactivo:', e);
-    showToast('❌ Error al procesar la solicitud', true);
+    console.error('Error al agregar días inactivos:', e);
+    showToast('❌ No pudimos procesar la solicitud', 'error');
   }
 }
 
@@ -1453,7 +1537,7 @@ async function deleteInactiveDay(id){
     }
   } catch(e) {
     console.error('Error al eliminar día inactivo:', e);
-    showToast('❌ Error al eliminar', true);
+    showToast('❌ No pudimos eliminar el día', 'error');
   }
 }
 
@@ -1469,7 +1553,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
 
 function installPWA() {
   if (!deferredPrompt) {
-    showToast('La app ya está instalada o no está disponible para instalar', true);
+    showToast('📱 La app ya está instalada o no está disponible', 'neutral');
     return;
   }
   deferredPrompt.prompt();

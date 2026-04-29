@@ -167,6 +167,7 @@ tr:hover td{background:rgba(212,175,55,0.03)}
 .fidelity-text{font-size:13px;color:var(--text-muted);line-height:1.5}
 @keyframes fidelityPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
 .hero-circle{width:340px;height:340px;border-radius:50%;background:linear-gradient(135deg,rgba(212,175,55,0.12),rgba(192,57,43,0.08));border:2px solid rgba(212,175,55,0.3);display:flex;align-items:center;justify-content:center;position:relative;animation:pulse 3s ease-in-out infinite;overflow:hidden}
+@keyframes toastSlideIn{from{transform:translateY(100px);opacity:0}to{transform:translateY(0);opacity:1}}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(212,175,55,0.2)}50%{box-shadow:0 0 0 18px rgba(212,175,55,0)}}
 .hero-stats{position:relative;display:flex;flex-direction:column;gap:10px;margin-top:10px}
 .stat-card{background:var(--dark-card);border:1px solid var(--dark-border);border-left:3px solid var(--gold);padding:9px 16px;border-radius:9px;box-shadow:var(--shadow)}
@@ -274,10 +275,12 @@ tr:hover td{background:rgba(212,175,55,0.03)}
 .mdr span:last-child{color:var(--gold);font-weight:600}
 .modal-close{background:var(--gold);color:#000;border:none;padding:11px 36px;border-radius:var(--radius);font-weight:700;font-size:14px;cursor:pointer;font-family:var(--font-body);transition:all .2s}
 .modal-close:hover{transform:scale(1.04)}
-.toast{position:fixed;bottom:24px;right:24px;background:var(--dark-card);border:1px solid var(--gold);color:var(--text-light);padding:12px 19px;border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:3000;font-size:13px;font-weight:500;max-width:280px;transform:translateY(80px);opacity:0;transition:all .3s;border-left:4px solid var(--gold)}
-.toast.show{transform:translateY(0);opacity:1}
-.toast.err{border-color:var(--red-bright);border-left-color:var(--red-bright)}
-.toast.ok{border-color:var(--green);border-left-color:var(--green)}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--dark-card);border:2px solid var(--gold);color:var(--text-light);padding:16px 22px;border-radius:var(--radius);box-shadow:0 12px 32px rgba(0,0,0,.6);z-index:3000;font-size:14px;font-weight:600;max-width:320px;transform:translateY(100px);opacity:0;transition:all .3s ease-out;border-left:5px solid var(--gold);line-height:1.5}
+.toast.show{transform:translateY(0);opacity:1;animation:toastSlideIn .4s ease-out}
+.toast.err{border-color:var(--red-bright);border-left-color:var(--red-bright);background:rgba(192,57,43,0.15)}
+.toast.ok{border-color:var(--green);border-left-color:var(--green);background:rgba(39,174,96,0.15)}
+.toast.neutral{border-color:var(--gold);border-left-color:var(--gold);background:rgba(212,175,55,0.15)}
+@keyframes toastSlideIn{from{transform:translateY(100px);opacity:0}to{transform:translateY(0);opacity:1}}
 .wave{height:4px;background:linear-gradient(90deg,var(--gold),var(--red),var(--gold))}
 .sep{border:none;border-top:1px solid var(--dark-border)}
 .scroll-sec{scroll-margin-top:68px}
@@ -391,10 +394,8 @@ footer{background:#0A0A0A;border-top:1px solid var(--dark-border);text-align:cen
 .mdr span:last-child{color:var(--gold);font-weight:600}
 .modal-close{background:var(--gold);color:#000;border:none;padding:11px 36px;border-radius:var(--radius);font-weight:700;font-size:14px;cursor:pointer;font-family:var(--font-body);transition:all .2s}
 .modal-close:hover{transform:scale(1.04)}
-.toast{position:fixed;bottom:24px;right:24px;background:var(--dark-card);border:1px solid var(--gold);color:var(--text-light);padding:12px 19px;border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:3000;font-size:13px;font-weight:500;max-width:280px;transform:translateY(80px);opacity:0;transition:all .3s;border-left:4px solid var(--gold)}
 .toast.show{transform:translateY(0);opacity:1}
 .toast.err{border-color:var(--red-bright);border-left-color:var(--red-bright)}
-.toast.ok{border-color:var(--green);border-left-color:var(--green)}
 .wave{height:4px;background:linear-gradient(90deg,var(--gold),var(--red),var(--gold))}
 .sep{border:none;border-top:1px solid var(--dark-border)}
 .scroll-sec{scroll-margin-top:68px}
@@ -516,6 +517,7 @@ footer,.wave,.sep{position:relative;z-index:1}
   border:2px solid rgba(212,175,55,0.6);
   animation:pulse-light 2.5s ease-in-out infinite;
 }
+@keyframes toastSlideIn{from{transform:translateY(100px);opacity:0}to{transform:translateY(0);opacity:1}}
 @keyframes pulse-light{
   0%  {box-shadow:0 0 0 0 rgba(212,175,55,0.5),0 0 20px rgba(212,175,55,0.3)}
   50% {box-shadow:0 0 0 22px rgba(212,175,55,0),0 0 60px rgba(212,175,55,0.5),inset 0 0 30px rgba(212,175,55,0.15)}
@@ -749,4 +751,7 @@ footer,.wave,.sep{position:relative;z-index:1}
 #loginPanel input::placeholder{color:var(--text-muted)}
 #loginPanel button{background:linear-gradient(135deg,var(--gold),var(--gold-dark));color:#000;border:none;padding:8px 12px;border-radius:6px;font-size:14px;font-weight:700;font-family:var(--font-body);cursor:pointer;transition:all .2s;width:100%}
 #loginPanel button:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(212,175,55,0.3)}
+
+
+
 

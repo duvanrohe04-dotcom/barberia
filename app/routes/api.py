@@ -260,12 +260,19 @@ def complete_appointment(appt_id):
             FidelityProgress.staff_name == appt.staff_name
         ).first()
         
-        # Si es un corte gratis, eliminar el registro completamente
+        # Flujo de fidelidad:
+        # 1. Cortes pagados: incrementar contador (1-10)
+        # 2. Cuando llega a 10: cliente es elegible para corte gratis
+        # 3. Corte gratis: reiniciar contador a 0 para nuevo ciclo
+        
         if appt.is_free_cut:
+            # Corte gratis completado: reiniciar contador a 0
             if progress:
-                db.session.delete(progress)
+                progress.current_cuts = 0
+                progress.last_visit = appt.date
+                progress.updated_at = datetime.utcnow()
         else:
-            # Si no existe registro, crear uno nuevo
+            # Corte pagado: incrementar contador
             if not progress:
                 progress = FidelityProgress(
                     client_name=appt.client_name,
@@ -276,7 +283,6 @@ def complete_appointment(appt_id):
                 )
                 db.session.add(progress)
             else:
-                # Incrementar contador de cortes existente
                 progress.current_cuts += 1
                 progress.last_visit = appt.date
                 progress.updated_at = datetime.utcnow()
@@ -652,7 +658,6 @@ def _staff_dict(p):
 # ── INACTIVE DAYS ─────────────────────────────────────────
 
 @api_bp.route('/inactive-days', methods=['GET'])
-@login_required
 def get_inactive_days():
     """Admin: obtener todos los días inactivos."""
     from app.models import InactiveDay
@@ -696,6 +701,7 @@ def check_staff_availability():
 def create_inactive_day():
     """Admin: crear un día inactivo para un empleado."""
     from app.models import InactiveDay
+    from datetime import datetime, date as dt_date
     data = request.get_json(silent=True) or {}
     
     staff_name = _safe_str(data.get('staff_name'), 100)
@@ -707,6 +713,15 @@ def create_inactive_day():
     
     if not _valid_date(date):
         return jsonify({'success': False, 'message': 'Fecha inválida'}), 400
+    
+    # Validar que no sea una fecha pasada
+    try:
+        date_obj = dt_date.fromisoformat(date)
+        today = dt_date.today()
+        if date_obj < today:
+            return jsonify({'success': False, 'message': 'No se puede marcar como inactivo una fecha pasada'}), 400
+    except ValueError:
+        return jsonify({'success': False, 'message': 'Formato de fecha inválido'}), 400
     
     # Verificar si ya existe
     existing = InactiveDay.query.filter_by(staff_name=staff_name, date=date).first()

@@ -498,8 +498,12 @@
             </select>
           </div>
           <div class="fg">
-            <label class="flabel">Seleccionar fecha *</label>
-            <input type="date" class="ei" id="inactiveDateInput">
+            <label class="flabel">Desde (fecha inicial) *</label>
+            <input type="date" class="ei" id="inactiveDateStart">
+          </div>
+          <div class="fg">
+            <label class="flabel">Hasta (fecha final) *</label>
+            <input type="date" class="ei" id="inactiveDateEnd">
           </div>
         </div>
 
@@ -727,5 +731,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/app.js') }}?v=29"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}?v=35"></script>
 {% endblock %}
