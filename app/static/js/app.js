@@ -1233,22 +1233,45 @@ function saveCfg(){
     .then(ok=>{ if(ok){ applyConfig(); showToast('✅ Información guardada correctamente','ok'); } });
 }
 function saveSocialBrb(){
-  cfg.wa=document.getElementById('cfgWa').value||'';
-  cfg.ig=document.getElementById('cfgIg').value||'';
-  _postConfig({wa:cfg.wa,ig:cfg.ig})
+  cfg.wa = document.getElementById('cfgWa').value.trim().replace(/\s/g,'') || '';
+  cfg.ig = (document.getElementById('cfgIg').value.trim().replace(/^@/,'')) || '';
+  _postConfig({wa:cfg.wa, ig:cfg.ig})
     .then(ok=>{ if(ok) showToast('✅ Redes del barbero guardadas correctamente','ok'); });
 }
 function saveSocialSty(){
-  cfg.wa_sty=document.getElementById('cfgWaSty').value||'';
-  cfg.ig_sty=document.getElementById('cfgIgSty').value||'';
-  _postConfig({wa_sty:cfg.wa_sty,ig_sty:cfg.ig_sty})
+  cfg.wa_sty = document.getElementById('cfgWaSty').value.trim().replace(/\s/g,'') || '';
+  cfg.ig_sty = (document.getElementById('cfgIgSty').value.trim().replace(/^@/,'')) || '';
+  _postConfig({wa_sty:cfg.wa_sty, ig_sty:cfg.ig_sty})
     .then(ok=>{ if(ok) showToast('✅ Redes de la estilista guardadas correctamente','ok'); });
 }
 function applyConfig(){ const el=document.getElementById('footerInfo'); if(el) el.textContent=cfg.ubicacion+' | 📞 '+cfg.telefono; }
-function openWa(e){ const num=cfg.wa.replace(/\D/g,''); if(!num){showToast('📱 WhatsApp aún no está configurado','neutral');return false;} window.open('https://wa.me/'+num,'_blank'); return false; }
-function openIg(e){ if(!cfg.ig){showToast('📸 Instagram aún no está configurado','neutral');return false;} window.open(cfg.ig.startsWith('http')?cfg.ig:'https://instagram.com/'+cfg.ig,'_blank'); return false; }
-function openWaSty(e){ const num=(cfg.wa_sty||'').replace(/\D/g,''); if(!num){showToast('📱 WhatsApp de la estilista aún no está configurado','neutral');return false;} window.open('https://wa.me/'+num,'_blank'); return false; }
-function openIgSty(e){ if(!cfg.ig_sty){showToast('📸 Instagram de la estilista aún no está configurado','neutral');return false;} window.open(cfg.ig_sty.startsWith('http')?cfg.ig_sty:'https://instagram.com/'+cfg.ig_sty,'_blank'); return false; }
+function openWa(e){
+  const num = cfg.wa.replace(/\D/g,'');
+  if(!num){ showToast('📱 WhatsApp aún no está configurado','neutral'); return false; }
+  if(num.length < 7){ showToast('📱 El número de WhatsApp no es válido','error'); return false; }
+  window.open('https://wa.me/'+num,'_blank');
+  return false;
+}
+function openIg(e){
+  if(!cfg.ig){ showToast('📸 Instagram aún no está configurado','neutral'); return false; }
+  // Limpiar @ si lo tiene
+  const ig = cfg.ig.replace(/^@/,'').trim();
+  window.open(ig.startsWith('http') ? ig : 'https://instagram.com/'+ig, '_blank');
+  return false;
+}
+function openWaSty(e){
+  const num = (cfg.wa_sty||'').replace(/\D/g,'');
+  if(!num){ showToast('📱 WhatsApp de la estilista aún no está configurado','neutral'); return false; }
+  if(num.length < 7){ showToast('📱 El número de WhatsApp no es válido','error'); return false; }
+  window.open('https://wa.me/'+num,'_blank');
+  return false;
+}
+function openIgSty(e){
+  if(!cfg.ig_sty){ showToast('📸 Instagram de la estilista aún no está configurado','neutral'); return false; }
+  const ig = cfg.ig_sty.replace(/^@/,'').trim();
+  window.open(ig.startsWith('http') ? ig : 'https://instagram.com/'+ig, '_blank');
+  return false;
+}
 function saveCreds(){
   const u=document.getElementById('newUser').value.trim();
   const p=document.getElementById('newPass').value;
