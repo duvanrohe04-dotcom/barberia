@@ -66,3 +66,5 @@ function toggleTheme(){
   document.documentElement.setAttribute('data-theme', t);
   document.getElementById('themeBtn').textContent = t==='dark'?'🌙':'☀️';
 }
+
+// ✅ Actualización v35: Mejoras en mensajes toast y soporte para tipo 'neutral'
