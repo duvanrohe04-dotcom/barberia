@@ -11,17 +11,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar código
+# Copiar código (sin la DB local ni uploads)
 COPY . .
 
 # Eliminar cualquier DB local que haya sido copiada accidentalmente
+# Los datos reales vienen del volumen Docker, no del código
 RUN rm -f /app/instance/*.db /app/instance/*.sqlite3
 
-# Crear carpetas necesarias
+# Crear carpetas que serán montadas como volúmenes
 RUN mkdir -p /app/instance /app/app/static/uploads
-
-# Hacer ejecutable el script de entrada
-RUN chmod +x /app/entrypoint.sh
 
 # Usuario no-root por seguridad
 RUN useradd -m appuser && chown -R appuser /app
@@ -29,5 +27,4 @@ USER appuser
 
 EXPOSE 81
 
-# Usar el script de entrada
-ENTRYPOINT ["/app/entrypoint.sh"]
+CMD ["gunicorn", "--bind", "0.0.0.0:81", "--workers", "2", "--threads", "2", "--timeout", "60", "--preload", "run:app"]

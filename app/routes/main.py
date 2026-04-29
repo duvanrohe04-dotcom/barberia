@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, send_from_directory, current_app, jsonify
+from flask import Blueprint, render_template, send_from_directory, current_app
 from app.models import Service, Staff, Appointment
 import os
 
@@ -16,24 +16,6 @@ def index():
                             female_services=female_services,
                             barbers=barbers,
                             stylists=stylists)
-
-
-@main_bp.route('/health')
-def health():
-    """Endpoint de healthcheck para Coolify y monitoreo."""
-    try:
-        # Verificar que la base de datos responde
-        Service.query.first()
-        return jsonify({
-            'status': 'healthy',
-            'service': 'JS Barbershop',
-            'database': 'connected'
-        }), 200
-    except Exception as e:
-        return jsonify({
-            'status': 'unhealthy',
-            'error': str(e)
-        }), 503
 
 
 @main_bp.route('/download/android')
