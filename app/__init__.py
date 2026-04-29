@@ -201,18 +201,12 @@ def create_app():
         global _db_initialized
         with _db_init_lock:
             if not _db_initialized:
-                try:
-                    db.create_all()
-                except Exception as e:
-                    # Ignorar errores de tablas ya existentes
-                    if 'already exists' not in str(e):
-                        raise
-                # Migración segura: agrega columnas nuevas si no existen
+                db.create_all()
                 try:
                     _migrate_db()
-                except Exception:
-                    pass  # Ignorar errores de migración ya aplicadas
-                from app.models import seed_data, ShopConfig  # noqa: F401 – ensures table creation
+                except Exception as e:
+                    print(f"[Migración] Error: {e}")
+                from app.models import seed_data, ShopConfig  # noqa: F401
                 seed_data()
                 _db_initialized = True
 
@@ -225,12 +219,19 @@ def create_app():
 
 def _migrate_db():
     """Agrega columnas nuevas a tablas existentes sin borrar datos."""
-    from sqlalchemy import text
+    from sqlalchemy import text, inspect
+
+    # 1. Primero asegurar que todas las tablas nuevas existan
+    db.create_all()
+
+    # 2. Agregar columnas nuevas a tablas existentes
     migrations = [
         "ALTER TABLE staff ADD COLUMN phone VARCHAR(20)",
         "ALTER TABLE services ADD COLUMN duration_minutes INTEGER NOT NULL DEFAULT 60",
         "ALTER TABLE appointments ADD COLUMN duration_minutes INTEGER NOT NULL DEFAULT 60",
         "ALTER TABLE staff ADD COLUMN instagram VARCHAR(100)",
+        "ALTER TABLE appointments ADD COLUMN is_free_cut BOOLEAN DEFAULT 0",
+        "ALTER TABLE appointments ADD COLUMN gender VARCHAR(10) DEFAULT 'male'",
     ]
     with db.engine.connect() as conn:
         for sql in migrations:
@@ -239,3 +240,65 @@ def _migrate_db():
                 conn.commit()
             except Exception:
                 pass  # columna ya existe, ignorar
+
+    # 3. Verificar y crear tablas críticas si no existen (por si db.create_all falló)
+    inspector = inspect(db.engine)
+    existing_tables = inspector.get_table_names()
+
+    with db.engine.connect() as conn:
+        # Tabla fidelity_progress
+        if 'fidelity_progress' not in existing_tables:
+            try:
+                conn.execute(text("""
+                    CREATE TABLE fidelity_progress (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        client_name VARCHAR(100) NOT NULL,
+                        client_phone VARCHAR(20) NOT NULL,
+                        staff_name VARCHAR(100) NOT NULL,
+                        current_cuts INTEGER NOT NULL DEFAULT 0,
+                        last_visit VARCHAR(10),
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        UNIQUE (client_name, client_phone, staff_name)
+                    )
+                """))
+                conn.commit()
+                print("[Migración] ✅ Tabla fidelity_progress creada")
+            except Exception as e:
+                print(f"[Migración] fidelity_progress: {e}")
+
+        # Tabla inactive_days
+        if 'inactive_days' not in existing_tables:
+            try:
+                conn.execute(text("""
+                    CREATE TABLE inactive_days (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        staff_name VARCHAR(100) NOT NULL,
+                        date VARCHAR(10) NOT NULL,
+                        reason VARCHAR(200) DEFAULT '',
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        UNIQUE (staff_name, date)
+                    )
+                """))
+                conn.commit()
+                print("[Migración] ✅ Tabla inactive_days creada")
+            except Exception as e:
+                print(f"[Migración] inactive_days: {e}")
+
+        # Tabla reviews (por si acaso)
+        if 'reviews' not in existing_tables:
+            try:
+                conn.execute(text("""
+                    CREATE TABLE reviews (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        client_name VARCHAR(100) NOT NULL,
+                        rating INTEGER NOT NULL,
+                        comment TEXT,
+                        staff_name VARCHAR(100),
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                """))
+                conn.commit()
+                print("[Migración] ✅ Tabla reviews creada")
+            except Exception as e:
+                print(f"[Migración] reviews: {e}")
