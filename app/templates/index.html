@@ -386,7 +386,7 @@
   <footer>
     <div class="footer-logo-box" id="footerLogoBox"><span>💈</span></div>
     <div class="footer-name" id="footerName">JS BARBERSHOP</div>
-    <p class="footer-tag">Tu estilo, nuestra pasión — Lun–Sáb: 8am–9pm · Dom: 8am–12pm</p>
+    <p class="footer-tag">Tu estilo, nuestra pasión — 💈 Lun–Vie: 8am–11am · 2pm–8pm | Sáb: 8am–8pm | Dom: 8am–12pm · 💅 Lun–Vie: 9am–11am · 2pm–8pm | Sáb: 9am–8pm</p>
      <p class="footer-info" id="footerInfo">📍 Bogotá, Colombia &nbsp;|&nbsp; 📞 +57 310 000 0000</p>
    </footer>
 </div>
@@ -676,6 +676,16 @@
         </div>
         <div id="credMsg" style="display:none;padding:10px;border-radius:8px;font-size:13px;margin-bottom:10px"></div>
         <button class="save-btn" onclick="saveCreds()">🔐 Actualizar Credenciales</button>
+      </div>
+
+      <!-- LIMPIAR BASE DE DATOS -->
+      <div class="brand-editor" style="margin-top:16px;border-left:3px solid var(--red-bright)">
+        <h3 style="color:var(--red-bright)">⚠️ Zona de Peligro</h3>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">
+          Esta acción eliminará TODAS las citas, tarjetas de fidelidad, reseñas y días inactivos de la base de datos. 
+          <strong style="color:var(--red-bright)">Esta acción NO se puede deshacer.</strong>
+        </p>
+        <button class="save-btn" style="background:var(--red-bright)" onclick="resetDatabase()">🗑️ Limpiar Base de Datos</button>
       </div>
     </div>
 

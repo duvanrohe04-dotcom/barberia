@@ -18,11 +18,23 @@ def _valid_time(t):
     return bool(t and re.match(r'^\d{2}:\d{2}$', t))
 
 def _allowed_time(date_str, time_str, gender):
-    """Valida que la hora esté dentro del horario permitido para ese día y género."""
+    """Valida que la hora esté dentro del horario permitido para ese día y género.
+    
+    HORARIOS:
+    Hombres:
+      - Lun-Vie: 8am-11am y 2pm-8pm
+      - Sábado: 8am-8pm (corrido)
+      - Domingo: 8am-12pm
+    
+    Mujeres:
+      - Lun-Vie: 9am-11am y 2pm-8pm
+      - Sábado: 9am-8pm (corrido)
+      - Domingo: NO HAY SERVICIO
+    """
     try:
         from datetime import date as dt_date
         d = dt_date.fromisoformat(date_str)
-        dow = d.weekday()  # 0=lunes … 6=domingo
+        dow = d.weekday()  # 0=lunes, 1=martes, ..., 5=viernes, 6=sábado, 7=domingo
         h = int(time_str.split(':')[0])
         m = int(time_str.split(':')[1])
         total = h * 60 + m
@@ -31,13 +43,22 @@ def _allowed_time(date_str, time_str, gender):
         if m % 15 != 0:
             return False
         
-        if dow == 6:  # domingo
+        # Domingo (dow == 6 en weekday)
+        if dow == 6:
             if gender == 'female':
-                return False
-            return 8*60 <= total < 12*60
-        else:  # lunes–sábado
+                return False  # Mujeres: no hay servicio los domingos
+            return 8*60 <= total < 12*60  # Hombres: 8am-12pm
+        
+        # Sábado (dow == 5 en weekday)
+        if dow == 5:
             start = 9*60 if gender == 'female' else 8*60
-            return (start <= total < 12*60) or (14*60 <= total < 20*60)
+            return start <= total < 20*60  # Corrido hasta 8pm
+        
+        # Lunes a Viernes (dow 0-4)
+        start_morning = 9*60 if gender == 'female' else 8*60
+        # Mañana: 8am/9am - 11am, Tarde: 2pm - 8pm
+        return (start_morning <= total < 11*60) or (14*60 <= total < 20*60)
+        
     except Exception:
         return False
 
@@ -774,3 +795,45 @@ def delete_inactive_day(day_id):
         'success': True,
         'message': f'✅ {staff_name} ya está disponible el {date}'
     })
+
+
+# ── RESET DATABASE ────────────────────────────────────────────
+
+@api_bp.route('/reset-appointments', methods=['POST'])
+@login_required
+def reset_appointments():
+    """Admin: Eliminar TODAS las citas de la base de datos."""
+    try:
+        # Eliminar todas las citas
+        deleted_count = Appointment.query.delete()
+        
+        # Eliminar todos los registros de fidelidad
+        from app.models import FidelityProgress
+        fidelity_count = FidelityProgress.query.delete()
+        
+        # Eliminar todas las reseñas
+        review_count = Review.query.delete()
+        
+        # Eliminar todos los días inactivos
+        from app.models import InactiveDay
+        inactive_count = InactiveDay.query.delete()
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'✅ Base de datos limpiada correctamente',
+            'deleted': {
+                'appointments': deleted_count,
+                'fidelity_cards': fidelity_count,
+                'reviews': review_count,
+                'inactive_days': inactive_count
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'❌ Error al limpiar la base de datos: {str(e)}'
+        }), 500
+

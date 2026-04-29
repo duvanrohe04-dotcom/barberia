@@ -374,12 +374,24 @@ async function buildTimeGrid(){
   
   console.log(`📅 Fecha: ${date}, Slots tomados: ${taken.length}`, taken);
 
-  // Un slot está disponible si él y los siguientes (durSlots-1) están libres y consecutivos
-  const schedule = dow===0
-    ? '🕗 Domingo: 8:00 am – 12:00 pm'
-    : isFemale
-      ? '🕗 Lun–Sáb: 9:00–11:45 am · 2:00–8:00 pm'
-      : '🕗 Lun–Sáb: 8:00–11:45 am · 2:00–8:00 pm';
+  // Mensaje de horario según el día
+  let schedule;
+  if(dow === 0) {
+    // Domingo
+    schedule = isFemale 
+      ? '🕗 Domingo: No hay servicio de estilismo'
+      : '🕗 Domingo: 8:00 am – 12:00 pm';
+  } else if(dow === 6) {
+    // Sábado
+    schedule = isFemale
+      ? '🕗 Sábado: 9:00 am – 8:00 pm'
+      : '🕗 Sábado: 8:00 am – 8:00 pm';
+  } else {
+    // Lunes a Viernes
+    schedule = isFemale
+      ? '🕗 Lun–Vie: 9:00–11:00 am · 2:00–8:00 pm'
+      : '🕗 Lun–Vie: 8:00–11:00 am · 2:00–8:00 pm';
+  }
 
   const durLabel = durFmt(durMin);
 
@@ -411,22 +423,40 @@ async function buildTimeGrid(){
 
 function getTimes(dateStr, isFemale){
   if(!dateStr) return [];
-  const dow = new Date(dateStr+'T00:00:00').getDay();
-  if(dow===0 && isFemale) return [];
-  const slots = [];
-  // Genera slots de 15 en 15 min dentro de un rango [startH*60, endH*60)
-  const addRange = (startH, endH) => {
-    for(let m = startH*60; m < endH*60; m+=15){
-      const h = Math.floor(m/60); const mm = m%60;
-      slots.push(`${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}`);
-    }
-  };
+  const dow = new Date(dateStr+'T00:00:00').getDay(); // 0=domingo, 1=lunes, ..., 6=sábado
+  
+  // Domingo: solo hombres 8am-12pm, mujeres no hay servicio
   if(dow === 0){
-    addRange(8, 12);   // Domingo 8:00–12:00
-  } else {
+    if(isFemale) return [];
+    return generateSlots(8, 12);
+  }
+  
+  // Sábado (dow === 6)
+  if(dow === 6){
     const start = isFemale ? 9 : 8;
-    addRange(start, 12); // Mañana
-    addRange(14, 20);    // Tarde 14:00–20:00
+    return generateSlots(start, 20); // Sábado: corrido de 8am/9am a 8pm
+  }
+  
+  // Lunes a Viernes (dow 1-5)
+  const slots = [];
+  const startMorning = isFemale ? 9 : 8;
+  
+  // Mañana: 8am/9am - 11am
+  slots.push(...generateSlots(startMorning, 11));
+  
+  // Tarde: 2pm - 8pm
+  slots.push(...generateSlots(14, 20));
+  
+  return slots;
+}
+
+// Función auxiliar para generar slots de 15 minutos
+function generateSlots(startH, endH){
+  const slots = [];
+  for(let m = startH*60; m < endH*60; m+=15){
+    const h = Math.floor(m/60);
+    const mm = m%60;
+    slots.push(`${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}`);
   }
   return slots;
 }
@@ -1293,6 +1323,65 @@ function saveCreds(){
         err('❌ '+(data.message||'Error al actualizar'));
       }
     });
+}
+
+// ══ RESET DATABASE ═════════════════════════════════════════════
+async function resetDatabase(){
+  const confirmed = confirm(
+    '⚠️ ADVERTENCIA ⚠️\n\n' +
+    'Esta acción eliminará PERMANENTEMENTE:\n' +
+    '• Todas las citas (pendientes, completadas y canceladas)\n' +
+    '• Todas las tarjetas de fidelidad\n' +
+    '• Todas las reseñas\n' +
+    '• Todos los días inactivos\n\n' +
+    'Esta acción NO se puede deshacer.\n\n' +
+    '¿Estás COMPLETAMENTE SEGURO de que deseas continuar?'
+  );
+  
+  if(!confirmed) return;
+  
+  // Segunda confirmación
+  const doubleConfirm = confirm(
+    '🚨 ÚLTIMA CONFIRMACIÓN 🚨\n\n' +
+    'Vas a BORRAR TODA LA INFORMACIÓN de la base de datos.\n\n' +
+    '¿Realmente deseas continuar?'
+  );
+  
+  if(!doubleConfirm) return;
+  
+  try {
+    showToast('🔄 Limpiando base de datos...', 'neutral');
+    
+    const res = await fetch('/api/reset-appointments', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'}
+    });
+    
+    const data = await res.json();
+    
+    if(data.success){
+      showToast('✅ Base de datos limpiada correctamente', 'ok');
+      
+      // Mostrar detalles de lo eliminado
+      const details = data.deleted;
+      alert(
+        '✅ Base de datos limpiada exitosamente\n\n' +
+        `📋 Citas eliminadas: ${details.appointments}\n` +
+        `💳 Tarjetas de fidelidad: ${details.fidelity_cards}\n` +
+        `⭐ Reseñas eliminadas: ${details.reviews}\n` +
+        `🚫 Días inactivos: ${details.inactive_days}`
+      );
+      
+      // Recargar el dashboard
+      renderDash();
+      renderTable();
+    } else {
+      showToast('❌ ' + (data.message || 'Error al limpiar la base de datos'), 'error');
+    }
+  } catch(error) {
+    console.error('Error al limpiar base de datos:', error);
+    showToast('❌ Error al limpiar la base de datos', 'error');
+  }
 }
 
 // ══ REVIEWS ════════════════════════════════════════════════════
