@@ -7,7 +7,11 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+{% if config_shop_logo %}
+<link rel="icon" href="{{ config_shop_logo }}">
+{% else %}
 <link rel="icon" type="image/png" href="{{ url_for('static', filename='icons/icon-192.png') }}">
+{% endif %}
 <title>{% block title %}{{ config_shop_name }}{% endblock %}</title>
 
 <!-- Open Graph / Redes Sociales (WhatsApp, Facebook, etc.) -->
@@ -23,7 +27,11 @@
 <meta property="og:image:height" content="512">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+{% if config_shop_logo %}
+<link rel="apple-touch-icon" href="{{ config_shop_logo }}">
+{% else %}
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
+{% endif %}
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=47">
 </head>
