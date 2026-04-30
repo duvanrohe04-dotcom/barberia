@@ -131,6 +131,36 @@ class FidelityProgress(db.Model):
     )
 
 
+def process_fidelity_for_appointment(appt):
+    """Actualiza el progreso de fidelidad cuando una cita se completa."""
+    if appt.gender != 'male':
+        return
+
+    progress = FidelityProgress.query.filter(
+        db.func.lower(FidelityProgress.client_name) == appt.client_name.lower(),
+        FidelityProgress.client_phone == appt.client_phone,
+        FidelityProgress.staff_name == appt.staff_name
+    ).first()
+
+    if appt.is_free_cut:
+        if progress:
+            db.session.delete(progress)
+    else:
+        if not progress:
+            progress = FidelityProgress(
+                client_name=appt.client_name,
+                client_phone=appt.client_phone,
+                staff_name=appt.staff_name,
+                current_cuts=1,
+                last_visit=appt.date
+            )
+            db.session.add(progress)
+        else:
+            progress.current_cuts += 1
+            progress.last_visit = appt.date
+            progress.updated_at = datetime.utcnow()
+
+
 def seed_data():
     if Admin.query.first():
         return

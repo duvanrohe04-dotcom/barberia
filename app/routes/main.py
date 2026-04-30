@@ -38,6 +38,12 @@ def download_pc():
     return send_from_directory(downloads_dir, 'app-windows.zip', as_attachment=True)
 
 
+@main_bp.route('/sw.js')
+def serve_sw():
+    """Sirve el Service Worker desde la raíz para controlar toda la PWA."""
+    return send_from_directory(os.path.join(current_app.root_path, 'static'), 'sw.js', mimetype='application/javascript')
+
+
 @main_bp.route('/api/download-available')
 def download_available():
     """Verifica si los archivos de descarga están disponibles."""

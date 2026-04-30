@@ -1,4 +1,4 @@
-﻿// ══ STATE ══════════════════════════════════════════════════════
+// ══ STATE ══════════════════════════════════════════════════════
 console.log('🔧 app.js cargado correctamente');
 let selSrv=null, selStaff=null, selTime=null, selGender=null;
 let services=[], servicesF=[], barbers=[], stylists=[];
@@ -1777,61 +1777,20 @@ async function checkDownloadAvailability() {
 }
 
 function downloadApp() {
-  // Scroll al inicio para que vea el mensaje
-  window.scrollTo({top: 0, behavior: 'smooth'});
-  
-  const ua = navigator.userAgent.toLowerCase();
-  let downloadUrl = '';
-  let osName = '';
-  let message = '';
-
-  if (/iphone|ipad|ipod/.test(ua)) {
-    message = '🍎 iPhone: En Safari toca Compartir → "Añadir a pantalla de inicio"';
-    showToast(message, 'neutral');
+  if (deferredPrompt) {
+    installPWA();
     return;
-  } else if (/android/.test(ua)) {
-    downloadUrl = '/download/android';
-    osName = 'Android';
-    message = `⬇️ Descargando para ${osName}...`;
-  } else if (/windows|win32|win64/.test(ua)) {
-    downloadUrl = '/download/pc';
-    osName = 'Windows';
-    message = `⬇️ Descargando para ${osName}...`;
-  } else if (/linux/.test(ua)) {
-    downloadUrl = '/download/pc';
-    osName = 'Linux';
-    message = `⬇️ Descargando para ${osName}...`;
-  } else if (/mac|osx/.test(ua)) {
-    downloadUrl = '/download/pc';
-    osName = 'Mac';
-    message = `⬇️ Descargando para ${osName}...`;
-  } else {
-    downloadUrl = '/download/android';
-    osName = 'tu dispositivo';
-    message = `⬇️ Descargando para ${osName}...`;
   }
 
-  if (downloadUrl) {
-    showToast(message, 'ok');
-    
-    try {
-      // Crear un enlace temporal y hacer clic en él para iniciar la descarga
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = ''; // Forzar descarga
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      
-      // Limpiar después de un momento
-      setTimeout(() => {
-        document.body.removeChild(link);
-        showToast(`✅ Descarga iniciada para ${osName}`, 'ok');
-      }, 500);
-    } catch (error) {
-      console.error('Error al iniciar descarga:', error);
-      showToast('❌ Error al descargar. Por favor intenta de nuevo.', 'error');
-    }
+  // Se removió el scroll al inicio para que el toast se vea en la parte inferior
+  
+  const ua = navigator.userAgent.toLowerCase();
+  if (/iphone|ipad|ipod/.test(ua)) {
+    showToast('🍎 iPhone: En Safari toca Compartir → "Añadir a pantalla de inicio"', 'neutral');
+  } else if (/android/.test(ua)) {
+    showToast('📱 Android: Toca el menú de Chrome y selecciona "Añadir a la pantalla de inicio" o "Instalar aplicación"', 'neutral');
+  } else {
+    showToast('💻 En tu navegador de PC (Chrome/Edge), busca el icono de instalar app en la barra de direcciones', 'neutral');
   }
 }
 

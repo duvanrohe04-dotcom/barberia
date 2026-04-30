@@ -250,41 +250,8 @@ def complete_appointment(appt_id):
     appt.status = 'Completado'
     
     # Actualizar progreso de fidelidad solo para barbería (género masculino)
-    if appt.gender == 'male':
-        from app.models import FidelityProgress
-        from datetime import datetime
-        
-        # Buscar registro de progreso existente
-        progress = FidelityProgress.query.filter(
-            db.func.lower(FidelityProgress.client_name) == appt.client_name.lower(),
-            FidelityProgress.client_phone == appt.client_phone,
-            FidelityProgress.staff_name == appt.staff_name
-        ).first()
-        
-        # Flujo de fidelidad:
-        # 1. Cortes pagados: incrementar contador (1-10)
-        # 2. Cuando llega a 10: cliente es elegible para corte gratis
-        # 3. Corte gratis: reiniciar contador a 0 para nuevo ciclo
-        
-        if appt.is_free_cut:
-            # Corte gratis completado: eliminar el registro para reiniciar el ciclo limpiamente
-            if progress:
-                db.session.delete(progress)
-        else:
-            # Corte pagado: incrementar contador
-            if not progress:
-                progress = FidelityProgress(
-                    client_name=appt.client_name,
-                    client_phone=appt.client_phone,
-                    staff_name=appt.staff_name,
-                    current_cuts=1,
-                    last_visit=appt.date
-                )
-                db.session.add(progress)
-            else:
-                progress.current_cuts += 1
-                progress.last_visit = appt.date
-                progress.updated_at = datetime.utcnow()
+    from app.models import process_fidelity_for_appointment
+    process_fidelity_for_appointment(appt)
     
     db.session.commit()
     return jsonify({'success': True})
@@ -334,7 +301,10 @@ def update_appointment_status(appt_id):
     
     if new_status not in ['Pendiente', 'Completado', 'Cancelado']:
         return jsonify({'success': False, 'message': 'Estado inválido'}), 400
-    
+    if new_status == 'Completado' and appt.status != 'Completado':
+        from app.models import process_fidelity_for_appointment
+        process_fidelity_for_appointment(appt)
+        
     appt.status = new_status
     db.session.commit()
     return jsonify({'success': True})
@@ -411,8 +381,11 @@ def taken_slots():
             from datetime import timedelta
             appt_end = appt_start + timedelta(minutes=duration)
             if now >= appt_end:
-                a.status = 'Completado'
-                changed = True
+                if a.status != 'Completado':
+                    a.status = 'Completado'
+                    from app.models import process_fidelity_for_appointment
+                    process_fidelity_for_appointment(a)
+                    changed = True
         except:
             pass
     
@@ -855,7 +828,7 @@ def reset_appointments():
         fidelity_count = 0
         
         # Eliminar todas las reseñas
-        review_count = Review.query.delete()
+        review_count = Review.query.delete(synchronize_session=False)
         
         # Eliminar solo días inactivos pasados (mantener futuros)
         today_str = dt_date.today().isoformat()

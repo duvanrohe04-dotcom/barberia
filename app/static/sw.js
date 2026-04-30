@@ -1,4 +1,4 @@
-const CACHE_NAME = 'barberking-v47';
+const CACHE_NAME = 'barberking-v48';
 const urlsToCache = [
   '/',
   '/static/css/style.css?v=47',

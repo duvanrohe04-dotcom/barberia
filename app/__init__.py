@@ -26,7 +26,7 @@ def weekly_reset(app):
             from datetime import datetime, date
 
             now = datetime.now()
-            print(f"\n[Reset semanal] ⏰ Iniciando reset semanal a las {now.strftime('%Y-%m-%d %H:%M:%S')}")
+            print(f"\n[Reset semanal] Iniciando reset semanal a las {now.strftime('%Y-%m-%d %H:%M:%S')}")
 
             # Eliminar citas completadas y canceladas
             deleted_appts = Appointment.query.filter(
@@ -44,13 +44,13 @@ def weekly_reset(app):
 
             db.session.commit()
 
-            print(f"[Reset semanal] ✅ Completado:")
+            print(f"[Reset semanal] Completado:")
             print(f"  - Citas eliminadas: {deleted_appts}")
             print(f"  - Reseñas eliminadas: {deleted_reviews}")
             print(f"  - Días inactivos pasados eliminados: {deleted_inactive}")
             print(f"[Reset semanal] Dashboard reiniciado correctamente\n")
     except Exception as e:
-        print(f"[Reset semanal] ❌ Error: {str(e)}\n")
+        print(f"[Reset semanal] Error: {str(e)}\n")
         db.session.rollback()
 
 
@@ -84,16 +84,19 @@ def complete_expired_appointments(app):
                     )
                     # Si ya pasó la hora de finalización, completar
                     if now >= appt_end:
-                        appt.status = 'Completado'
-                        completed_count += 1
+                        if appt.status != 'Completado':
+                            appt.status = 'Completado'
+                            from app.models import process_fidelity_for_appointment
+                            process_fidelity_for_appointment(appt)
+                            completed_count += 1
                 except Exception:
                     pass
 
             if completed_count > 0:
                 db.session.commit()
-                print(f"[Auto-completar] ✅ {completed_count} cita(s) completada(s) automáticamente")
+                print(f"[Auto-completar] {completed_count} cita(s) completada(s) automáticamente")
     except Exception as e:
-        print(f"[Auto-completar] ❌ Error: {str(e)}")
+        print(f"[Auto-completar] Error: {str(e)}")
         db.session.rollback()
 
 
@@ -131,7 +134,7 @@ def _start_scheduler(app):
     )
     
     _scheduler.start()
-    print("[Scheduler] ✅ Iniciado correctamente")
+    print("[Scheduler] Iniciado correctamente")
     print("[Scheduler] - Completar citas vencidas: cada 15 minutos")
     print("[Scheduler] - Reset semanal: Domingos a las 3:00 AM")
     return _scheduler
@@ -143,7 +146,14 @@ def create_app():
     # ── Configuración ──────────────────────────────────────────
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-change-in-production')
 
-    database_url = os.environ.get('DATABASE_URL', 'sqlite:///barberking.db')
+    # Usará SQLite localmente por defecto. En producción (Railway/Render) usará la variable de entorno DATABASE_URL
+    default_db = 'sqlite:///barberking.db'
+    database_url = os.environ.get('DATABASE_URL', default_db)
+    
+    # Soporte para la URL de Postgres (convierte postgres:// a postgresql:// para SQLAlchemy)
+    if database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -205,6 +215,22 @@ def create_app():
     def server_error(e):
         return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
+    @app.context_processor
+    def inject_shop_config():
+        try:
+            from app.models import ShopConfig
+            shop_name_row = ShopConfig.query.filter_by(key='shop_name').first()
+            shop_logo_row = ShopConfig.query.filter_by(key='shop_logo').first()
+            return dict(
+                config_shop_name=shop_name_row.value if shop_name_row and shop_name_row.value else 'BarberKing | Barbería & Estilismo',
+                config_shop_logo=shop_logo_row.value if shop_logo_row and shop_logo_row.value else None
+            )
+        except Exception:
+            return dict(
+                config_shop_name='BarberKing | Barbería & Estilismo',
+                config_shop_logo=None
+            )
+
     # ── Blueprints ─────────────────────────────────────────────
     from app.routes.main import main_bp
     from app.routes.auth import auth_bp
@@ -220,6 +246,7 @@ def create_app():
         global _db_initialized
         with _db_init_lock:
             if not _db_initialized:
+                from app import models  # Asegurar que todos los modelos se carguen antes de create_all
                 db.create_all()
                 try:
                     _migrate_db()
@@ -256,7 +283,7 @@ def _migrate_db():
         "ALTER TABLE services ADD COLUMN duration_minutes INTEGER NOT NULL DEFAULT 60",
         "ALTER TABLE appointments ADD COLUMN duration_minutes INTEGER NOT NULL DEFAULT 60",
         "ALTER TABLE staff ADD COLUMN instagram VARCHAR(100)",
-        "ALTER TABLE appointments ADD COLUMN is_free_cut BOOLEAN DEFAULT 0",
+        "ALTER TABLE appointments ADD COLUMN is_free_cut BOOLEAN DEFAULT FALSE",
         "ALTER TABLE appointments ADD COLUMN gender VARCHAR(10) DEFAULT 'male'",
     ]
     with db.engine.connect() as conn:
@@ -289,7 +316,7 @@ def _migrate_db():
                     )
                 """))
                 conn.commit()
-                print("[Migración] ✅ Tabla fidelity_progress creada")
+                print("[Migración] Tabla fidelity_progress creada")
             except Exception as e:
                 print(f"[Migración] fidelity_progress: {e}")
         else:
@@ -314,7 +341,7 @@ def _migrate_db():
                     )
                 """))
                 conn.commit()
-                print("[Migración] ✅ Tabla inactive_days creada")
+                print("[Migración] Tabla inactive_days creada")
             except Exception as e:
                 print(f"[Migración] inactive_days: {e}")
 
@@ -332,6 +359,6 @@ def _migrate_db():
                     )
                 """))
                 conn.commit()
-                print("[Migración] ✅ Tabla reviews creada")
+                print("[Migración] Tabla reviews creada")
             except Exception as e:
                 print(f"[Migración] reviews: {e}")
