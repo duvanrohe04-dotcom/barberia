@@ -52,3 +52,14 @@ def download_available():
         'android': os.path.exists(os.path.join(downloads_dir, 'app-android.apk')),
         'pc': os.path.exists(os.path.join(downloads_dir, 'app-windows.zip'))
     })
+
+
+@main_bp.route('/health')
+def health_check():
+    """Endpoint de salud para Coolify, Docker y balanceadores de carga."""
+    try:
+        from app.models import db
+        db.session.execute(db.text('SELECT 1'))
+        return jsonify({'status': 'healthy', 'database': 'connected'}), 200
+    except Exception as e:
+        return jsonify({'status': 'unhealthy', 'database': 'disconnected', 'error': str(e)}), 500

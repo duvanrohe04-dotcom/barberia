@@ -34,4 +34,8 @@ USER appuser
 
 EXPOSE 81
 
+# Healthcheck interno de Docker para monitorizar estado
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:81/health')" || exit 1
+
 CMD ["gunicorn", "--bind", "0.0.0.0:81", "--workers", "2", "--threads", "2", "--timeout", "60", "--preload", "run:app"]
