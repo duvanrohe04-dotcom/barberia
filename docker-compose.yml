@@ -6,7 +6,7 @@ services:
     env_file: .env
     environment:
       - TZ=America/Bogota
-      - DATABASE_URL=sqlite:////app/instance/barberking.db
+      - DATABASE_URL=sqlite:///app/instance/barberking.db
       - FLASK_ENV=production
       - SECRET_KEY=barberking_super_secret_key_fixed
       - EVOLUTION_API_URL=http://evolution_api:8080
@@ -28,7 +28,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 40s
+      start_period: 60s
     environment:
       - TZ=America/Bogota
       - AUTHENTICATION_TYPE=apikey
@@ -40,26 +40,28 @@ services:
       - DATABASE_SAVE_DATA_INSTANCE=true
       - SERVER_URL=https://jsbarbershopcol.sbs.mom
       - REDIS_ENABLED=true
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_PASSWORD=
-      - REDIS_DATABASE=0
+      - REDIS_URI=redis://redis:6379/0
       - CACHE_TTL=604800
       - CACHE_REDIS_PREFIX=evolution
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
     ports:
       - "8085:8080"
     depends_on:
       redis:
-        condition: service_started
+        condition: service_healthy
       postgres:
-        condition: service_started
+        condition: service_healthy
     networks:
       - barber_net
 
   redis:
     image: redis:7-alpine
     restart: always
-    command: redis-server --appendonly yes --requirepass ""
+    command: redis-server --appendonly yes
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -78,7 +80,7 @@ services:
     volumes:
       - barberking_wa_db:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U barber_user"]
+      test: ["CMD-SHELL", "pg_isready -U barber_user -d evolution_db"]
       interval: 10s
       timeout: 5s
       retries: 5

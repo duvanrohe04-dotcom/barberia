@@ -2,21 +2,15 @@ import requests
 import os
 from datetime import datetime, timedelta
 
-# URL interna de Docker para hablar con el servicio Evolution API
-# Si estás en local fuera de docker, cambia esto a 'http://localhost:8080'
 EVOLUTION_BASE_URL = os.environ.get('EVOLUTION_API_URL', 'http://evolution_api:8080')
 EVOLUTION_API_KEY = os.environ.get('EVOLUTION_API_KEY', 'barberking_secret_key')
 
 def send_whatsapp_message(to_number, message):
-    """
-    Envía un mensaje de WhatsApp usando Evolution API (Self-hosted).
-    """
     from app.models import ShopConfig
     
     inst_row = ShopConfig.query.filter_by(key='evo_instance').first()
     instance_name = inst_row.value if inst_row and inst_row.value else 'barberking'
     
-    # Limpiar número: quitar espacios, signos +, etc.
     phone = str(to_number).strip().replace(' ', '').replace('+', '').replace('-', '').replace('(', '').replace(')', '')
     if len(phone) == 10:
         phone = '57' + phone
@@ -49,13 +43,11 @@ def send_whatsapp_message(to_number, message):
         return False
 
 def get_whatsapp_qr():
-    """Obtiene el QR o el estado de la conexión."""
     from app.models import ShopConfig
     inst_row = ShopConfig.query.filter_by(key='evo_instance').first()
     instance_name = inst_row.value if inst_row and inst_row.value else 'barberking'
     clean_name = instance_name.strip().lower()
 
-    # Usar las variables globales configuradas por ENV (o valores por defecto)
     base_url = EVOLUTION_BASE_URL
     api_key = EVOLUTION_API_KEY
     
@@ -64,15 +56,12 @@ def get_whatsapp_qr():
         'Content-Type': 'application/json'
     }
     
-    # 1. Verificar/Crear instancia con máxima compatibilidad
     try:
-        # Primero intentamos listar para ver si existe
         check_res = requests.get(f"{base_url}/instance/fetchInstances", headers=headers, timeout=10)
         exists = False
         if check_res.status_code == 200:
             try: 
                 res_data = check_res.json()
-                # Evolution API puede devolver una lista o un objeto con la propiedad 'instances'
                 instances = res_data if isinstance(res_data, list) else res_data.get('instances', [])
                 if any(inst.get('instanceName') == clean_name for inst in instances):
                     exists = True
@@ -80,21 +69,24 @@ def get_whatsapp_qr():
                 exists = False
             
         if not exists:
-            # No existe, la creamos
             print(f"[WA] Creando instancia '{clean_name}'...")
-            payload = {"instanceName": clean_name, "token": api_key, "qrcode": True}
+            payload = {
+                "instanceName": clean_name,
+                "token": api_key,
+                "qrcode": True,
+                "integration": "WHATSAPP-BAILEYS"
+            }
             create_res = requests.post(f"{base_url}/instance/create", json=payload, headers=headers, timeout=15)
-            
+             
             if create_res.status_code not in [200, 201, 403, 409]:
                 return {"success": False, "message": f"Error al crear: {create_res.text[:100]}"}
-                
+                 
             import time
-            time.sleep(3) # Breve espera para persistencia
-
+            time.sleep(3)
+ 
     except Exception as e:
         print(f"[WA] Error en pre-vuelo: {e}")
-
-    # 2. Conectar / Obtener QR
+ 
     qr_url = f"{base_url}/instance/connect/{clean_name}"
     try:
         res = requests.get(qr_url, headers=headers, timeout=25)
@@ -104,14 +96,13 @@ def get_whatsapp_qr():
         
         if res.status_code != 200:
             return {"success": False, "message": f"Error {res.status_code}: {res.text[:100]}"}
-            
+             
         return res.json()
-            
+             
     except Exception as e:
         return {"success": False, "message": f"Fallo de red: {str(e)}"}
 
 def notify_admin_new_appointment(appt, shop_name):
-    """Notifica al barbero o estilista específico de una nueva cita."""
     msg = (
         f"🚨 *NUEVA RESERVACIÓN* 💈\n\n"
         f"👤 *Cliente:* {appt.client_name}\n"
@@ -136,7 +127,6 @@ def notify_admin_new_appointment(appt, shop_name):
         send_whatsapp_message(to, msg)
 
 def send_reminder_to_client(appt, shop_name):
-    """Envía un recordatorio al cliente 20 minutos antes."""
     msg = (
         f"⏰ *RECORDATORIO DE CITA* 💈\n\n"
         f"Hola *{appt.client_name}*, te recordamos tu cita en *{shop_name}* en 20 minutos.\n\n"
