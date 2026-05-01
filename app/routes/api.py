@@ -646,7 +646,7 @@ def _review_dict(r):
 
 _CONFIG_KEYS = {'ubicacion', 'telefono', 'wa', 'ig', 'shop_name', 'shop_logo',
                 'gender_icon_male', 'gender_icon_female',
-                'wa_sty', 'ig_sty'}
+                'wa_sty', 'ig_sty', 'evo_instance'}
 
 @api_bp.route('/config', methods=['GET'])
 def get_config():

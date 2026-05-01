@@ -1075,14 +1075,15 @@ function renderSrvRows(){ srvImgBuf={}; document.getElementById('srvList').inner
 function addSrv(){ services.push({id:0,name:'Nuevo Servicio',description:'Descripción',price:20000,duration_minutes:60,emoji:'✂',image_url:null}); renderSrvRows(); }
 async function saveSrv(){
   let totalUpdated=0;
-  for(let i=0;i<services.length;i++){
-    const dur=parseInt(document.getElementById(`srvDUR-${i}`)?.value)||services[i].duration_minutes||60;
-    const payload={name:document.getElementById(`srvN-${i}`).value||services[i].name,description:document.getElementById(`srvD-${i}`).value,price:parseInt(document.getElementById(`srvP-${i}`).value)||services[i].price,emoji:document.getElementById(`srvEm-${i}`).value||services[i].emoji,image_url:getImgVal('srv',i,services),duration_minutes:dur,gender:'male'};
-    const res=services[i].id
-      ? await fetch(`/api/services/${services[i].id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+  const promises = services.map(async (s, i) => {
+    const dur=parseInt(document.getElementById(`srvDUR-${i}`)?.value)||s.duration_minutes||60;
+    const payload={name:document.getElementById(`srvN-${i}`).value||s.name,description:document.getElementById(`srvD-${i}`).value,price:parseInt(document.getElementById(`srvP-${i}`).value)||s.price,emoji:document.getElementById(`srvEm-${i}`).value||s.emoji,image_url:getImgVal('srv',i,services),duration_minutes:dur,gender:'male'};
+    const res = s.id
+      ? await fetch(`/api/services/${s.id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
       : await fetch('/api/services',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     const d=await res.json(); if(d.appointments_updated) totalUpdated+=d.appointments_updated;
-  }
+  });
+  await Promise.all(promises);
   await loadServices('male'); srvImgBuf={}; renderClientSrv();
   showToast(totalUpdated?`✅ Guardado · ${totalUpdated} cita(s) actualizadas`:'✅ Servicios guardados correctamente','ok');
 }
@@ -1091,11 +1092,12 @@ async function saveSrv(){
 function renderBrbRows(){ brbImgBuf={}; document.getElementById('brbList').innerHTML=barbers.map((b,i)=>buildEditRow(b,i,'brb')).join(''); }
 function addBrb(){ barbers.push({id:0,name:'Nuevo Barbero',title:'Barber',experience:'1 año',stars:4,emoji:'💈',image_url:null,specialties:'General'}); renderBrbRows(); }
 async function saveBrb(){
-  for(let i=0;i<barbers.length;i++){
-    const payload={name:document.getElementById(`brbN-${i}`).value||barbers[i].name,title:document.getElementById(`brbT-${i}`).value||barbers[i].title,experience:document.getElementById(`brbE-${i}`).value||barbers[i].experience,specialties:document.getElementById(`brbSp-${i}`).value||barbers[i].specialties,emoji:document.getElementById(`brbEm-${i}`).value||barbers[i].emoji,image_url:getImgVal('brb',i,barbers),phone:document.getElementById(`brbPh-${i}`)?.value||barbers[i].phone||'',instagram:document.getElementById(`brbIg-${i}`)?.value||barbers[i].instagram||'',gender:'male'};
-    if(barbers[i].id) await fetch(`/api/staff/${barbers[i].id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    else await fetch('/api/staff',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-  }
+  const promises = barbers.map(async (b, i) => {
+    const payload={name:document.getElementById(`brbN-${i}`).value||b.name,title:document.getElementById(`brbT-${i}`).value||b.title,experience:document.getElementById(`brbE-${i}`).value||b.experience,specialties:document.getElementById(`brbSp-${i}`).value||b.specialties,emoji:document.getElementById(`brbEm-${i}`).value||b.emoji,image_url:getImgVal('brb',i,barbers),phone:document.getElementById(`brbPh-${i}`)?.value||b.phone||'',instagram:document.getElementById(`brbIg-${i}`)?.value||b.instagram||'',gender:'male'};
+    if(b.id) return fetch(`/api/staff/${b.id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    else return fetch('/api/staff',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  });
+  await Promise.all(promises);
   await loadStaff('male'); brbImgBuf={}; renderClientStaff(); renderFStaff(); renderDash();
   const hs=document.getElementById('heroStaff'); if(hs) hs.textContent=(barbers.length+stylists.length)+'+'; showToast('✅ Barberos guardados correctamente','ok');
 }
@@ -1104,11 +1106,12 @@ async function saveBrb(){
 function renderStyRows(){ styImgBuf={}; document.getElementById('styList').innerHTML=stylists.map((s,i)=>buildEditRow(s,i,'sty')).join(''); }
 function addSty(){ stylists.push({id:0,name:'Nueva Estilista',title:'Stylist',experience:'1 año',stars:4,emoji:'💅',image_url:null,specialties:'General'}); renderStyRows(); }
 async function saveSty(){
-  for(let i=0;i<stylists.length;i++){
-    const payload={name:document.getElementById(`styN-${i}`).value||stylists[i].name,title:document.getElementById(`styT-${i}`).value||stylists[i].title,experience:document.getElementById(`styE-${i}`).value||stylists[i].experience,specialties:document.getElementById(`stySp-${i}`).value||stylists[i].specialties,emoji:document.getElementById(`styEm-${i}`).value||stylists[i].emoji,image_url:getImgVal('sty',i,stylists),phone:document.getElementById(`styPh-${i}`)?.value||stylists[i].phone||'',instagram:document.getElementById(`styIg-${i}`)?.value||stylists[i].instagram||'',gender:'female'};
-    if(stylists[i].id) await fetch(`/api/staff/${stylists[i].id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    else await fetch('/api/staff',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-  }
+  const promises = stylists.map(async (s, i) => {
+    const payload={name:document.getElementById(`styN-${i}`).value||s.name,title:document.getElementById(`styT-${i}`).value||s.title,experience:document.getElementById(`styE-${i}`).value||s.experience,specialties:document.getElementById(`stySp-${i}`).value||s.specialties,emoji:document.getElementById(`styEm-${i}`).value||s.emoji,image_url:getImgVal('sty',i,stylists),phone:document.getElementById(`styPh-${i}`)?.value||s.phone||'',instagram:document.getElementById(`styIg-${i}`)?.value||s.instagram||'',gender:'female'};
+    if(s.id) return fetch(`/api/staff/${s.id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    else return fetch('/api/staff',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  });
+  await Promise.all(promises);
   await loadStaff('female'); styImgBuf={}; renderClientStaff(); renderFStaff(); renderDash();
   const hs=document.getElementById('heroStaff'); if(hs) hs.textContent=(barbers.length+stylists.length)+'+'; showToast('✅ Estilistas guardadas correctamente','ok');
 }
@@ -1118,14 +1121,15 @@ function renderSrvFRows(){ srvFImgBuf={}; document.getElementById('srvFList').in
 function addSrvF(){ servicesF.push({id:0,name:'Nuevo Servicio',description:'Descripción',price:20000,duration_minutes:60,emoji:'💅',image_url:null}); renderSrvFRows(); }
 async function saveSrvF(){
   let totalUpdated=0;
-  for(let i=0;i<servicesF.length;i++){
-    const dur=parseInt(document.getElementById(`srvFDUR-${i}`)?.value)||servicesF[i].duration_minutes||60;
-    const payload={name:document.getElementById(`srvFN-${i}`).value||servicesF[i].name,description:document.getElementById(`srvFD-${i}`).value,price:parseInt(document.getElementById(`srvFP-${i}`).value)||servicesF[i].price,emoji:document.getElementById(`srvFEm-${i}`).value||servicesF[i].emoji,image_url:getImgVal('srvF',i,servicesF),duration_minutes:dur,gender:'female'};
-    const res=servicesF[i].id
-      ? await fetch(`/api/services/${servicesF[i].id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+  const promises = servicesF.map(async (s, i) => {
+    const dur=parseInt(document.getElementById(`srvFDUR-${i}`)?.value)||s.duration_minutes||60;
+    const payload={name:document.getElementById(`srvFN-${i}`).value||s.name,description:document.getElementById(`srvFD-${i}`).value,price:parseInt(document.getElementById(`srvFP-${i}`).value)||s.price,emoji:document.getElementById(`srvFEm-${i}`).value||s.emoji,image_url:getImgVal('srvF',i,servicesF),duration_minutes:dur,gender:'female'};
+    const res = s.id
+      ? await fetch(`/api/services/${s.id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
       : await fetch('/api/services',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     const d=await res.json(); if(d.appointments_updated) totalUpdated+=d.appointments_updated;
-  }
+  });
+  await Promise.all(promises);
   await loadServices('female'); srvFImgBuf={}; renderClientSrv();
   showToast(totalUpdated?`✅ Guardado · ${totalUpdated} cita(s) actualizadas`:'✅ Servicios guardados correctamente','ok');
 }
