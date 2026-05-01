@@ -267,8 +267,20 @@ def cancel_appointment(appt_id):
     appt = Appointment.query.get_or_404(appt_id)
     if appt.status == 'Cancelado':
         return jsonify({'success': False, 'message': 'Ya está cancelada'}), 400
+    
     appt.status = 'Cancelado'
     db.session.commit()
+    
+    # Notificar al barbero/estilista que el cliente canceló
+    try:
+        from app.models import ShopConfig
+        name_row = ShopConfig.query.filter_by(key='shop_name').first()
+        s_name = name_row.value if name_row and name_row.value else 'Barbería'
+        from app.whatsapp_service import notify_staff_cancelled
+        notify_staff_cancelled(appt, s_name)
+    except Exception as e:
+        print(f"[WhatsApp] ❌ Error en notificación de cancelación (cliente): {e}")
+    
     return jsonify({'success': True})
 
 
@@ -340,6 +352,17 @@ def update_appointment_status(appt_id):
     if new_status == 'Completado' and old_status != 'Completado':
         from app.models import process_fidelity_for_appointment
         process_fidelity_for_appointment(appt)
+    
+    # Si el admin cancela, notificar al cliente
+    if new_status == 'Cancelado' and old_status != 'Cancelado':
+        try:
+            from app.models import ShopConfig
+            name_row = ShopConfig.query.filter_by(key='shop_name').first()
+            s_name = name_row.value if name_row and name_row.value else 'Barbería'
+            from app.whatsapp_service import notify_client_cancelled
+            notify_client_cancelled(appt, s_name)
+        except Exception as e:
+            print(f"[WhatsApp] ❌ Error en notificación de cancelación (admin): {e}")
     
     db.session.commit()
     return jsonify({'success': True})

@@ -262,6 +262,90 @@ def get_whatsapp_qr():
         print(f"[WA] Error obteniendo QR: {e}")
         return {"success": False, "message": f"Error: {str(e)}"}
 
+def notify_staff_cancelled(appt, shop_name):
+    """Envía notificación al barbero/estilista cuando el cliente cancela una cita."""
+    print(f"[WhatsApp] ========================================")
+    print(f"[WhatsApp] Iniciando notificación de cancelación al empleado")
+    print(f"[WhatsApp] Cliente: {appt.client_name}")
+    print(f"[WhatsApp] Empleado: {appt.staff_name}")
+    print(f"[WhatsApp] Servicio: {appt.service_name}")
+    print(f"[WhatsApp] Fecha: {appt.date} - Hora: {appt.time}")
+    
+    try:
+        total_formatted = f"${float(appt.total.replace('$', '').replace(',', '')):,.0f}" if appt.total else "$0"
+    except:
+        total_formatted = appt.total or "$0"
+    
+    msg = (
+        f"❌ *CITA CANCELADA POR EL CLIENTE* 💈\n\n"
+        f"👤 *Cliente:* {appt.client_name}\n"
+        f"📞 *Teléfono:* {appt.client_phone}\n"
+        f"✂️ *Servicio:* {appt.service_name}\n"
+        f"📅 *Fecha:* {appt.date}\n"
+        f"🕐 *Hora:* {appt.time}\n"
+        f"💰 *Valor:* {total_formatted}\n\n"
+        f"El cliente canceló su cita en *{shop_name}*."
+    )
+    
+    from app.models import Staff, ShopConfig
+    to = None
+    staff = Staff.query.filter_by(name=appt.staff_name).first()
+    
+    if staff and staff.phone:
+        to = staff.phone
+        print(f"[WhatsApp] ✅ Enviando notificación al empleado: {staff.name} - {to}")
+    else:
+        admin_wa = ShopConfig.query.filter_by(key='wa').first()
+        to = admin_wa.value if admin_wa and admin_wa.value else None
+        print(f"[WhatsApp] ⚠️ Empleado sin teléfono, enviando a admin: {to}")
+    
+    if to:
+        result = send_whatsapp_message(to, msg)
+        if result:
+            print(f"[WhatsApp] ✅ Notificación de cancelación enviada al empleado")
+        else:
+            print(f"[WhatsApp] ❌ Falló el envío de notificación de cancelación")
+        print(f"[WhatsApp] ========================================")
+        return result
+    else:
+        print(f"[WhatsApp] ❌ No hay número de teléfono configurado")
+        print(f"[WhatsApp] ========================================")
+        return False
+
+def notify_client_cancelled(appt, shop_name):
+    """Envía notificación al cliente cuando el administrador cancela su cita."""
+    print(f"[WhatsApp] ========================================")
+    print(f"[WhatsApp] Iniciando notificación de cancelación al cliente")
+    print(f"[WhatsApp] Cliente: {appt.client_name}")
+    print(f"[WhatsApp] Teléfono: {appt.client_phone}")
+    
+    try:
+        total_formatted = f"${float(appt.total.replace('$', '').replace(',', '')):,.0f}" if appt.total else "$0"
+    except:
+        total_formatted = appt.total or "$0"
+    
+    msg = (
+        f"❌ *CITA CANCELADA POR LA BARBERÍA* 💈\n\n"
+        f"Hola *{appt.client_name}*, te informamos que tu cita ha sido cancelada por la barbería.\n\n"
+        f"✂️ *Servicio:* {appt.service_name}\n"
+        f"📅 *Fecha:* {appt.date}\n"
+        f"🕐 *Hora:* {appt.time}\n"
+        f"👤 *Te atendía:* {appt.staff_name}\n"
+        f"💰 *Valor:* {total_formatted}\n\n"
+        f"En *{shop_name}* lamentamos los inconvenientes. "
+        f"Por favor contáctanos para reagendar tu cita."
+    )
+    
+    result = send_whatsapp_message(appt.client_phone, msg)
+    
+    if result:
+        print(f"[WhatsApp] ✅ Notificación de cancelación enviada al cliente {appt.client_name}")
+    else:
+        print(f"[WhatsApp] ❌ Falló el envío de notificación al cliente {appt.client_name}")
+    
+    print(f"[WhatsApp] ========================================")
+    return result
+
 def notify_admin_new_appointment(appt, shop_name):
     """Envía notificación de nueva cita al empleado o admin."""
     print(f"[WhatsApp] ========================================")
