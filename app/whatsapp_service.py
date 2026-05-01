@@ -86,6 +86,35 @@ def send_whatsapp_message(to_number, message):
         print(f"[WhatsApp] ❌ Error enviando mensaje: {e}")
         return False
 
+def disconnect_whatsapp():
+    """Desconecta la instancia de WhatsApp para poder generar un nuevo QR."""
+    from app.models import ShopConfig
+    inst_row = ShopConfig.query.filter_by(key='evo_instance').first()
+    instance_name = inst_row.value if inst_row and inst_row.value else DEFAULT_INSTANCE
+    clean_name = instance_name.strip().lower()
+
+    base_url = EVOLUTION_BASE_URL
+    api_key = EVOLUTION_API_KEY
+    
+    headers = {
+        'apikey': api_key,
+        'Content-Type': 'application/json'
+    }
+    
+    print(f"[WA] Desconectando instancia: {clean_name}")
+    
+    try:
+        res = requests.post(f"{base_url}/instance/logout/{clean_name}", headers=headers, timeout=15)
+        print(f"[WA] Respuesta logout: {res.status_code} - {res.text[:200]}")
+        
+        if res.status_code in [200, 201]:
+            return {"success": True, "message": "WhatsApp desconectado. Ya puedes escanear un nuevo QR."}
+        else:
+            return {"success": False, "message": f"Error al desconectar: {res.text[:100]}"}
+    except Exception as e:
+        print(f"[WA] Error desconectando: {e}")
+        return {"success": False, "message": f"Error de conexión: {str(e)}"}
+
 def get_whatsapp_qr():
     from app.models import ShopConfig
     inst_row = ShopConfig.query.filter_by(key='evo_instance').first()

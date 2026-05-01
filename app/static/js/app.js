@@ -405,13 +405,13 @@ async function buildTimeGrid(){
   } else if(dow === 6) {
     // Sábado
     schedule = isFemale
-      ? '🕗 Sábado: 9:00 am – 8:00 pm'
-      : '🕗 Sábado: 8:00 am – 8:00 pm';
+      ? '🕗 Sábado: 9:00 am – 12:00 pm'
+      : '🕗 Sábado: 8:00 am – 1:30 pm';
   } else {
     // Lunes a Viernes
     schedule = isFemale
-      ? '🕗 Lun–Vie: 9:00–11:00 am · 2:00–8:00 pm'
-      : '🕗 Lun–Vie: 8:00–11:00 am · 2:00–8:00 pm';
+      ? '🕗 Lun–Vie: 9:00 am–12:00 pm · 2:00–9:00 pm'
+      : '🕗 Lun–Vie: 8:00 am–12:00 pm · 2:00–9:00 pm';
   }
 
   const durLabel = durFmt(durMin);
@@ -454,19 +454,24 @@ function getTimes(dateStr, isFemale){
   
   // Sábado (dow === 6)
   if(dow === 6){
-    const start = isFemale ? 9 : 8;
-    return generateSlots(start, 20); // Sábado: corrido de 8am/9am a 8pm
+    if(isFemale){
+      // Mujeres: 9am-12pm
+      return generateSlots(9, 12);
+    } else {
+      // Hombres: 8am-1:30pm (último slot 1:15pm)
+      return generateSlots(8, 13.5);
+    }
   }
   
   // Lunes a Viernes (dow 1-5)
   const slots = [];
   const startMorning = isFemale ? 9 : 8;
   
-  // Mañana: 8am/9am - 11am
-  slots.push(...generateSlots(startMorning, 11));
+  // Mañana: 8am/9am - 12pm
+  slots.push(...generateSlots(startMorning, 12));
   
-  // Tarde: 2pm - 8pm
-  slots.push(...generateSlots(14, 20));
+  // Tarde: 2pm - 9pm
+  slots.push(...generateSlots(14, 21));
   
   return slots;
 }
@@ -1400,6 +1405,32 @@ async function sendWaTestMsg(){
       document.getElementById('waTestMsg').value = '';
     } else {
       showToast('❌ ' + (data.message || 'Error al enviar'), 'error');
+    }
+  } catch(e){
+    showToast('❌ Error de conexión: ' + e.message, 'error');
+  }
+}
+
+async function disconnectWa(){
+  if(!confirm('⚠️ ¿Seguro que quieres desconectar WhatsApp? Tendrás que escanear un nuevo QR.')) return;
+  
+  try {
+    const res = await fetch('/api/whatsapp/disconnect', {method: 'POST'});
+    const data = await res.json();
+    
+    const msgDiv = document.getElementById('waStatusMsg');
+    const container = document.getElementById('waQrContainer');
+    
+    if(data.success){
+      showToast('✅ ' + data.message, 'ok');
+      msgDiv.textContent = '📱 Ahora escanea un nuevo QR';
+      msgDiv.style.color = 'var(--green)';
+      msgDiv.style.display = 'block';
+      container.style.display = 'none';
+      document.getElementById('waQrCode').innerHTML = '';
+      loadWaQr();
+    } else {
+      showToast('❌ ' + (data.message || 'Error al desconectar'), 'error');
     }
   } catch(e){
     showToast('❌ Error de conexión: ' + e.message, 'error');

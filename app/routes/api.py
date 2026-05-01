@@ -23,13 +23,13 @@ def _allowed_time(date_str, time_str, gender, duration_minutes=60):
     
     HORARIOS:
     Hombres:
-      - Lun-Vie: 8am-11am y 2pm-8pm
-      - Sábado: 8am-8pm (corrido)
+      - Lun-Vie: 8am-12pm y 2pm-9pm
+      - Sábado: 8am-1:30pm
       - Domingo: 8am-12pm
     
     Mujeres:
-      - Lun-Vie: 9am-11am y 2pm-8pm
-      - Sábado: 9am-8pm (corrido)
+      - Lun-Vie: 9am-12pm y 2pm-9pm
+      - Sábado: 9am-12pm
       - Domingo: NO HAY SERVICIO
     """
     try:
@@ -54,18 +54,21 @@ def _allowed_time(date_str, time_str, gender, duration_minutes=60):
         
         # Sábado (dow == 5 en weekday)
         if dow == 5:
-            start_hour = 9*60 if gender == 'female' else 8*60
-            # Corrido hasta 8pm (el servicio debe TERMINAR antes de las 8pm)
-            return start_hour <= start_minutes and end_minutes <= 20*60
+            if gender == 'female':
+                # Mujeres: 9am-12pm (el servicio debe TERMINAR antes de las 12pm)
+                return 9*60 <= start_minutes and end_minutes <= 12*60
+            else:
+                # Hombres: 8am-1:30pm (el servicio debe TERMINAR antes de las 1:30pm)
+                return 8*60 <= start_minutes and end_minutes <= 13*60 + 30
         
         # Lunes a Viernes (dow 0-4)
         start_morning = 9*60 if gender == 'female' else 8*60
         
-        # Mañana: 8am/9am - 11am (el servicio debe TERMINAR antes de las 11am)
-        morning_valid = start_morning <= start_minutes and end_minutes <= 11*60
+        # Mañana: 8am/9am - 12pm (el servicio debe TERMINAR antes de las 12pm)
+        morning_valid = start_morning <= start_minutes and end_minutes <= 12*60
         
-        # Tarde: 2pm - 8pm (el servicio debe TERMINAR antes de las 8pm)
-        afternoon_valid = 14*60 <= start_minutes and end_minutes <= 20*60
+        # Tarde: 2pm - 9pm (el servicio debe TERMINAR antes de las 9pm)
+        afternoon_valid = 14*60 <= start_minutes and end_minutes <= 21*60
         
         return morning_valid or afternoon_valid
         
@@ -370,6 +373,17 @@ def send_wa_test_message():
             return jsonify({'success': False, 'message': 'No se pudo enviar el mensaje. Verifica que WhatsApp esté vinculado.'}), 500
     except Exception as e:
         print(f"DEBUG: Error en /whatsapp/test-message: {str(e)}")
+        return jsonify({'success': False, 'message': f"Error interno: {str(e)}"}), 500
+
+@api_bp.route('/whatsapp/disconnect', methods=['POST'])
+@login_required
+def disconnect_wa():
+    try:
+        from app.whatsapp_service import disconnect_whatsapp
+        result = disconnect_whatsapp()
+        return jsonify(result)
+    except Exception as e:
+        print(f"DEBUG: Error en /whatsapp/disconnect: {str(e)}")
         return jsonify({'success': False, 'message': f"Error interno: {str(e)}"}), 500
 
 @api_bp.route('/health')
