@@ -1827,16 +1827,80 @@ function downloadApp() {
     return;
   }
 
-  // Se removió el scroll al inicio para que el toast se vea en la parte inferior
-  
   const ua = navigator.userAgent.toLowerCase();
-  if (/iphone|ipad|ipod/.test(ua)) {
-    showToast('🍎 iPhone: En Safari toca Compartir → "Añadir a pantalla de inicio"', 'neutral');
+  const isIOS = /iphone|ipad|ipod/.test(ua);
+
+  if (isIOS) {
+    // En iPhone el toast queda al fondo, lejos del botón. Mostramos un banner contextual.
+    showIosBanner();
   } else if (/android/.test(ua)) {
     showToast('📱 Android: Toca el menú de Chrome y selecciona "Añadir a la pantalla de inicio" o "Instalar aplicación"', 'neutral');
   } else {
     showToast('💻 En tu navegador de PC (Chrome/Edge), busca el icono de instalar app en la barra de direcciones', 'neutral');
   }
+}
+
+function showIosBanner() {
+  // Eliminar banner previo si existe
+  const prev = document.getElementById('iosBanner');
+  if (prev) { prev.remove(); }
+
+  // Buscar el botón de descargar para anclarse junto a él
+  let anchorEl = null;
+  document.querySelectorAll('.btn-out').forEach(btn => {
+    if (btn.textContent.includes('Descargar')) anchorEl = btn;
+  });
+
+  const banner = document.createElement('div');
+  banner.id = 'iosBanner';
+  banner.innerHTML = `
+    <span style="font-size:20px">🍎</span>
+    <div style="flex:1;text-align:left">
+      <div style="font-weight:700;font-size:13px;margin-bottom:3px">Instalar en iPhone</div>
+      <div style="font-size:12px;opacity:.85">En Safari toca <strong>Compartir</strong> → <strong>"Añadir a pantalla de inicio"</strong></div>
+    </div>
+    <button onclick="document.getElementById('iosBanner').remove()" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;padding:0;line-height:1;opacity:.7">✕</button>
+  `;
+  Object.assign(banner.style, {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    background: 'linear-gradient(135deg,#1a1400,#2a2000)',
+    border: '2px solid var(--gold)',
+    borderRadius: '14px',
+    padding: '14px 16px',
+    color: '#fff',
+    boxShadow: '0 8px 32px rgba(212,175,55,0.35)',
+    zIndex: '99999',
+    maxWidth: '360px',
+    width: 'calc(100% - 40px)',
+    animation: 'iosBannerIn .35s cubic-bezier(.34,1.56,.64,1)'
+  });
+
+  // Agregar animación keyframes si no existe
+  if (!document.getElementById('iosBannerStyle')) {
+    const style = document.createElement('style');
+    style.id = 'iosBannerStyle';
+    style.textContent = '@keyframes iosBannerIn{from{opacity:0;transform:translateY(-12px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}';
+    document.head.appendChild(style);
+  }
+
+  if (anchorEl) {
+    // Insertar inmediatamente debajo del botón, dentro del mismo contenedor
+    banner.style.position = 'relative';
+    banner.style.marginTop = '10px';
+    anchorEl.parentNode.insertBefore(banner, anchorEl.nextSibling);
+  } else {
+    // Fallback: banner fijo en la parte superior
+    banner.style.position = 'fixed';
+    banner.style.top = '72px';
+    banner.style.left = '50%';
+    banner.style.transform = 'translateX(-50%)';
+    document.body.appendChild(banner);
+  }
+
+  // Auto-cerrar después de 7 segundos
+  setTimeout(() => { if (banner.parentNode) banner.remove(); }, 7000);
 }
 
 

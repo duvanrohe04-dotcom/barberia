@@ -61,45 +61,50 @@ def serve_manifest():
         from app.models import ShopConfig
         shop_name_row = ShopConfig.query.filter_by(key='shop_name').first()
         shop_logo_row = ShopConfig.query.filter_by(key='shop_logo').first()
-        
-        shop_name = shop_name_row.value if shop_name_row and shop_name_row.value else 'BarberKing'
-        shop_logo = shop_logo_row.value if shop_logo_row and shop_logo_row.value else '/static/icons/icon-192.png'
+
+        shop_name = shop_name_row.value if shop_name_row and shop_name_row.value else 'JS Barbershop'
+        shop_logo = shop_logo_row.value if shop_logo_row and shop_logo_row.value else None
     except Exception:
-        shop_name = 'BarberKing'
-        shop_logo = '/static/icons/icon-192.png'
-        
-    # Determinar el tipo de imagen dinámicamente
+        shop_name = 'JS Barbershop'
+        shop_logo = None
+
+    # Usar logo configurado o el icono por defecto
+    logo_url = shop_logo.strip() if shop_logo and shop_logo.strip() else '/static/icons/icon-192.png'
+
+    # Determinar el tipo de imagen
     img_type = "image/png"
-    if shop_logo.lower().endswith('.jpg') or shop_logo.lower().endswith('.jpeg'):
+    logo_lower = logo_url.lower()
+    if logo_lower.endswith('.jpg') or logo_lower.endswith('.jpeg'):
         img_type = "image/jpeg"
-    elif shop_logo.lower().endswith('.webp'):
+    elif logo_lower.endswith('.webp'):
         img_type = "image/webp"
+    elif logo_lower.endswith('.svg'):
+        img_type = "image/svg+xml"
 
     manifest = {
         "name": shop_name,
-        "short_name": shop_name[:12], # Nombre corto para que no se corte en el móvil
-        "description": f"Aplicación oficial de {shop_name}",
+        "short_name": shop_name[:14],
+        "description": f"Reserva tu cita en {shop_name} — Barbería & Estilismo",
         "start_url": "/",
+        "scope": "/",
         "display": "standalone",
         "background_color": "#0a0a0a",
         "theme_color": "#d4af37",
         "orientation": "portrait-primary",
+        "lang": "es",
         "icons": [
-            {
-                "src": shop_logo,
-                "sizes": "192x192",
-                "type": img_type,
-                "purpose": "any"
-            },
-            {
-                "src": shop_logo,
-                "sizes": "512x512",
-                "type": img_type,
-                "purpose": "maskable"
-            }
+            {"src": logo_url, "sizes": "192x192", "type": img_type, "purpose": "any"},
+            {"src": logo_url, "sizes": "192x192", "type": img_type, "purpose": "maskable"},
+            {"src": logo_url, "sizes": "512x512", "type": img_type, "purpose": "any"},
+            {"src": logo_url, "sizes": "512x512", "type": img_type, "purpose": "maskable"}
         ]
     }
-    return jsonify(manifest)
+    from flask import make_response, json
+    resp = make_response(json.dumps(manifest))
+    resp.headers['Content-Type'] = 'application/manifest+json'
+    resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    return resp
+
 
 
 @main_bp.route('/health')

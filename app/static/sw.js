@@ -1,8 +1,8 @@
-const CACHE_NAME = 'barberking-v49';
+const CACHE_NAME = 'barberking-v50';
 const urlsToCache = [
   '/',
-  '/static/css/style.css?v=47',
-  '/static/js/app.js?v=47',
+  '/static/css/style.css?v=48',
+  '/static/js/app.js?v=48',
   '/static/js/particles.js?v=47',
   '/static/js/utils.js?v=47'
 ];
