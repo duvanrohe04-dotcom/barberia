@@ -51,23 +51,40 @@ def get_whatsapp_qr():
     base_url = EVOLUTION_BASE_URL
     api_key = EVOLUTION_API_KEY
     
+    print(f"[WA] Intentando conectar instancia: {clean_name}")
+    print(f"[WA] URL base: {base_url}")
+    
     headers = {
         'apikey': api_key,
         'Content-Type': 'application/json'
     }
     
     try:
+        # Verificar si la instancia existe
         check_res = requests.get(f"{base_url}/instance/fetchInstances", headers=headers, timeout=10)
         exists = False
+        
         if check_res.status_code == 200:
             try: 
                 res_data = check_res.json()
                 instances = res_data if isinstance(res_data, list) else res_data.get('instances', [])
-                if any(inst.get('instanceName') == clean_name for inst in instances):
-                    exists = True
-            except: 
+                
+                for inst in instances:
+                    if inst.get('instanceName') == clean_name or inst.get('instance', {}).get('instanceName') == clean_name:
+                        exists = True
+                        # Verificar si ya está conectada
+                        state = inst.get('state') or inst.get('instance', {}).get('state')
+                        if state == 'open':
+                            print(f"[WA] Instancia ya conectada")
+                            return {"success": True, "instance": {"state": "open"}, "message": "WhatsApp ya está conectado"}
+                        break
+                        
+                print(f"[WA] Instancia existe: {exists}")
+            except Exception as e: 
+                print(f"[WA] Error parseando instancias: {e}")
                 exists = False
             
+        # Si no existe, crearla
         if not exists:
             print(f"[WA] Creando instancia '{clean_name}'...")
             payload = {
@@ -77,30 +94,73 @@ def get_whatsapp_qr():
                 "integration": "WHATSAPP-BAILEYS"
             }
             create_res = requests.post(f"{base_url}/instance/create", json=payload, headers=headers, timeout=15)
+            
+            print(f"[WA] Respuesta crear instancia: {create_res.status_code} - {create_res.text[:200]}")
              
             if create_res.status_code not in [200, 201, 403, 409]:
-                return {"success": False, "message": f"Error al crear: {create_res.text[:100]}"}
+                return {"success": False, "message": f"Error al crear instancia: {create_res.text[:100]}"}
                  
             import time
             time.sleep(3)
   
     except Exception as e:
-        print(f"[WA] Error en pre-vuelo: {e}")
+        print(f"[WA] Error en verificación de instancia: {e}")
+        return {"success": False, "message": f"Error de conexión: {str(e)}"}
   
+    # Obtener el QR
     qr_url = f"{base_url}/instance/connect/{clean_name}"
+    print(f"[WA] Solicitando QR desde: {qr_url}")
+    
     try:
         res = requests.get(qr_url, headers=headers, timeout=25)
         
+        print(f"[WA] Respuesta QR: {res.status_code}")
+        print(f"[WA] Contenido: {res.text[:500]}")
+        
         if res.status_code == 404:
-            return {"success": False, "message": f"Instancia '{clean_name}' no encontrada."}
+            return {"success": False, "message": f"Instancia '{clean_name}' no encontrada. Verifica la configuración."}
         
         if res.status_code != 200:
             return {"success": False, "message": f"Error {res.status_code}: {res.text[:100]}"}
-             
-        return res.json()
+        
+        data = res.json()
+        
+        # Evolution API puede devolver diferentes formatos
+        # Formato 1: {"base64": "data:image/png;base64,..."}
+        # Formato 2: {"qrcode": {"base64": "..."}}
+        # Formato 3: {"code": "...", "base64": "..."}
+        
+        if 'base64' in data:
+            return {"success": True, "base64": data['base64']}
+        elif 'qrcode' in data and isinstance(data['qrcode'], dict) and 'base64' in data['qrcode']:
+            return {"success": True, "base64": data['qrcode']['base64']}
+        elif 'code' in data:
+            # Si viene el código del QR, generar la imagen
+            import qrcode
+            import io
+            import base64
+            
+            qr = qrcode.QRCode(version=1, box_size=10, border=5)
+            qr.add_data(data['code'])
+            qr.make(fit=True)
+            img = qr.make_image(fill_color="black", back_color="white")
+            
+            buffer = io.BytesIO()
+            img.save(buffer, format='PNG')
+            img_str = base64.b64encode(buffer.getvalue()).decode()
+            
+            return {"success": True, "base64": f"data:image/png;base64,{img_str}"}
+        else:
+            print(f"[WA] Formato de respuesta no reconocido: {data}")
+            return {"success": False, "message": "Formato de respuesta no reconocido. Verifica la configuración de Evolution API."}
               
+    except requests.exceptions.Timeout:
+        return {"success": False, "message": "Tiempo de espera agotado. El servidor de WhatsApp no responde."}
+    except requests.exceptions.ConnectionError:
+        return {"success": False, "message": "No se puede conectar al servidor de WhatsApp. Verifica que Evolution API esté corriendo."}
     except Exception as e:
-        return {"success": False, "message": f"Fallo de red: {str(e)}"}
+        print(f"[WA] Error obteniendo QR: {e}")
+        return {"success": False, "message": f"Error: {str(e)}"}
 
 def notify_admin_new_appointment(appt, shop_name):
     msg = (

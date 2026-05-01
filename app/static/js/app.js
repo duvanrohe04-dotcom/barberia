@@ -1319,25 +1319,57 @@ async function loadWaQr(){
   btn.disabled = true;
   btn.textContent = '⌛ Cargando...';
   msgDiv.style.display = 'none';
+  qrDiv.innerHTML = '';
 
   try {
     const res = await fetch('/api/whatsapp/qr');
+    
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.message || `Error ${res.status}`);
+    }
+    
     const data = await res.json();
 
+    // Si ya está conectado
     if(data.instance && data.instance.state === 'open'){
       msgDiv.textContent = '✅ WhatsApp ya está vinculado y activo.';
+      msgDiv.style.color = 'var(--green)';
       msgDiv.style.display = 'block';
       container.style.display = 'none';
-    } else if(data.base64){
-      qrDiv.innerHTML = `<img src="${data.base64}" style="width:200px;height:200px;border:1px solid #ccc">`;
+    } 
+    // Si hay QR
+    else if(data.base64){
+      qrDiv.innerHTML = `<img src="${data.base64}" style="width:250px;height:250px;border:2px solid var(--gold);border-radius:8px;padding:10px;background:white">`;
       container.style.display = 'flex';
-      msgDiv.style.display = 'none';
-    } else {
+      msgDiv.textContent = '📱 Escanea el código QR con WhatsApp';
+      msgDiv.style.color = 'var(--text-light)';
+      msgDiv.style.display = 'block';
+    } 
+    // Si hay error
+    else if(data.success === false){
       const err = data.message || 'No se pudo generar el QR';
-      showToast(`❌ ${err}. Intenta de nuevo.`,'err');
+      msgDiv.textContent = `❌ ${err}`;
+      msgDiv.style.color = 'var(--red-bright)';
+      msgDiv.style.display = 'block';
+      container.style.display = 'none';
+      showToast(`❌ ${err}`, 'error');
+    }
+    // Formato desconocido
+    else {
+      msgDiv.textContent = '❌ Respuesta inesperada del servidor';
+      msgDiv.style.color = 'var(--red-bright)';
+      msgDiv.style.display = 'block';
+      container.style.display = 'none';
+      console.error('Respuesta inesperada:', data);
     }
   } catch(e) {
-    showToast('❌ Error de conexión con el servidor de WhatsApp','err');
+    console.error('Error al cargar QR:', e);
+    msgDiv.textContent = `❌ ${e.message || 'Error de conexión con el servidor de WhatsApp'}`;
+    msgDiv.style.color = 'var(--red-bright)';
+    msgDiv.style.display = 'block';
+    container.style.display = 'none';
+    showToast(`❌ ${e.message || 'Error de conexión'}`, 'error');
   } finally {
     btn.disabled = false;
     btn.textContent = '🔗 Vincular WhatsApp (QR)';

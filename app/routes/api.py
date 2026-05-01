@@ -328,6 +328,7 @@ def get_wa_qr():
         return jsonify(result)
     except Exception as e:
         print(f"DEBUG: Error en ruta /whatsapp/qr: {str(e)}")
+        return jsonify({'success': False, 'message': f"Error interno: {str(e)}"}), 500
         return jsonify({'success': False, 'message': f"Error interno: {str(e)}"}), 200
 
 @api_bp.route('/health')
