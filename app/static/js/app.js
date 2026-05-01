@@ -1078,7 +1078,9 @@ async function saveSrv(){
   let totalUpdated=0;
   const promises = services.map(async (s, i) => {
     const dur=parseInt(document.getElementById(`srvDUR-${i}`)?.value)||s.duration_minutes||60;
-    const payload={name:document.getElementById(`srvN-${i}`).value||s.name,description:document.getElementById(`srvD-${i}`).value,price:parseInt(document.getElementById(`srvP-${i}`).value)||s.price,emoji:document.getElementById(`srvEm-${i}`).value||s.emoji,image_url:getImgVal('srv',i,services),duration_minutes:dur,gender:'male'};
+    const priceVal = document.getElementById(`srvP-${i}`)?.value;
+    const price = priceVal !== '' && priceVal !== null && priceVal !== undefined ? parseInt(priceVal) : s.price;
+    const payload={name:document.getElementById(`srvN-${i}`).value||s.name,description:document.getElementById(`srvD-${i}`).value,price:price,emoji:document.getElementById(`srvEm-${i}`).value||s.emoji,image_url:getImgVal('srv',i,services),duration_minutes:dur,gender:'male'};
     const res = s.id
       ? await fetch(`/api/services/${s.id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
       : await fetch('/api/services',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
@@ -1124,7 +1126,9 @@ async function saveSrvF(){
   let totalUpdated=0;
   const promises = servicesF.map(async (s, i) => {
     const dur=parseInt(document.getElementById(`srvFDUR-${i}`)?.value)||s.duration_minutes||60;
-    const payload={name:document.getElementById(`srvFN-${i}`).value||s.name,description:document.getElementById(`srvFD-${i}`).value,price:parseInt(document.getElementById(`srvFP-${i}`).value)||s.price,emoji:document.getElementById(`srvFEm-${i}`).value||s.emoji,image_url:getImgVal('srvF',i,servicesF),duration_minutes:dur,gender:'female'};
+    const priceVal = document.getElementById(`srvFP-${i}`)?.value;
+    const price = priceVal !== '' && priceVal !== null && priceVal !== undefined ? parseInt(priceVal) : s.price;
+    const payload={name:document.getElementById(`srvFN-${i}`).value||s.name,description:document.getElementById(`srvFD-${i}`).value,price:price,emoji:document.getElementById(`srvFEm-${i}`).value||s.emoji,image_url:getImgVal('srvF',i,servicesF),duration_minutes:dur,gender:'female'};
     const res = s.id
       ? await fetch(`/api/services/${s.id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
       : await fetch('/api/services',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
