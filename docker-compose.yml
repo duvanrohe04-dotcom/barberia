@@ -34,8 +34,9 @@ services:
     restart: always
     environment:
       - TZ=America/Bogota
-      - AUTH_TYPE=apikey
-      - AUTH_API_KEY=barberking_secret_key
+      - AUTHENTICATION_TYPE=apikey
+      - AUTHENTICATION_API_KEY=barberking_secret_key
+      - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
       - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql
       - DATABASE_CONNECTION_URI=postgresql://barber_user:barber_pass@postgres:5432/evolution_db?sslmode=disable
