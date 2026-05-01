@@ -39,12 +39,13 @@ services:
       - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
       - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=postgresql://barber_user:barber_pass@postgres:5432/barber_db?sslmode=disable
+      - DATABASE_CONNECTION_URI=postgresql://barber_user:barber_pass@postgres:5432/evolution_db?sslmode=disable
+      - DATABASE_SAVE_DATA_INSTANCE=true
       - SERVER_URL=https://jsbarbershopcol.sbs.mom
       - REDIS_ENABLED=true
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - REDIS_PASSWORD=barberking_redis_password
+      - REDIS_PASSWORD=
     ports:
       - "8085:8080"
     depends_on:
@@ -63,14 +64,9 @@ services:
     image: redis:alpine
     container_name: barberking_redis
     restart: always
-    command: redis-server --requirepass barberking_redis_password
+    command: redis-server
     networks:
       - barber_net
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "barberking_redis_password", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
   postgres:
     image: postgres:15-alpine
@@ -81,7 +77,7 @@ services:
       - POSTGRES_PASSWORD=barber_pass
       - POSTGRES_DB=evolution_db
     volumes:
-      - barberking_wa_db:/var/lib/postgresql/data
+      - barberking_postgres_data:/var/lib/postgresql/data
     networks:
       - barber_net
     healthcheck:
