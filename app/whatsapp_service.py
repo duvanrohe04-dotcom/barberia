@@ -87,76 +87,39 @@ def send_whatsapp_message(to_number, message):
         return False
 
 def disconnect_whatsapp():
-    """Desconecta la instancia de WhatsApp para poder generar un nuevo QR."""
-    from app.models import ShopConfig
-    inst_row = ShopConfig.query.filter_by(key='evo_instance').first()
-    instance_name = inst_row.value if inst_row and inst_row.value else DEFAULT_INSTANCE
-    clean_name = instance_name.strip().lower()
-
-    base_url = EVOLUTION_BASE_URL
-    api_key = EVOLUTION_API_KEY
-    
-    headers = {
-        'apikey': api_key,
-        'Content-Type': 'application/json'
-    }
-    
-    print(f"[WA] ===== INICIANDO DESCONEXIÓN =====")
-    print(f"[WA] Instancia: {clean_name}")
-    print(f"[WA] Base URL: {base_url}")
-    print(f"[WA] API Key (primeros 10 chars): {api_key[:10] if api_key else 'NO CONFIGURADA'}")
-    
+    """Desconecta la instancia de WhatsApp usando Evolution API v2."""
     try:
-        # 1. Verificar si la instancia existe
-        print(f"[WA] Verificando si la instancia existe...")
-        check_url = f"{base_url}/instance/fetchInstances"
-        check_res = requests.get(check_url, headers=headers, timeout=10)
-        print(f"[WA] Respuesta fetchInstances: {check_res.status_code}")
+        print(f"[WA] Iniciando desconexión...")
         
-        instance_exists = False
-        if check_res.status_code == 200:
-            instances = check_res.json()
-            print(f"[WA] Instancias encontradas: {len(instances) if isinstance(instances, list) else 'N/A'}")
-            # Buscar nuestra instancia
-            if isinstance(instances, list):
-                for inst in instances:
-                    if isinstance(inst, dict) and inst.get('instanceName', '').lower() == clean_name:
-                        instance_exists = True
-                        print(f"[WA] Instancia encontrada en la lista")
-                        break
+        # Usar el nombre que aparece en los logs: jsbarbershop
+        instance_name = 'jsbarbershop'
         
-        if not instance_exists:
-            print(f"[WA] ADVERTENCIA: La instancia {clean_name} no se encontró en Evolution API")
+        base_url = EVOLUTION_BASE_URL
+        api_key = EVOLUTION_API_KEY
         
-        # 2. Intentar logout con DELETE (Evolution API v2)
-        print(f"[WA] Intentando logout con DELETE...")
-        logout_url = f"{base_url}/instance/logout/{clean_name}"
-        print(f"[WA] URL logout: {logout_url}")
+        print(f"[WA] Instancia: {instance_name}")
+        print(f"[WA] URL base: {base_url}")
         
-        res = requests.delete(logout_url, headers=headers, timeout=15)
-        print(f"[WA] Respuesta logout: {res.status_code}")
-        print(f"[WA] Cuerpo respuesta: {res.text[:300]}")
+        headers = {'apikey': api_key}
+        
+        # DELETE /instance/logout/{instance} - Evolution API v2
+        url = f"{base_url}/instance/logout/{instance_name}"
+        print(f"[WA] DELETE to: {url}")
+        
+        res = requests.delete(url, headers=headers, timeout=10)
+        print(f"[WA] Status: {res.status_code}")
+        print(f"[WA] Response: {res.text[:200]}")
         
         if res.status_code == 200:
-            return {"success": True, "message": "WhatsApp desconectado exitosamente."}
-        elif res.status_code == 404:
-            return {"success": False, "message": f"Instancia '{clean_name}' no encontrada en Evolution API. Verifica que esté creada."}
-        elif res.status_code == 401:
-            return {"success": False, "message": "Error de autenticación con Evolution API. Verifica la API Key."}
+            return {'success': True, 'message': 'WhatsApp desconectado exitosamente.'}
         else:
-            return {"success": False, "message": f"Error al desconectar (código {res.status_code}): {res.text[:150]}"}
-            
-    except requests.exceptions.ConnectionError as e:
-        print(f"[WA] Error de conexión: {e}")
-        return {"success": False, "message": f"No se puede conectar a Evolution API en {base_url}. Verifica que esté running."}
-    except requests.exceptions.Timeout as e:
-        print(f"[WA] Timeout: {e}")
-        return {"success": False, "message": "Tiempo de espera agotado conectando a Evolution API."}
+            return {'success': False, 'message': f'Error {res.status_code}: {res.text[:100]}'}
+        
     except Exception as e:
-        print(f"[WA] Error inesperado desconectando: {type(e).__name__}: {e}")
+        print(f"[WA] EXCEPCIÓN: {type(e).__name__}: {e}")
         import traceback
         traceback.print_exc()
-        return {"success": False, "message": f"Error inesperado: {str(e)}"}
+        return {'success': False, 'message': f'Error: {str(e)}'}
 
 def get_whatsapp_qr():
     from app.models import ShopConfig
