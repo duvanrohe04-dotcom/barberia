@@ -1,21 +1,38 @@
 import requests
 import os
+import time
+import qrcode
+import io
+import base64
 from datetime import datetime, timedelta
 
 EVOLUTION_BASE_URL = os.environ.get('EVOLUTION_API_URL', 'http://evolution_api:8080')
 EVOLUTION_API_KEY = os.environ.get('EVOLUTION_API_KEY', 'barberking_secret_key')
+DEFAULT_INSTANCE = os.environ.get('DEFAULT_INSTANCE', 'barberking')
 
 def send_whatsapp_message(to_number, message):
     from app.models import ShopConfig
     
     inst_row = ShopConfig.query.filter_by(key='evo_instance').first()
-    instance_name = inst_row.value if inst_row and inst_row.value else 'barberking'
+    instance_name = inst_row.value if inst_row and inst_row.value else DEFAULT_INSTANCE
     
+    # Limpiar y formatear el número
     phone = str(to_number).strip().replace(' ', '').replace('+', '').replace('-', '').replace('(', '').replace(')', '')
-    if len(phone) == 10:
+    
+    # Si es un número de 10 dígitos (Colombia), agregar código de país
+    # Validar que no empiece ya con 57
+    if len(phone) == 10 and not phone.startswith('57'):
         phone = '57' + phone
-
+    
+    # Evolution API requiere el formato: número@s.whatsapp.net
+    if not phone.endswith('@s.whatsapp.net'):
+        phone = phone + '@s.whatsapp.net'
+    
     url = f"{EVOLUTION_BASE_URL}/message/sendText/{instance_name}"
+    
+    print(f"[WhatsApp] Enviando mensaje a: {phone}")
+    print(f"[WhatsApp] Instancia: {instance_name}")
+    print(f"[WhatsApp] URL: {url}")
     
     headers = {
         'Content-Type': 'application/json',
@@ -36,16 +53,30 @@ def send_whatsapp_message(to_number, message):
     
     try:
         response = requests.post(url, json=payload, headers=headers, timeout=15)
-        print(f"[WhatsApp] Respuesta Evolution: {response.text}")
-        return response.status_code in [200, 201]
+        print(f"[WhatsApp] Status: {response.status_code}")
+        print(f"[WhatsApp] Respuesta: {response.text}")
+        
+        if response.status_code in [200, 201]:
+            print(f"[WhatsApp] ✅ Mensaje enviado exitosamente")
+            return True
+        else:
+            print(f"[WhatsApp] ❌ Error al enviar mensaje: {response.text}")
+            return False
+            
+    except requests.exceptions.Timeout:
+        print(f"[WhatsApp] ❌ Timeout al enviar mensaje")
+        return False
+    except requests.exceptions.ConnectionError as e:
+        print(f"[WhatsApp] ❌ Error de conexión: {e}")
+        return False
     except Exception as e:
-        print(f"[WhatsApp] Error enviando mensaje via Evolution: {e}")
+        print(f"[WhatsApp] ❌ Error enviando mensaje: {e}")
         return False
 
 def get_whatsapp_qr():
     from app.models import ShopConfig
     inst_row = ShopConfig.query.filter_by(key='evo_instance').first()
-    instance_name = inst_row.value if inst_row and inst_row.value else 'barberking'
+    instance_name = inst_row.value if inst_row and inst_row.value else DEFAULT_INSTANCE
     clean_name = instance_name.strip().lower()
 
     base_url = EVOLUTION_BASE_URL
@@ -100,7 +131,6 @@ def get_whatsapp_qr():
             if create_res.status_code not in [200, 201, 403, 409]:
                 return {"success": False, "message": f"Error al crear instancia: {create_res.text[:100]}"}
                  
-            import time
             time.sleep(3)
   
     except Exception as e:
@@ -136,10 +166,6 @@ def get_whatsapp_qr():
             return {"success": True, "base64": data['qrcode']['base64']}
         elif 'code' in data:
             # Si viene el código del QR, generar la imagen
-            import qrcode
-            import io
-            import base64
-            
             qr = qrcode.QRCode(version=1, box_size=10, border=5)
             qr.add_data(data['code'])
             qr.make(fit=True)
@@ -163,14 +189,26 @@ def get_whatsapp_qr():
         return {"success": False, "message": f"Error: {str(e)}"}
 
 def notify_admin_new_appointment(appt, shop_name):
+    """Envía notificación de nueva cita al empleado o admin."""
+    print(f"[WhatsApp] Iniciando notificación de nueva cita")
+    print(f"[WhatsApp] Cliente: {appt.client_name}")
+    print(f"[WhatsApp] Empleado: {appt.staff_name}")
+    
+    # Formatear el total correctamente
+    try:
+        total_formatted = f"${float(appt.total.replace('$', '').replace(',', '')):,.0f}" if appt.total else "$0"
+    except:
+        total_formatted = appt.total or "$0"
+    
     msg = (
         f"🚨 *NUEVA RESERVACIÓN* 💈\n\n"
         f"👤 *Cliente:* {appt.client_name}\n"
+        f"📞 *Teléfono:* {appt.client_phone}\n"
         f"✂️ *Servicio:* {appt.service_name}\n"
         f"📅 *Fecha:* {appt.date}\n"
         f"🕐 *Hora:* {appt.time}\n"
-        f"💰 *Total:* {appt.total}\n\n"
-        f"Te han agendado una cita."
+        f"💰 *Total:* {total_formatted}\n\n"
+        f"Te han agendado una cita en *{shop_name}*."
     )
     
     from app.models import Staff, ShopConfig
@@ -179,14 +217,27 @@ def notify_admin_new_appointment(appt, shop_name):
     
     if staff and staff.phone:
         to = staff.phone
+        print(f"[WhatsApp] Enviando a empleado: {staff.name} - {to}")
     else:
         admin_wa = ShopConfig.query.filter_by(key='wa').first()
         to = admin_wa.value if admin_wa and admin_wa.value else os.environ.get('ADMIN_PHONE')
+        print(f"[WhatsApp] Empleado sin teléfono, enviando a admin: {to}")
     
     if to:
-        send_whatsapp_message(to, msg)
+        result = send_whatsapp_message(to, msg)
+        if result:
+            print(f"[WhatsApp] ✅ Notificación enviada exitosamente")
+        else:
+            print(f"[WhatsApp] ❌ Falló el envío de notificación")
+        return result
+    else:
+        print(f"[WhatsApp] ❌ No hay número de teléfono configurado")
+        return False
 
 def send_reminder_to_client(appt, shop_name):
+    """Envía recordatorio de cita al cliente 20 minutos antes."""
+    print(f"[WhatsApp] Enviando recordatorio a cliente: {appt.client_name}")
+    
     msg = (
         f"⏰ *RECORDATORIO DE CITA* 💈\n\n"
         f"Hola *{appt.client_name}*, te recordamos tu cita en *{shop_name}* en 20 minutos.\n\n"
@@ -195,4 +246,12 @@ def send_reminder_to_client(appt, shop_name):
         f"👤 *Te atiende:* {appt.staff_name}\n\n"
         f"¡Te esperamos!"
     )
-    send_whatsapp_message(appt.client_phone, msg)
+    
+    result = send_whatsapp_message(appt.client_phone, msg)
+    
+    if result:
+        print(f"[WhatsApp] ✅ Recordatorio enviado a {appt.client_name}")
+    else:
+        print(f"[WhatsApp] ❌ Falló el envío de recordatorio a {appt.client_name}")
+    
+    return result

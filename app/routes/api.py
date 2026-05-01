@@ -17,8 +17,9 @@ def _valid_date(d):
 def _valid_time(t):
     return bool(t and re.match(r'^\d{2}:\d{2}$', t))
 
-def _allowed_time(date_str, time_str, gender):
+def _allowed_time(date_str, time_str, gender, duration_minutes=60):
     """Valida que la hora esté dentro del horario permitido para ese día y género.
+    Considera la duración del servicio para asegurar que termine dentro del horario.
     
     HORARIOS:
     Hombres:
@@ -34,10 +35,11 @@ def _allowed_time(date_str, time_str, gender):
     try:
         from datetime import date as dt_date
         d = dt_date.fromisoformat(date_str)
-        dow = d.weekday()  # 0=lunes, 1=martes, ..., 5=viernes, 6=sábado, 7=domingo
+        dow = d.weekday()  # 0=lunes, 1=martes, ..., 5=sábado, 6=domingo
         h = int(time_str.split(':')[0])
         m = int(time_str.split(':')[1])
-        total = h * 60 + m
+        start_minutes = h * 60 + m
+        end_minutes = start_minutes + duration_minutes
         
         # Validar que sea un slot válido de 15 minutos
         if m % 15 != 0:
@@ -47,17 +49,25 @@ def _allowed_time(date_str, time_str, gender):
         if dow == 6:
             if gender == 'female':
                 return False  # Mujeres: no hay servicio los domingos
-            return 8*60 <= total < 12*60  # Hombres: 8am-12pm
+            # Hombres: 8am-12pm (el servicio debe TERMINAR antes de las 12pm)
+            return 8*60 <= start_minutes and end_minutes <= 12*60
         
         # Sábado (dow == 5 en weekday)
         if dow == 5:
-            start = 9*60 if gender == 'female' else 8*60
-            return start <= total < 20*60  # Corrido hasta 8pm
+            start_hour = 9*60 if gender == 'female' else 8*60
+            # Corrido hasta 8pm (el servicio debe TERMINAR antes de las 8pm)
+            return start_hour <= start_minutes and end_minutes <= 20*60
         
         # Lunes a Viernes (dow 0-4)
         start_morning = 9*60 if gender == 'female' else 8*60
-        # Mañana: 8am/9am - 11am, Tarde: 2pm - 8pm
-        return (start_morning <= total < 11*60) or (14*60 <= total < 20*60)
+        
+        # Mañana: 8am/9am - 11am (el servicio debe TERMINAR antes de las 11am)
+        morning_valid = start_morning <= start_minutes and end_minutes <= 11*60
+        
+        # Tarde: 2pm - 8pm (el servicio debe TERMINAR antes de las 8pm)
+        afternoon_valid = 14*60 <= start_minutes and end_minutes <= 20*60
+        
+        return morning_valid or afternoon_valid
         
     except Exception:
         return False
@@ -170,11 +180,17 @@ def create_appointment():
         return jsonify({'success': False, 'message': 'Fecha inválida'}), 400
     if not _valid_time(time):
         return jsonify({'success': False, 'message': 'Hora inválida'}), 400
-    if not _allowed_time(date, time, gender):
-        msg = 'Los domingos no hay servicio de estilismo. Por favor elige otro día.' if gender=='female' else 'Esa hora está fuera del horario de atención.'
-        return jsonify({'success': False, 'message': msg}), 400
     if not _valid_phone(phone):
         return jsonify({'success': False, 'message': 'Teléfono inválido'}), 400
+
+    # Obtener duración del servicio para validaciones
+    srv = Service.query.filter_by(name=service_name).first()
+    duration = srv.duration_minutes if srv else 60
+
+    # Validar horario permitido considerando la duración del servicio
+    if not _allowed_time(date, time, gender, duration):
+        msg = 'Los domingos no hay servicio de estilismo. Por favor elige otro día.' if gender=='female' else 'Esa hora está fuera del horario de atención o el servicio terminaría después del horario permitido.'
+        return jsonify({'success': False, 'message': msg}), 400
 
     # VERIFICAR SI EL EMPLEADO ESTÁ INACTIVO ESE DÍA
     from app.models import InactiveDay
@@ -196,10 +212,6 @@ def create_appointment():
             return jsonify({'success': False, 'message': 'No puedes reservar una cita en el pasado'}), 400
     except ValueError:
         return jsonify({'success': False, 'message': 'Formato de fecha u hora inválido'}), 400
-
-    # Obtener duración del servicio nuevo
-    srv = Service.query.filter_by(name=service_name).first()
-    duration = srv.duration_minutes if srv else 60
 
     # Verificar conflictos considerando duración de citas existentes y la nueva
     h_new, m_new = map(int, time.split(':'))

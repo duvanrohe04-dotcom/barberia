@@ -472,8 +472,11 @@ function getTimes(dateStr, isFemale){
 }
 
 // Función auxiliar para generar slots de 15 minutos
+// endH es la hora de cierre (ej: 20 para 8pm)
+// Los slots generados deben permitir que el servicio termine ANTES de endH
 function generateSlots(startH, endH){
   const slots = [];
+  // Generar slots hasta endH (sin incluir endH mismo)
   for(let m = startH*60; m < endH*60; m+=15){
     const h = Math.floor(m/60);
     const mm = m%60;
