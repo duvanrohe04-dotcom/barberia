@@ -2,9 +2,20 @@ from flask import Blueprint, request, jsonify
 from flask_login import login_required
 from app.models import db, Service, Staff, Appointment, ShopConfig, Review
 from app import limiter
-import re, os, uuid
+import re, os, uuid, threading, time
+from collections import defaultdict
 
 api_bp = Blueprint('api', __name__)
+
+# Locks por barbero/estilista para evitar race conditions en el mismo profesional
+# pero permitir reservas simultáneas en diferentes barberos/estilistas
+_booking_locks = defaultdict(threading.Lock)
+_locks_mutex = threading.Lock()
+
+def _get_booking_lock(staff_name):
+    """Obtiene el lock específico para un barbero/estilista."""
+    with _locks_mutex:
+        return _booking_locks[staff_name]
 
 # ── Helpers de validación ──────────────────────────────────────
 
@@ -216,33 +227,39 @@ def create_appointment():
     except ValueError:
         return jsonify({'success': False, 'message': 'Formato de fecha u hora inválido'}), 400
 
-    # Verificar conflictos considerando duración de citas existentes y la nueva
+    # ── VERIFICACIÓN DE CONFLICTOS CON LOCK POR STAFF ──
+    # Calcular rango de tiempo de la nueva cita
     h_new, m_new = map(int, time.split(':'))
     new_start = h_new * 60 + m_new
     new_end   = new_start + duration
 
-    existing = Appointment.query.filter_by(
-        date=date, staff_name=staff_name
-    ).filter(Appointment.status != 'Cancelado').all()
+    # Lock por barbero/estilista: permite reservas simultáneas
+    # en diferentes profesionales pero evita doble booking en el mismo
+    staff_lock = _get_booking_lock(staff_name)
+    with staff_lock:
+        # Re-verificar conflictos dentro del lock (doble chequeo)
+        existing = Appointment.query.filter_by(
+            date=date, staff_name=staff_name
+        ).filter(Appointment.status != 'Cancelado').all()
 
-    for ex in existing:
-        eh, em = map(int, ex.time.split(':'))
-        ex_start = eh * 60 + em
-        ex_end   = ex_start + (ex.duration_minutes or 60)
-        # Hay conflicto si los rangos se solapan
-        if new_start < ex_end and new_end > ex_start:
-            return jsonify({'success': False, 'message': 'Ese horario se cruza con una cita existente'}), 409
+        for ex in existing:
+            eh, em = map(int, ex.time.split(':'))
+            ex_start = eh * 60 + em
+            ex_end   = ex_start + (ex.duration_minutes or 60)
+            if new_start < ex_end and new_end > ex_start:
+                return jsonify({'success': False, 'message': 'Ese horario acaba de ser reservado por otro cliente. Por favor elige otro.'}), 409
 
-    appt = Appointment(
-        client_name=name, client_phone=phone, gender=gender,
-        service_name=service_name, staff_name=staff_name,
-        date=date, time=time, duration_minutes=duration,
-        total=total, status='Pendiente'
-    )
-    db.session.add(appt)
-    db.session.commit()
+        # Crear la cita dentro del lock para garantizar atomicidad
+        appt = Appointment(
+            client_name=name, client_phone=phone, gender=gender,
+            service_name=service_name, staff_name=staff_name,
+            date=date, time=time, duration_minutes=duration,
+            total=total, status='Pendiente'
+        )
+        db.session.add(appt)
+        db.session.commit()
 
-    # --- NOTIFICACIÓN AUTOMÁTICA WHATSAPP ---
+    # ── NOTIFICACIÓN AUTOMÁTICA WHATSAPP (fuera del lock) ──
     try:
         print(f"[WhatsApp] Intentando enviar notificación para cita ID: {appt.id}")
         from app.whatsapp_service import notify_admin_new_appointment
@@ -462,6 +479,7 @@ def search_appointments():
 
 
 @api_bp.route('/appointments/taken', methods=['GET'])
+@limiter.limit("30 per minute")
 def taken_slots():
     date = _safe_str(request.args.get('date', ''), 10)
     staff_name = _safe_str(request.args.get('staff', ''), 100)
@@ -540,11 +558,18 @@ def get_services():
 @login_required
 def create_service():
     data = request.get_json(silent=True) or {}
-    dur = max(15, min(480, int(data.get('duration_minutes', 60))))
+    try:
+        dur = max(15, min(480, int(data.get('duration_minutes', 60))))
+    except (ValueError, TypeError):
+        dur = 60
+    try:
+        price = max(0, int(data.get('price', 0)))
+    except (ValueError, TypeError):
+        price = 0
     s = Service(
         name=_safe_str(data.get('name'), 100) or 'Nuevo Servicio',
         description=_safe_str(data.get('description'), 300),
-        price=max(0, int(data.get('price', 0))),
+        price=price,
         emoji=_safe_str(data.get('emoji'), 10) or '✂',
         image_url=str(data.get('image_url') or '').strip() or None,
         duration_minutes=dur,
@@ -563,10 +588,15 @@ def update_service(sid):
     old_duration = s.duration_minutes
     s.name        = _safe_str(data.get('name'), 100) or s.name
     s.description = _safe_str(data.get('description'), 300)
-    s.price       = max(0, int(data.get('price', s.price)))
+    try:
+        s.price = max(0, int(data.get('price', s.price)))
+    except (ValueError, TypeError):
+        pass
     s.emoji       = _safe_str(data.get('emoji'), 10) or s.emoji
-    new_duration  = int(data.get('duration_minutes', s.duration_minutes))
-    new_duration  = max(15, min(480, new_duration))  # entre 15 min y 8 horas
+    try:
+        new_duration = max(15, min(480, int(data.get('duration_minutes', s.duration_minutes))))
+    except (ValueError, TypeError):
+        new_duration = old_duration
     s.duration_minutes = new_duration
     img = str(data.get('image_url') or '').strip()
     if img:

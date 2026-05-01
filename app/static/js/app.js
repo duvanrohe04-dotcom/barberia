@@ -1,11 +1,16 @@
 // ══ STATE ══════════════════════════════════════════════════════
-console.log('🔧 app.js cargado correctamente');
 let selSrv=null, selStaff=null, selTime=null, selGender=null;
 let services=[], servicesF=[], barbers=[], stylists=[];
 let cfg={ubicacion:'📍 Bogotá, Colombia', telefono:'+57 310 000 0000', wa:'', ig:'', wa_sty:'', ig_sty:''};
 let shopName='JS BARBERSHOP', shopLogo=null;
 let evoInstance=null;
 let srvImgBuf={}, brbImgBuf={}, styImgBuf={}, srvFImgBuf={};
+
+function escHtml(s){
+  const d=document.createElement('div');
+  d.textContent=s;
+  return d.innerHTML;
+}
 
 // ══ INIT ═══════════════════════════════════════════════════════
 async function init(){
@@ -917,20 +922,20 @@ async function renderTable(){
     <tr ${a.status==='Pendiente' && a.gender==='male' && isEligibleForFree ? 'style="background:rgba(46,204,113,0.1);border-left:4px solid var(--green)"' : ''}>
       <td style="color:var(--text-muted)">#${a.id}</td>
       <td>
-        <strong>${a.name}</strong>
+        <strong>${escHtml(a.name)}</strong>
         ${isFreecut ? ' <span style="color:var(--green);font-size:11px">🎁 GRATIS</span>' : ''}
         ${a.status==='Pendiente' && a.gender==='male' && isEligibleForFree ? ' <span style="color:var(--green);font-size:11px;font-weight:700">⭐ LISTO PARA GRATIS</span>' : ''}
         ${a.status==='Pendiente' && a.gender==='male' && currentCuts > 0 && currentCuts < 10 ? ` <span style="color:var(--gold);font-size:10px">(${currentCuts}/10)</span>` : ''}
       </td>
-      <td>${a.phone}</td>
+      <td>${escHtml(a.phone)}</td>
       <td><span style="font-size:14px">${a.gender==='female'?'💁‍♀️':'🧔'}</span> ${a.gender==='female'?'Mujer':'Hombre'}</td>
-      <td>${a.service}</td>
-      <td>${a.staff}</td>
+      <td>${escHtml(a.service)}</td>
+      <td>${escHtml(a.staff)}</td>
       <td>${fmtDate(a.date)}</td>
-      <td>${a.time}</td>
+      <td>${escHtml(a.time)}</td>
       <td style="color:var(--text-muted);font-size:12px">${durFmt(a.duration_minutes)}</td>
-      <td style="color:var(--gold)">${a.total}</td>
-      <td><span class="sbadge ${a.status==='Pendiente'?'sb-pend':a.status==='Completado'?'sb-done':'sb-canc'}">${a.status}</span></td>
+      <td style="color:var(--gold)">${escHtml(a.total)}</td>
+      <td><span class="sbadge ${a.status==='Pendiente'?'sb-pend':a.status==='Completado'?'sb-done':'sb-canc'}">${escHtml(a.status)}</span></td>
       <td>
         ${a.status==='Pendiente' && a.gender==='male' && isEligibleForFree && !isFreecut ?`<button class="del-row-btn" style="background:var(--green);margin-bottom:4px;font-size:11px" onclick="markFreeCut(${a.id})">🎁 Marcar Gratis</button>`:''}
         ${a.status==='Pendiente'?`<button class="del-row-btn" style="background:var(--red);margin-bottom:4px;width:100%" onclick="cancelAppt(${a.id})">❌ Cancelar</button>`:''}
@@ -1473,22 +1478,26 @@ function openIgSty(e){
   return false;
 }
 function saveCreds(){
+  const ou=document.getElementById('oldUser').value.trim();
+  const op=document.getElementById('oldPass').value;
   const u=document.getElementById('newUser').value.trim();
   const p=document.getElementById('newPass').value;
   const c=document.getElementById('confPass').value;
   const msg=document.getElementById('credMsg');
   const err=t=>{msg.style.cssText='display:block;background:rgba(192,57,43,0.12);color:var(--red-bright);border:1px solid rgba(192,57,43,0.3);padding:10px;border-radius:8px;font-size:13px;margin-bottom:10px';msg.textContent=t;};
-  if(!u) return err('⚠ El usuario no puede estar vacío.');
-  if(!p) return err('⚠ La contraseña no puede estar vacía.');
-  if(p.length<4) return err('⚠ La contraseña debe tener al menos 4 caracteres.');
+  if(!ou) return err('⚠ Ingresa tu usuario actual.');
+  if(!op) return err('⚠ Ingresa tu contraseña actual.');
+  if(!u) return err('⚠ El nuevo usuario no puede estar vacío.');
+  if(!p) return err('⚠ La nueva contraseña no puede estar vacía.');
+  if(p.length<8) return err('⚠ La contraseña debe tener al menos 8 caracteres.');
   if(p!==c) return err('⚠ Las contraseñas no coinciden.');
-  fetch('/auth/update-credentials',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})})
+  fetch('/auth/update-credentials',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p,old_password:op})})
     .then(r=>r.json()).then(data=>{
       if(data.success){
         msg.style.cssText='display:block;background:rgba(39,174,96,0.12);color:var(--green);border:1px solid rgba(39,174,96,0.3);padding:10px;border-radius:8px;font-size:13px;margin-bottom:10px';
         msg.textContent='✅ Credenciales actualizadas.';
         showToast('✅ Credenciales actualizadas','ok');
-        ['newUser','newPass','confPass'].forEach(id=>document.getElementById(id).value='');
+        ['oldUser','oldPass','newUser','newPass','confPass'].forEach(id=>document.getElementById(id).value='');
       } else {
         err('❌ '+(data.message||'Error al actualizar'));
       }

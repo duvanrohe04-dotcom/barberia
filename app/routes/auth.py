@@ -53,11 +53,16 @@ def update_credentials():
         return jsonify({'success': False, 'message': 'Datos inválidos'}), 400
     username = str(data.get('username', '')).strip()[:80]
     password = str(data.get('password', ''))[:200]
+    old_password = str(data.get('old_password', ''))
     if not username or not password:
         return jsonify({'success': False, 'message': 'Usuario y contraseña requeridos'}), 400
-    if len(password) < 4:
-        return jsonify({'success': False, 'message': 'La contraseña debe tener al menos 4 caracteres'}), 400
+    if len(password) < 8:
+        return jsonify({'success': False, 'message': 'La contraseña debe tener al menos 8 caracteres'}), 400
+    
     admin = Admin.query.get(current_user.id)
+    if not admin.check_password(old_password):
+        return jsonify({'success': False, 'message': 'La contraseña actual es incorrecta'}), 401
+    
     admin.username = username
     admin.set_password(password)
     db.session.commit()

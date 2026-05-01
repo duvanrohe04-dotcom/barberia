@@ -663,12 +663,20 @@
       <div class="brand-editor" style="margin-top:16px">
         <h3>Cambiar credenciales de acceso</h3>
         <div class="fg" style="margin-bottom:10px">
+          <label class="flabel">Usuario actual</label>
+          <input class="ei" id="oldUser" placeholder="Tu usuario actual">
+        </div>
+        <div class="fg" style="margin-bottom:10px">
+          <label class="flabel">Contraseña actual</label>
+          <input class="ei" id="oldPass" type="password" placeholder="••••••">
+        </div>
+        <div class="fg" style="margin-bottom:10px">
           <label class="flabel">Nuevo usuario</label>
-          <input class="ei" id="newUser" placeholder="admin">
+          <input class="ei" id="newUser" placeholder="Nuevo usuario">
         </div>
         <div class="fg" style="margin-bottom:10px">
           <label class="flabel">Nueva contraseña</label>
-          <input class="ei" id="newPass" type="password" placeholder="••••••">
+          <input class="ei" id="newPass" type="password" placeholder="Mínimo 8 caracteres">
         </div>
         <div class="fg" style="margin-bottom:12px">
           <label class="flabel">Confirmar contraseña</label>

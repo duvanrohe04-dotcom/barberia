@@ -208,7 +208,7 @@ def _start_scheduler(app):
     _scheduler.start()
     print("[Scheduler] Iniciado correctamente")
     print("[Scheduler] - Completar citas vencidas: cada 15 minutos")
-    print("[Scheduler] - Limpieza semanal (Lunes 4 AM)")
+    print("[Scheduler] - Limpieza semanal (Domingo 3 AM)")
     print("[Scheduler] - Recordatorios WhatsApp: cada 5 minutos")
     return _scheduler
 
@@ -218,6 +218,7 @@ def create_app():
 
     # ── Configuración ──────────────────────────────────────────
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-change-in-production')
+    app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB máximo para uploads
 
     # Usará SQLite localmente por defecto. En producción (Railway/Render) usará la variable de entorno DATABASE_URL
     default_db = 'sqlite:///barberking.db'
