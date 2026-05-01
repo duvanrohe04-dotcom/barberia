@@ -16,7 +16,7 @@ services:
       - evolution_api
 
   evolution_api:
-    image: atendare/evolution-api:latest
+    image: evoapicloud/evolution-api:latest
     container_name: evolution_api
     restart: always
     environment:
