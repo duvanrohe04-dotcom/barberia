@@ -424,18 +424,41 @@ def send_wa_test_message():
 @login_required
 def disconnect_wa():
     print(f"[API] ===== PETICIÓN DE DESCONEXIÓN RECIBIDA =====")
-    print(f"[API] Headers: {dict(request.headers)}")
-    print(f"[API] Usuario autenticado: {current_user}")
     try:
         from app.whatsapp_service import disconnect_whatsapp
         result = disconnect_whatsapp()
-        print(f"[API] Resultado de disconnect_whatsapp: {result}")
+        print(f"[API] Resultado: {result}")
         return jsonify(result)
     except Exception as e:
-        print(f"[API] ERROR en /whatsapp/disconnect: {type(e).__name__}: {str(e)}")
+        print(f"[API] ERROR: {type(e).__name__}: {str(e)}")
         import traceback
         traceback.print_exc()
-        return jsonify({'success': False, 'message': f"Error interno: {str(e)}"}), 500
+        return jsonify({'success': False, 'message': f"Error: {str(e)}"}), 500
+
+@api_bp.route('/whatsapp/test-evolution', methods=['GET'])
+@login_required
+def test_evolution():
+    """Endpoint de prueba para verificar conectividad con Evolution API."""
+    import requests
+    from app.whatsapp_service import EVOLUTION_BASE_URL, EVOLUTION_API_KEY
+    
+    print(f"[API] Probando conexión a: {EVOLUTION_BASE_URL}")
+    
+    try:
+        headers = {'apikey': EVOLUTION_API_KEY}
+        res = requests.get(f"{EVOLUTION_BASE_URL}/instance/fetchInstances", headers=headers, timeout=3)
+        return jsonify({
+            'success': res.status_code == 200,
+            'status_code': res.status_code,
+            'url': EVOLUTION_BASE_URL,
+            'response': res.text[:200]
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'url': EVOLUTION_BASE_URL
+        })
 
 @api_bp.route('/appointments/<int:appt_id>', methods=['DELETE'])
 @login_required

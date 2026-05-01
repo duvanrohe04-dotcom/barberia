@@ -91,34 +91,41 @@ def disconnect_whatsapp():
     try:
         print(f"[WA] Iniciando desconexión...")
         
-        # Usar el nombre que aparece en los logs: jsbarbershop
         instance_name = 'jsbarbershop'
-        
         base_url = EVOLUTION_BASE_URL
         api_key = EVOLUTION_API_KEY
         
         print(f"[WA] Instancia: {instance_name}")
         print(f"[WA] URL base: {base_url}")
         
-        headers = {'apikey': api_key}
+        # Verificar si la URL es accesible
+        if not base_url or base_url == 'http://evolution_api:8080':
+            print(f"[WA] ADVERTENCIA: Usando URL por defecto. En Coolify puede no ser accesible")
         
-        # DELETE /instance/logout/{instance} - Evolution API v2
+        headers = {'apikey': api_key}
         url = f"{base_url}/instance/logout/{instance_name}"
         print(f"[WA] DELETE to: {url}")
         
-        res = requests.delete(url, headers=headers, timeout=10)
+        # Timeout corto para evitar 504
+        res = requests.delete(url, headers=headers, timeout=5)
         print(f"[WA] Status: {res.status_code}")
         print(f"[WA] Response: {res.text[:200]}")
         
         if res.status_code == 200:
             return {'success': True, 'message': 'WhatsApp desconectado exitosamente.'}
+        elif res.status_code == 404:
+            return {'success': True, 'message': 'Instancia no encontrada (posiblemente ya desconectada).'}
         else:
             return {'success': False, 'message': f'Error {res.status_code}: {res.text[:100]}'}
         
+    except requests.exceptions.Timeout:
+        print(f"[WA] TIMEOUT: No se pudo conectar a Evolution API en {base_url}")
+        return {'success': False, 'message': f'Tiempo agotado. No se puede conectar a Evolution API.'}
+    except requests.exceptions.ConnectionError:
+        print(f"[WA] CONNECTION ERROR: No se puede conectar a {base_url}")
+        return {'success': False, 'message': f'Error de conexión. Evolution API no disponible.'}
     except Exception as e:
         print(f"[WA] EXCEPCIÓN: {type(e).__name__}: {e}")
-        import traceback
-        traceback.print_exc()
         return {'success': False, 'message': f'Error: {str(e)}'}
 
 def get_whatsapp_qr():
