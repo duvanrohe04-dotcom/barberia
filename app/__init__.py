@@ -100,6 +100,57 @@ def complete_expired_appointments(app):
         db.session.rollback()
 
 
+def send_appointment_reminders(app):
+    """Envía recordatorios de WhatsApp 20 minutos antes de la cita."""
+    try:
+        with app.app_context():
+            from app.models import Appointment, ShopConfig
+            from app.whatsapp_service import send_reminder_to_client
+            from datetime import datetime, timedelta
+
+            # Buscar citas de hoy que ocurran en los próximos 20-25 minutos y no tengan recordatorio enviado
+            now = datetime.now()
+            target_time = now + timedelta(minutes=20)
+            
+            today_str = now.date().isoformat()
+            
+            # Obtener nombre de la tienda
+            name_row = ShopConfig.query.filter_by(key='shop_name').first()
+            s_name = name_row.value if name_row and name_row.value else 'Barbería'
+
+            # Consultar citas pendientes para hoy que no han enviado recordatorio
+            pending = Appointment.query.filter(
+                Appointment.status == 'Pendiente',
+                Appointment.date == today_str,
+                Appointment.reminder_sent == False
+            ).all()
+
+            sent_count = 0
+            for appt in pending:
+                try:
+                    # Convertir hora de cita a datetime
+                    h, m = map(int, appt.time.split(':'))
+                    appt_dt = datetime.strptime(f"{appt.date} {appt.time}", "%Y-%m-%d %H:%M")
+                    
+                    # Si faltan entre 0 y 25 minutos para la cita, enviar recordatorio
+                    # Usamos un rango para no perder citas si el scheduler corre cada 5 min
+                    time_diff = (appt_dt - now).total_seconds() / 60
+                    
+                    if 0 <= time_diff <= 25:
+                        send_reminder_to_client(appt, s_name)
+                        appt.reminder_sent = True
+                        sent_count += 1
+                except Exception:
+                    pass
+
+            if sent_count > 0:
+                db.session.commit()
+                print(f"[Recordatorios] {sent_count} recordatorio(s) enviado(s) automáticamente")
+    except Exception as e:
+        print(f"[Recordatorios] Error: {str(e)}")
+        db.session.rollback()
+
+
 _scheduler = None
 
 def _start_scheduler(app):
@@ -133,10 +184,19 @@ def _start_scheduler(app):
         replace_existing=True
     )
     
+    _scheduler.add_job(
+        func=send_appointment_reminders,
+        trigger="interval",
+        minutes=5,
+        args=[app],
+        id="whatsapp_reminders"
+    )
+
     _scheduler.start()
     print("[Scheduler] Iniciado correctamente")
     print("[Scheduler] - Completar citas vencidas: cada 15 minutos")
-    print("[Scheduler] - Reset semanal: Domingos a las 3:00 AM")
+    print("[Scheduler] - Limpieza semanal (Lunes 4 AM)")
+    print("[Scheduler] - Recordatorios WhatsApp: cada 5 minutos")
     return _scheduler
 
 
@@ -175,7 +235,7 @@ def create_app():
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
     app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FLASK_ENV') == 'production'
-    app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hora
+    app.config['PERMANENT_SESSION_LIFETIME'] = 2592000  # 30 días (86400 * 30)
 
     # ── Extensiones ────────────────────────────────────────────
     db.init_app(app)
@@ -285,6 +345,7 @@ def _migrate_db():
         "ALTER TABLE staff ADD COLUMN instagram VARCHAR(100)",
         "ALTER TABLE appointments ADD COLUMN is_free_cut BOOLEAN DEFAULT FALSE",
         "ALTER TABLE appointments ADD COLUMN gender VARCHAR(10) DEFAULT 'male'",
+        "ALTER TABLE appointments ADD COLUMN reminder_sent BOOLEAN DEFAULT FALSE",
     ]
     with db.engine.connect() as conn:
         for sql in migrations:
@@ -294,7 +355,26 @@ def _migrate_db():
             except Exception:
                 pass  # columna ya existe, ignorar
 
-    # 3. Verificar y crear tablas críticas si no existen (por si db.create_all falló)
+    # 3. Inicializar ShopConfig con valores por defecto si no existen
+    from app.models import ShopConfig
+    default_configs = [
+        ('shop_name', 'BarberKing'),
+        ('shop_logo', ''),
+        ('ubicacion', '📍 Bogotá, Colombia'),
+        ('telefono', '+57 310 000 0000'),
+        ('wa', ''),
+        ('ig', ''),
+        ('wa_sty', ''),
+        ('ig_sty', ''),
+        ('ultramsg_instance', ''),
+        ('ultramsg_token', '')
+    ]
+    for key, val in default_configs:
+        if not ShopConfig.query.filter_by(key=key).first():
+            db.session.add(ShopConfig(key=key, value=val))
+    db.session.commit()
+
+    # 4. Verificar y crear tablas críticas...
     inspector = inspect(db.engine)
     existing_tables = inspector.get_table_names()
 

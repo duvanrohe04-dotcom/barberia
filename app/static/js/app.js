@@ -4,6 +4,7 @@ let selSrv=null, selStaff=null, selTime=null, selGender=null;
 let services=[], servicesF=[], barbers=[], stylists=[];
 let cfg={ubicacion:'📍 Bogotá, Colombia', telefono:'+57 310 000 0000', wa:'', ig:'', wa_sty:'', ig_sty:''};
 let shopName='JS BARBERSHOP', shopLogo=null;
+let waInstance=null, waToken=null;
 let srvImgBuf={}, brbImgBuf={}, styImgBuf={}, srvFImgBuf={};
 
 // ══ INIT ═══════════════════════════════════════════════════════
@@ -41,8 +42,9 @@ async function loadConfig(){
     if(data.ig_sty !== undefined) cfg.ig_sty = data.ig_sty;
     if(data.shop_name) shopName = data.shop_name;
     if(data.shop_logo) shopLogo = data.shop_logo;
-    if(data.gender_icon_male)   genderIcons.male   = data.gender_icon_male;
     if(data.gender_icon_female) genderIcons.female = data.gender_icon_female;
+    if(data.ultramsg_instance) waInstance = data.ultramsg_instance;
+    if(data.ultramsg_token) waToken = data.ultramsg_token;
     applyGenderIcons();
   }catch(e){ console.warn('Config no disponible', e); }
 }
@@ -905,8 +907,8 @@ async function renderTable(){
       <td><span class="sbadge ${a.status==='Pendiente'?'sb-pend':a.status==='Completado'?'sb-done':'sb-canc'}">${a.status}</span></td>
       <td>
         ${a.status==='Pendiente' && a.gender==='male' && isEligibleForFree && !isFreecut ?`<button class="del-row-btn" style="background:var(--green);margin-bottom:4px;font-size:11px" onclick="markFreeCut(${a.id})">🎁 Marcar Gratis</button>`:''}
-        ${a.status==='Pendiente'?`<button class="del-row-btn" style="background:var(--red);margin-bottom:4px" onclick="cancelAppt(${a.id})">❌ Cancelar</button>`:''}
-        <button class="del-row-btn" onclick="delAppt(${a.id})">🗑 Eliminar</button>
+        ${a.status==='Pendiente'?`<button class="del-row-btn" style="background:var(--red);margin-bottom:4px;width:100%" onclick="cancelAppt(${a.id})">❌ Cancelar</button>`:''}
+        <button class="del-row-btn" style="width:100%" onclick="delAppt(${a.id})">🗑 Eliminar</button>
       </td>
     </tr>`;
   }).join('');
@@ -1247,6 +1249,8 @@ function renderConfig(){
   document.getElementById('cfgIg').value=cfg.ig;
   document.getElementById('cfgWaSty').value=cfg.wa_sty||'';
   document.getElementById('cfgIgSty').value=cfg.ig_sty||'';
+  document.getElementById('cfgWaInstance').value=waInstance||'';
+  document.getElementById('cfgWaToken').value=waToken||'';
   ['newUser','newPass','confPass'].forEach(id=>document.getElementById(id).value='');
   const m=document.getElementById('credMsg'); m.style.display='none';
 }
@@ -1274,6 +1278,12 @@ function saveSocialSty(){
   cfg.ig_sty = (document.getElementById('cfgIgSty').value.trim().replace(/^@/,'')) || '';
   _postConfig({wa_sty:cfg.wa_sty, ig_sty:cfg.ig_sty})
     .then(ok=>{ if(ok) showToast('✅ Redes de la estilista guardadas correctamente','ok'); });
+}
+function saveWaConfig(){
+  waInstance = document.getElementById('cfgWaInstance').value.trim();
+  waToken = document.getElementById('cfgWaToken').value.trim();
+  _postConfig({ultramsg_instance:waInstance, ultramsg_token:waToken})
+    .then(ok=>{ if(ok) showToast('✅ Configuración de WhatsApp guardada','ok'); });
 }
 function applyConfig(){ const el=document.getElementById('footerInfo'); if(el) el.textContent=cfg.ubicacion+' | 📞 '+cfg.telefono; }
 function openWa(e){

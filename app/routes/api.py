@@ -226,6 +226,18 @@ def create_appointment():
     )
     db.session.add(appt)
     db.session.commit()
+
+    # --- NOTIFICACIÓN AUTOMÁTICA WHATSAPP ---
+    try:
+        from app.whatsapp_service import notify_admin_new_appointment
+        from app.models import ShopConfig
+        name_row = ShopConfig.query.filter_by(key='shop_name').first()
+        s_name = name_row.value if name_row and name_row.value else 'Barbería'
+        notify_admin_new_appointment(appt, s_name)
+    except Exception as e:
+        print(f"[WhatsApp] Error en notificación inicial: {e}")
+    # ----------------------------------------
+
     return jsonify({'success': True, 'appointment': _appt_dict(appt)}), 201
 
 

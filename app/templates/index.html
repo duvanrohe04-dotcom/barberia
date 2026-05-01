@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}JS Barbershop | Barbería & Estilismo{% endblock %}
+{% block title %}{{ config_shop_name }}{% endblock %}
 
 {% block body %}
 <!-- RIBBON -->
@@ -7,7 +7,7 @@
   <div class="ribbon-inner">
     <div class="ribbon-brand" onclick="goSec('hero')">
       <div class="ribbon-logo-wrap" id="ribbonLogoWrap"><span>💈</span></div>
-      <span id="ribbonName">JS BARBERSHOP</span>
+      <span id="ribbonName">{{ config_shop_name }}</span>
     </div>
     <div class="ribbon-right">
       <button class="rbtn ghost" id="themeBtn" onclick="toggleTheme()">🌙</button>
@@ -385,7 +385,7 @@
 
   <footer>
     <div class="footer-logo-box" id="footerLogoBox"><span>💈</span></div>
-    <div class="footer-name" id="footerName">JS BARBERSHOP</div>
+    <div class="footer-name" id="footerName">{{ config_shop_name }}</div>
     <p class="footer-tag">Tu estilo, nuestra pasión — 💈 Lun–Vie: 8am–11am · 2pm–8pm | Sáb: 8am–8pm | Dom: 8am–12pm · 💅 Lun–Vie: 9am–11am · 2pm–8pm | Sáb: 9am–8pm</p>
      <p class="footer-info" id="footerInfo">📍 Bogotá, Colombia &nbsp;|&nbsp; 📞 +57 310 000 0000</p>
    </footer>
@@ -396,7 +396,7 @@
   <div class="admin-wrap">
     <div class="admin-topbar">
       <div class="admin-logo-box" id="adminLogoBox"><span>💈</span></div>
-      <div class="admin-shop-name" id="adminShopName">JS BARBERSHOP</div>
+      <div class="admin-shop-name" id="adminShopName">{{ config_shop_name }}</div>
     </div>
     <div class="admin-tabs">
       <button class="atab on" onclick="setTab('dash')">📊 Dashboard</button>
@@ -534,13 +534,13 @@
         <div class="brand-preview">
           <div class="logo-prev" id="logoPrev"><span>💈</span></div>
           <div>
-            <div style="font-family:var(--font-display);font-size:22px;color:var(--gold)" id="prevName">JS BARBERSHOP</div>
+            <div style="font-family:var(--font-display);font-size:22px;color:var(--gold)" id="prevName">{{ config_shop_name }}</div>
             <div style="font-size:11px;color:var(--text-muted)">Vista previa</div>
           </div>
         </div>
         <div class="fg" style="margin-bottom:12px">
           <label class="flabel">Nombre</label>
-          <input class="ei" id="shopNameInput" value="JS BARBERSHOP">
+          <input class="ei" id="shopNameInput" value="{{ config_shop_name }}">
         </div>
         <button class="save-btn" onclick="saveShopName()">💾 Guardar Nombre</button>
       </div>
@@ -678,6 +678,24 @@
         <button class="save-btn" onclick="saveCreds()">🔐 Actualizar Credenciales</button>
       </div>
 
+      <!-- WhatsApp Automation -->
+      <div class="brand-editor" style="margin-top:16px;border-left:3px solid #25d366">
+        <h3 style="color:#25d366">🤖 Automatización WhatsApp (UltraMsg)</h3>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:15px">
+          Configura tus credenciales de UltraMsg para enviar notificaciones y recordatorios automáticos.<br>
+          <a href="https://ultramsg.com/" target="_blank" style="color:#25d366;text-decoration:none;font-weight:600">Obtener credenciales aquí ➔</a>
+        </p>
+        <div class="fg" style="margin-bottom:10px">
+          <label class="flabel">ID de Instancia</label>
+          <input class="ei" id="cfgWaInstance" placeholder="Ej: instance12345">
+        </div>
+        <div class="fg" style="margin-bottom:12px">
+          <label class="flabel">Token de UltraMsg</label>
+          <input class="ei" id="cfgWaToken" placeholder="Tu token secreto">
+        </div>
+        <button class="save-btn" onclick="saveWaConfig()" style="background:#25d366;margin-bottom:0">💾 Guardar Configuración WhatsApp</button>
+      </div>
+
       <!-- REINICIAR DASHBOARD -->
       <div class="brand-editor" style="margin-top:16px;border-left:3px solid var(--red-bright)">
         <h3 style="color:var(--red-bright)">⚠️ Reiniciar Dashboard</h3>
@@ -717,7 +735,7 @@
     <div class="modal-title" style="color:var(--gold)">¡RESERVADO!</div>
     <p class="modal-msg">Tu cita ha sido confirmada. ¡Te esperamos con mucho gusto!</p>
     <div class="modal-dets" id="okDets"></div>
-    <button class="modal-close" onclick="closeBookingModal()">¡Perfecto, gracias!</button>
+    <button class="modal-close" style="background:var(--gold);color:var(--dark-bg);font-weight:700" onclick="closeBookingModal()">¡Entendido, gracias!</button>
   </div>
 </div>
 <div class="modal-ov" id="cancelModal">

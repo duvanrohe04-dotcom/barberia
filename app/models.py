@@ -73,6 +73,7 @@ class Appointment(db.Model):
     total            = db.Column(db.String(30))
     status           = db.Column(db.String(20), default='Pendiente', index=True)
     is_free_cut      = db.Column(db.Boolean, default=False, index=True)
+    reminder_sent    = db.Column(db.Boolean, default=False, index=True)
     created_at       = db.Column(db.DateTime, default=datetime.utcnow)
 
     __table_args__ = (

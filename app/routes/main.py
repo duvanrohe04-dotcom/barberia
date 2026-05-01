@@ -54,6 +54,47 @@ def download_available():
     })
 
 
+@main_bp.route('/manifest.json')
+def serve_manifest():
+    """Sirve un manifest.json dinámico con el logo y nombre configurados por el admin."""
+    try:
+        from app.models import ShopConfig
+        shop_name_row = ShopConfig.query.filter_by(key='shop_name').first()
+        shop_logo_row = ShopConfig.query.filter_by(key='shop_logo').first()
+        
+        shop_name = shop_name_row.value if shop_name_row and shop_name_row.value else 'BarberKing'
+        shop_logo = shop_logo_row.value if shop_logo_row and shop_logo_row.value else '/static/icons/icon-192.png'
+    except Exception:
+        shop_name = 'BarberKing'
+        shop_logo = '/static/icons/icon-192.png'
+        
+    manifest = {
+        "name": shop_name,
+        "short_name": shop_name,
+        "description": f"Aplicación de barbería {shop_name}",
+        "start_url": "/",
+        "display": "standalone",
+        "background_color": "#0a0a0a",
+        "theme_color": "#d4af37",
+        "orientation": "portrait-primary",
+        "icons": [
+            {
+                "src": shop_logo,
+                "sizes": "192x192",
+                "type": "image/png",
+                "purpose": "any maskable"
+            },
+            {
+                "src": shop_logo,
+                "sizes": "512x512",
+                "type": "image/png",
+                "purpose": "any maskable"
+            }
+        ]
+    }
+    return jsonify(manifest)
+
+
 @main_bp.route('/health')
 def health_check():
     """Endpoint de salud para Coolify, Docker y balanceadores de carga."""
