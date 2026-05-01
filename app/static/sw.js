@@ -23,15 +23,15 @@ self.addEventListener('fetch', event => {
   if (event.request.url.includes('/api/')) return;
 
   event.respondWith(
-    // Siempre intentar red primero, caché como fallback
     fetch(event.request)
       .then(response => {
         if (!response || response.status !== 200 || response.type !== 'basic') {
           return response;
         }
-        // Guardar copia fresca en caché
-        const responseClone = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));
+        const responseToCache = response.clone();
+        caches.open(CACHE_NAME).then(cache => {
+          cache.put(event.request, responseToCache).catch(() => {});
+        });
         return response;
       })
       .catch(() => caches.match(event.request))

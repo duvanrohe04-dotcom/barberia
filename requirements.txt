@@ -10,3 +10,5 @@ gunicorn==22.0.0
 APScheduler==3.10.4
 requests==2.32.3
 redis==5.0.4
+qrcode==8.0
+Pillow==11.1.0
