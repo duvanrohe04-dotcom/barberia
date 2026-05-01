@@ -25,12 +25,12 @@ COPY . .
 # Los datos reales vienen del volumen Docker, no del código
 RUN rm -f /app/instance/*.db /app/instance/*.sqlite3
 
-# Crear carpetas que serán montadas como volúmenes
+# Crear directorios necesarios
 RUN mkdir -p /app/instance /app/app/static/uploads
 
-# Usuario no-root por seguridad
-RUN useradd -m appuser && chown -R appuser /app
-USER appuser
+# Copiar entrypoint y dar permisos
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 EXPOSE 81
 
@@ -38,4 +38,5 @@ EXPOSE 81
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:81/api/health || exit 1
 
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["gunicorn", "--bind", "0.0.0.0:81", "--workers", "2", "--threads", "2", "--timeout", "60", "--preload", "run:app"]
