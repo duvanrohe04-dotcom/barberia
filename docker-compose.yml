@@ -8,7 +8,7 @@ services:
     env_file: .env
     environment:
       - TZ=America/Bogota
-      - DATABASE_URL=sqlite:///instance/barberking.db
+      - DATABASE_URL=sqlite:////app/instance/barberking.db
       - FLASK_ENV=production
       - SECRET_KEY=barberking_super_secret_key_fixed
       - EVOLUTION_API_URL=http://evolution_api:8080
