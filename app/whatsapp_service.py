@@ -60,13 +60,20 @@ def send_whatsapp_message(to_number, message):
     try:
         response = requests.post(url, json=payload, headers=headers, timeout=15)
         print(f"[WhatsApp] Status: {response.status_code}")
-        print(f"[WhatsApp] Respuesta: {response.text}")
+        print(f"[WhatsApp] Respuesta: {response.text[:500]}")
         
         if response.status_code in [200, 201]:
-            print(f"[WhatsApp] ✅ Mensaje enviado exitosamente")
+            try:
+                resp_json = response.json()
+                if resp_json.get('error') or resp_json.get('status') == 'error':
+                    print(f"[WhatsApp] ❌ API devolvió error: {resp_json}")
+                    return False
+                print(f"[WhatsApp] ✅ Mensaje enviado exitosamente")
+            except:
+                pass
             return True
         else:
-            print(f"[WhatsApp] ❌ Error al enviar mensaje: {response.text}")
+            print(f"[WhatsApp] ❌ Error al enviar mensaje: {response.text[:300]}")
             return False
             
     except requests.exceptions.Timeout:
@@ -106,11 +113,16 @@ def get_whatsapp_qr():
                 res_data = check_res.json()
                 instances = res_data if isinstance(res_data, list) else res_data.get('instances', [])
                 
+                print(f"[WA] Instancias encontradas: {[i.get('instanceName', i.get('instance', {}).get('instanceName', 'unknown')) for i in instances]}")
+                
                 for inst in instances:
-                    if inst.get('instanceName') == clean_name or inst.get('instance', {}).get('instanceName') == clean_name:
+                    inst_name = inst.get('instanceName') or inst.get('instance', {}).get('instanceName', '')
+                    if inst_name == clean_name:
                         exists = True
-                        # Verificar si ya está conectada
+                        # Verificar estado de conexión
                         state = inst.get('state') or inst.get('instance', {}).get('state')
+                        print(f"[WA] Instancia '{clean_name}' encontrada, estado: {state}")
+                        
                         if state == 'open':
                             print(f"[WA] Instancia ya conectada")
                             return {"success": True, "instance": {"state": "open"}, "message": "WhatsApp ya está conectado"}
@@ -136,7 +148,7 @@ def get_whatsapp_qr():
              
             if create_res.status_code not in [200, 201, 403, 409]:
                 return {"success": False, "message": f"Error al crear instancia: {create_res.text[:100]}"}
-                 
+             
             time.sleep(3)
   
     except Exception as e:
@@ -161,17 +173,37 @@ def get_whatsapp_qr():
         
         data = res.json()
         
-        # Evolution API puede devolver diferentes formatos
-        # Formato 1: {"base64": "data:image/png;base64,..."}
-        # Formato 2: {"qrcode": {"base64": "..."}}
-        # Formato 3: {"code": "...", "base64": "..."}
+        print(f"[WA] Datos recibidos del QR: {list(data.keys())}")
         
+        # Evolution API v2.3.7 puede devolver diferentes formatos:
+        # Formato 1: {"base64": "data:image/png;base64,..."}
+        # Formato 2: {"code": "...", "base64": "data:image/png;base64,..."}
+        # Formato 3: {"instance": {"instanceName": "...", "state": "connecting"}, "code": "...", "base64": "..."}
+        # Formato 4: {"qrcode": {"base64": "..."}}
+        
+        # Caso 1: ya está conectado
+        if 'instance' in data and data.get('instance', {}).get('state') == 'open':
+            return {"success": True, "instance": {"state": "open"}, "message": "WhatsApp ya está conectado"}
+        
+        # Caso 2: viene base64 directo
         if 'base64' in data:
-            return {"success": True, "base64": data['base64']}
-        elif 'qrcode' in data and isinstance(data['qrcode'], dict) and 'base64' in data['qrcode']:
-            return {"success": True, "base64": data['qrcode']['base64']}
-        elif 'code' in data:
-            # Si viene el código del QR, generar la imagen
+            b64 = data['base64']
+            if b64 and len(b64) > 50:
+                if not b64.startswith('data:'):
+                    b64 = f"data:image/png;base64,{b64}"
+                return {"success": True, "base64": b64}
+        
+        # Caso 3: viene dentro de qrcode object
+        if 'qrcode' in data and isinstance(data['qrcode'], dict):
+            b64 = data['qrcode'].get('base64', '')
+            if b64 and len(b64) > 50:
+                if not b64.startswith('data:'):
+                    b64 = f"data:image/png;base64,{b64}"
+                return {"success": True, "base64": b64}
+        
+        # Caso 4: viene solo el code (generar QR manualmente)
+        if 'code' in data and data['code']:
+            print(f"[WA] Generando QR manualmente desde code")
             qr = qrcode.QRCode(version=1, box_size=10, border=5)
             qr.add_data(data['code'])
             qr.make(fit=True)
@@ -182,9 +214,16 @@ def get_whatsapp_qr():
             img_str = base64.b64encode(buffer.getvalue()).decode()
             
             return {"success": True, "base64": f"data:image/png;base64,{img_str}"}
-        else:
-            print(f"[WA] Formato de respuesta no reconocido: {data}")
-            return {"success": False, "message": "Formato de respuesta no reconocido. Verifica la configuración de Evolution API."}
+        
+        # Caso 5: instancia en estado connecting/close pero sin QR todavía
+        if 'instance' in data:
+            state = data['instance'].get('state', 'desconocido')
+            print(f"[WA] Instancia en estado '{state}', sin QR disponible aún")
+            return {"success": False, "message": f"Instancia en estado '{state}'. Espera unos segundos e intenta de nuevo."}
+        
+        # Si nada funcionó, imprimir debug y devolver error
+        print(f"[WA] Formato de respuesta no reconocido: {data}")
+        return {"success": False, "message": "Formato de respuesta no reconocido. Verifica la configuración de Evolution API."}
               
     except requests.exceptions.Timeout:
         return {"success": False, "message": "Tiempo de espera agotado. El servidor de WhatsApp no responde."}

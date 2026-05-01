@@ -346,7 +346,31 @@ def get_wa_qr():
     except Exception as e:
         print(f"DEBUG: Error en ruta /whatsapp/qr: {str(e)}")
         return jsonify({'success': False, 'message': f"Error interno: {str(e)}"}), 500
-        return jsonify({'success': False, 'message': f"Error interno: {str(e)}"}), 200
+
+@api_bp.route('/whatsapp/test-message', methods=['POST'])
+@login_required
+def send_wa_test_message():
+    try:
+        data = request.get_json(silent=True) or {}
+        phone = data.get('phone', '').strip()
+        message = data.get('message', '').strip()
+        
+        if not phone:
+            return jsonify({'success': False, 'message': 'El número es requerido'}), 400
+        
+        if not message:
+            return jsonify({'success': False, 'message': 'El mensaje es requerido'}), 400
+        
+        from app.whatsapp_service import send_whatsapp_message
+        result = send_whatsapp_message(phone, message)
+        
+        if result:
+            return jsonify({'success': True, 'message': 'Mensaje enviado correctamente'})
+        else:
+            return jsonify({'success': False, 'message': 'No se pudo enviar el mensaje. Verifica que WhatsApp esté vinculado.'}), 500
+    except Exception as e:
+        print(f"DEBUG: Error en /whatsapp/test-message: {str(e)}")
+        return jsonify({'success': False, 'message': f"Error interno: {str(e)}"}), 500
 
 @api_bp.route('/health')
 def health():

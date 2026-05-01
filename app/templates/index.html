@@ -698,6 +698,20 @@
         </div>
         <div id="waStatusMsg" style="font-size:13px;text-align:center;padding:10px;color:var(--gold);display:none"></div>
         <button class="save-btn ghost" id="btnShowQr" onclick="loadWaQr()" style="border:1px solid #25d366;color:#25d366;margin-top:10px">🔗 Vincular WhatsApp (QR)</button>
+
+        <!-- Enviar mensaje de prueba -->
+        <div style="margin-top:20px;padding-top:15px;border-top:1px solid rgba(37,211,102,0.2)">
+          <h4 style="color:#25d366;font-size:14px;margin-bottom:10px">💬 Enviar mensaje de prueba</h4>
+          <div class="fg" style="margin-bottom:10px">
+            <label class="flabel">Número de destino</label>
+            <input class="ei" id="waTestPhone" placeholder="573100000000">
+          </div>
+          <div class="fg" style="margin-bottom:10px">
+            <label class="flabel">Mensaje</label>
+            <textarea class="ei" id="waTestMsg" rows="3" placeholder="Hola, esta es una prueba de WhatsApp"></textarea>
+          </div>
+          <button class="save-btn" onclick="sendWaTestMsg()" style="background:#25d366">📤 Enviar mensaje de prueba</button>
+        </div>
       </div>
 
       <!-- REINICIAR DASHBOARD -->

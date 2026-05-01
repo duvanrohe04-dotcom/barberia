@@ -1378,6 +1378,34 @@ async function loadWaQr(){
     btn.textContent = '🔗 Vincular WhatsApp (QR)';
   }
 }
+
+async function sendWaTestMsg(){
+  const phone = document.getElementById('waTestPhone').value.trim();
+  const msg = document.getElementById('waTestMsg').value.trim();
+  
+  if(!phone){ showToast('📱 Ingresa un número de teléfono','neutral'); return; }
+  if(!msg){ showToast('📝 Escribe un mensaje','neutral'); return; }
+  
+  try {
+    const res = await fetch('/api/whatsapp/test-message', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({phone, message: msg})
+    });
+    
+    const data = await res.json();
+    
+    if(data.success){
+      showToast('✅ ' + data.message, 'ok');
+      document.getElementById('waTestMsg').value = '';
+    } else {
+      showToast('❌ ' + (data.message || 'Error al enviar'), 'error');
+    }
+  } catch(e){
+    showToast('❌ Error de conexión: ' + e.message, 'error');
+  }
+}
+
 function applyConfig(){ const el=document.getElementById('footerInfo'); if(el) el.textContent=cfg.ubicacion+' | 📞 '+cfg.telefono; }
 function openWa(e){
   const num = cfg.wa.replace(/\D/g,'');
