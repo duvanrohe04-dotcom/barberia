@@ -28,7 +28,7 @@ services:
       - REDIS_PORT=6379
       - REDIS_PASSWORD=barberking_redis_password
     ports:
-      - "8080:8080"
+      - "8085:8080"
     depends_on:
       - redis
 
