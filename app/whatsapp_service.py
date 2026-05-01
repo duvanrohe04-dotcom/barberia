@@ -19,10 +19,18 @@ def send_whatsapp_message(to_number, message):
     # Limpiar y formatear el número
     phone = str(to_number).strip().replace(' ', '').replace('+', '').replace('-', '').replace('(', '').replace(')', '')
     
+    print(f"[WhatsApp] Número original: {to_number}")
+    print(f"[WhatsApp] Número limpio: {phone}")
+    
     # Si es un número de 10 dígitos (Colombia), agregar código de país
     # Validar que no empiece ya con 57
     if len(phone) == 10 and not phone.startswith('57'):
         phone = '57' + phone
+        print(f"[WhatsApp] Agregado código de país: {phone}")
+    elif len(phone) == 12 and phone.startswith('57'):
+        print(f"[WhatsApp] Número ya tiene código de país: {phone}")
+    else:
+        print(f"[WhatsApp] ⚠️ Formato de número inusual: longitud={len(phone)}, valor={phone}")
     
     # Evolution API requiere el formato: número@s.whatsapp.net
     if not phone.endswith('@s.whatsapp.net'):
@@ -39,15 +47,13 @@ def send_whatsapp_message(to_number, message):
         'apikey': EVOLUTION_API_KEY
     }
     
+    # Evolution API v2.x requiere el formato simplificado
     payload = {
         "number": phone,
+        "text": message,
         "options": {
             "delay": 1200,
-            "presence": "composing",
-            "linkPreview": False
-        },
-        "textMessage": {
-            "text": message
+            "presence": "composing"
         }
     }
     
@@ -190,15 +196,20 @@ def get_whatsapp_qr():
 
 def notify_admin_new_appointment(appt, shop_name):
     """Envía notificación de nueva cita al empleado o admin."""
+    print(f"[WhatsApp] ========================================")
     print(f"[WhatsApp] Iniciando notificación de nueva cita")
     print(f"[WhatsApp] Cliente: {appt.client_name}")
     print(f"[WhatsApp] Empleado: {appt.staff_name}")
+    print(f"[WhatsApp] Servicio: {appt.service_name}")
+    print(f"[WhatsApp] Fecha: {appt.date} - Hora: {appt.time}")
     
     # Formatear el total correctamente
     try:
         total_formatted = f"${float(appt.total.replace('$', '').replace(',', '')):,.0f}" if appt.total else "$0"
     except:
         total_formatted = appt.total or "$0"
+    
+    print(f"[WhatsApp] Total formateado: {total_formatted}")
     
     msg = (
         f"🚨 *NUEVA RESERVACIÓN* 💈\n\n"
@@ -211,27 +222,38 @@ def notify_admin_new_appointment(appt, shop_name):
         f"Te han agendado una cita en *{shop_name}*."
     )
     
+    print(f"[WhatsApp] Mensaje preparado (primeros 100 chars): {msg[:100]}")
+    
     from app.models import Staff, ShopConfig
     to = None
     staff = Staff.query.filter_by(name=appt.staff_name).first()
     
+    if staff:
+        print(f"[WhatsApp] Empleado encontrado en BD: {staff.name}")
+        print(f"[WhatsApp] Teléfono del empleado: {staff.phone if staff.phone else 'NO CONFIGURADO'}")
+    else:
+        print(f"[WhatsApp] ⚠️ Empleado NO encontrado en BD: {appt.staff_name}")
+    
     if staff and staff.phone:
         to = staff.phone
-        print(f"[WhatsApp] Enviando a empleado: {staff.name} - {to}")
+        print(f"[WhatsApp] ✅ Enviando a empleado: {staff.name} - {to}")
     else:
         admin_wa = ShopConfig.query.filter_by(key='wa').first()
         to = admin_wa.value if admin_wa and admin_wa.value else os.environ.get('ADMIN_PHONE')
-        print(f"[WhatsApp] Empleado sin teléfono, enviando a admin: {to}")
+        print(f"[WhatsApp] ⚠️ Empleado sin teléfono, enviando a admin: {to}")
     
     if to:
+        print(f"[WhatsApp] Número destino final: {to}")
         result = send_whatsapp_message(to, msg)
         if result:
             print(f"[WhatsApp] ✅ Notificación enviada exitosamente")
         else:
             print(f"[WhatsApp] ❌ Falló el envío de notificación")
+        print(f"[WhatsApp] ========================================")
         return result
     else:
         print(f"[WhatsApp] ❌ No hay número de teléfono configurado")
+        print(f"[WhatsApp] ========================================")
         return False
 
 def send_reminder_to_client(appt, shop_name):

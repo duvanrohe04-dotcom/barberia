@@ -241,13 +241,18 @@ def create_appointment():
 
     # --- NOTIFICACIÓN AUTOMÁTICA WHATSAPP ---
     try:
+        print(f"[WhatsApp] Intentando enviar notificación para cita ID: {appt.id}")
         from app.whatsapp_service import notify_admin_new_appointment
         from app.models import ShopConfig
         name_row = ShopConfig.query.filter_by(key='shop_name').first()
         s_name = name_row.value if name_row and name_row.value else 'Barbería'
-        notify_admin_new_appointment(appt, s_name)
+        print(f"[WhatsApp] Nombre de la tienda: {s_name}")
+        result = notify_admin_new_appointment(appt, s_name)
+        print(f"[WhatsApp] Resultado de notificación: {result}")
     except Exception as e:
-        print(f"[WhatsApp] Error en notificación inicial: {e}")
+        print(f"[WhatsApp] ❌ Error en notificación inicial: {e}")
+        import traceback
+        traceback.print_exc()
     # ----------------------------------------
 
     return jsonify({'success': True, 'appointment': _appt_dict(appt)}), 201
