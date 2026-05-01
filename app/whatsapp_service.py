@@ -53,64 +53,54 @@ def get_whatsapp_qr():
     from app.models import ShopConfig
     inst_row = ShopConfig.query.filter_by(key='evo_instance').first()
     instance_name = inst_row.value if inst_row and inst_row.value else 'barberking'
-
-    # Ruta directa y Llave Maestra
-    BASE_URL = "http://evolution_api:8080"
-    API_KEY = "barberking_secret_key"
-    
-    # Ruta y Llave Maestra
-    BASE_URL = "http://evolution_api:8080"
-    API_KEY = "barberking_secret_key"
     clean_name = instance_name.strip().lower()
+
+    # Usar las variables globales configuradas por ENV (o valores por defecto)
+    base_url = EVOLUTION_BASE_URL
+    api_key = EVOLUTION_API_KEY
     
     headers = {
-        'apikey': API_KEY,
-        'apiKey': API_KEY,
+        'apikey': api_key,
         'Content-Type': 'application/json'
     }
     
     # 1. Verificar/Crear instancia con máxima compatibilidad
     try:
-        # Probamos con todos los cabezales posibles
-        headers = {
-            'apikey': API_KEY,
-            'apiKey': API_KEY,
-            'Authorization': f'Bearer {API_KEY}',
-            'Content-Type': 'application/json'
-        }
-        
         # Primero intentamos listar para ver si existe
-        check_res = requests.get(f"{BASE_URL}/instance/fetchInstances", headers=headers, timeout=10)
-        instances = []
+        check_res = requests.get(f"{base_url}/instance/fetchInstances", headers=headers, timeout=10)
+        exists = False
         if check_res.status_code == 200:
             try: 
                 res_data = check_res.json()
-                instances = res_data if isinstance(res_data, list) else []
+                # Evolution API puede devolver una lista o un objeto con la propiedad 'instances'
+                instances = res_data if isinstance(res_data, list) else res_data.get('instances', [])
+                if any(inst.get('instanceName') == clean_name for inst in instances):
+                    exists = True
             except: 
-                instances = []
+                exists = False
             
-        if not any(inst.get('instanceName') == clean_name for inst in instances):
+        if not exists:
             # No existe, la creamos
             print(f"[WA] Creando instancia '{clean_name}'...")
-            payload = {"instanceName": clean_name, "token": API_KEY, "qrcode": True}
-            create_res = requests.post(f"{BASE_URL}/instance/create", json=payload, headers=headers, timeout=15)
+            payload = {"instanceName": clean_name, "token": api_key, "qrcode": True}
+            create_res = requests.post(f"{base_url}/instance/create", json=payload, headers=headers, timeout=15)
             
             if create_res.status_code not in [200, 201, 403, 409]:
-                return {"success": False, "message": f"Error al crear: {create_res.text[:50]}"}
+                return {"success": False, "message": f"Error al crear: {create_res.text[:100]}"}
                 
             import time
-            time.sleep(5) # Tiempo extra para persistencia en DB
+            time.sleep(3) # Breve espera para persistencia
 
     except Exception as e:
         print(f"[WA] Error en pre-vuelo: {e}")
 
     # 2. Conectar / Obtener QR
-    qr_url = f"{BASE_URL}/instance/connect/{clean_name}"
+    qr_url = f"{base_url}/instance/connect/{clean_name}"
     try:
         res = requests.get(qr_url, headers=headers, timeout=25)
         
         if res.status_code == 404:
-            return {"success": False, "message": f"Instancia '{clean_name}' no encontrada. Respuesta del motor: {res.text[:50]}"}
+            return {"success": False, "message": f"Instancia '{clean_name}' no encontrada."}
         
         if res.status_code != 200:
             return {"success": False, "message": f"Error {res.status_code}: {res.text[:100]}"}
