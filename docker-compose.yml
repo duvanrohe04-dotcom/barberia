@@ -2,7 +2,6 @@ version: '3.9'
 services:
   web:
     build: .
-    container_name: barberking_web
     restart: always
     env_file: .env
     environment:
@@ -22,9 +21,14 @@ services:
       - barber_net
 
   evolution_api:
-    image: evoapicloud/evolution-api:latest
-    container_name: evolution_api
+    image: evoapicloud/evolution-api:v2.3.7
     restart: always
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
     environment:
       - TZ=America/Bogota
       - AUTHENTICATION_TYPE=apikey
@@ -39,25 +43,33 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=
+      - REDIS_DATABASE=0
+      - CACHE_TTL=604800
+      - CACHE_REDIS_PREFIX=evolution
     ports:
       - "8085:8080"
     depends_on:
-      - redis
-      - postgres
+      redis:
+        condition: service_started
+      postgres:
+        condition: service_started
     networks:
       - barber_net
 
   redis:
-    image: redis:alpine
-    container_name: barberking_redis
+    image: redis:7-alpine
     restart: always
-    command: redis-server
+    command: redis-server --appendonly yes --requirepass ""
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - barber_net
 
   postgres:
     image: postgres:15-alpine
-    container_name: barberking_postgres
     restart: always
     environment:
       - POSTGRES_USER=barber_user
@@ -65,6 +77,11 @@ services:
       - POSTGRES_DB=evolution_db
     volumes:
       - barberking_wa_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U barber_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - barber_net
 
@@ -74,8 +91,5 @@ networks:
 
 volumes:
   barberking_db:
-    driver: local
   barberking_uploads:
-    driver: local
   barberking_wa_db:
-    driver: local
