@@ -52,7 +52,11 @@ def weekly_reset(app):
             print(f"[Reset semanal] Dashboard reiniciado correctamente\n")
     except Exception as e:
         print(f"[Reset semanal] Error: {str(e)}\n")
-        db.session.rollback()
+        try:
+            with app.app_context():
+                db.session.rollback()
+        except Exception:
+            pass
 
 
 def complete_expired_appointments(app):
@@ -98,7 +102,11 @@ def complete_expired_appointments(app):
                 print(f"[Auto-completar] {completed_count} cita(s) completada(s) automáticamente")
     except Exception as e:
         print(f"[Auto-completar] Error: {str(e)}")
-        db.session.rollback()
+        try:
+            with app.app_context():
+                db.session.rollback()
+        except Exception:
+            pass
 
 
 def send_appointment_reminders(app):
@@ -148,8 +156,12 @@ def send_appointment_reminders(app):
                 db.session.commit()
                 print(f"[Recordatorios] {sent_count} recordatorio(s) enviado(s) automáticamente")
     except Exception as e:
+        try:
+            with app.app_context():
+                db.session.rollback()
+        except Exception:
+            pass
         print(f"[Recordatorios] Error: {str(e)}")
-        db.session.rollback()
 
 
 _scheduler = None
