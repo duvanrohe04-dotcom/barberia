@@ -325,6 +325,10 @@ def get_wa_qr():
     from app.whatsapp_service import get_whatsapp_qr
     return jsonify(get_whatsapp_qr())
 
+@api_bp.route('/health')
+def health():
+    return jsonify({'status': 'ok'}), 200
+
 
 @api_bp.route('/appointments/<int:appt_id>', methods=['DELETE'])
 @login_required
