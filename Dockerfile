@@ -25,12 +25,9 @@ COPY . .
 # Los datos reales vienen del volumen Docker, no del código
 RUN rm -f /app/instance/*.db /app/instance/*.sqlite3
 
-# Crear carpetas que serán montadas como volúmenes
-RUN mkdir -p /app/instance /app/app/static/uploads
-
-# Usuario no-root por seguridad
-RUN useradd -m appuser && chown -R appuser /app
-USER appuser
+# Crear directorios necesarios y dar permisos
+RUN mkdir -p /app/instance /app/app/static/uploads && \
+    chmod -R 777 /app/instance /app/app/static/uploads
 
 EXPOSE 81
 
