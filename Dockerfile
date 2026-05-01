@@ -11,7 +11,7 @@ WORKDIR /app
 
 # Dependencias del sistema
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq-dev gcc curl su-exec && \
+    libpq-dev gcc curl && \
     rm -rf /var/lib/apt/lists/*
 
 # Instalar dependencias Python
