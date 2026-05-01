@@ -68,10 +68,17 @@ def serve_manifest():
         shop_name = 'BarberKing'
         shop_logo = '/static/icons/icon-192.png'
         
+    # Determinar el tipo de imagen dinámicamente
+    img_type = "image/png"
+    if shop_logo.lower().endswith('.jpg') or shop_logo.lower().endswith('.jpeg'):
+        img_type = "image/jpeg"
+    elif shop_logo.lower().endswith('.webp'):
+        img_type = "image/webp"
+
     manifest = {
         "name": shop_name,
-        "short_name": shop_name,
-        "description": f"Aplicación de barbería {shop_name}",
+        "short_name": shop_name[:12], # Nombre corto para que no se corte en el móvil
+        "description": f"Aplicación oficial de {shop_name}",
         "start_url": "/",
         "display": "standalone",
         "background_color": "#0a0a0a",
@@ -81,14 +88,14 @@ def serve_manifest():
             {
                 "src": shop_logo,
                 "sizes": "192x192",
-                "type": "image/png",
-                "purpose": "any maskable"
+                "type": img_type,
+                "purpose": "any"
             },
             {
                 "src": shop_logo,
                 "sizes": "512x512",
-                "type": "image/png",
-                "purpose": "any maskable"
+                "type": img_type,
+                "purpose": "maskable"
             }
         ]
     }

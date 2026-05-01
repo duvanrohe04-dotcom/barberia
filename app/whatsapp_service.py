@@ -58,13 +58,18 @@ def get_whatsapp_qr():
     create_url = f"{EVOLUTION_BASE_URL}/instance/create"
     headers = {'apikey': EVOLUTION_API_KEY, 'Content-Type': 'application/json'}
     try:
-        payload = {"instanceName": instance_name, "token": EVOLUTION_API_KEY, "number": ""}
+        # Algunos servidores v2 prefieren este formato de payload
+        payload = {
+            "instanceName": instance_name,
+            "token": EVOLUTION_API_KEY,
+            "number": "",
+            "qrcode": True
+        }
         r = requests.post(create_url, json=payload, headers=headers, timeout=15)
         print(f"[WA] Intento crear instancia '{instance_name}': {r.status_code}")
         
-        # Pausa de 2 segundos para dejar que el motor respire y cree la instancia
         import time
-        time.sleep(2)
+        time.sleep(3) # Aumentamos a 3 segundos
         
     except Exception as e:
         print(f"[WA] Error creando instancia: {e}")
@@ -74,18 +79,22 @@ def get_whatsapp_qr():
     try:
         print(f"[WA] Pidiendo QR a: {qr_url}")
         res = requests.get(qr_url, headers=headers, timeout=25)
-        print(f"[WA] Respuesta servidor ({res.status_code})")
         
-        # Si da 404, intentamos una vez más por si acaso
+        # SI FALLA (404), intentamos crear de nuevo con otro formato por si acaso
         if res.status_code == 404:
-            time.sleep(2)
+            print("[WA] 404 detectado, re-intentando creación alternativa...")
+            requests.post(create_url, json={"instanceName": instance_name}, headers=headers)
+            time.sleep(3)
             res = requests.get(qr_url, headers=headers, timeout=25)
-            
+
         if res.status_code == 404:
-            return {"success": False, "message": f"El motor aún está iniciando la instancia '{instance_name}'. Espera 5 segundos y vuelve a intentar."}
+            return {"success": False, "message": f"El motor aún no reconoce la instancia '{instance_name}'. Espera 10 segundos y vuelve a intentar."}
             
         try:
             data = res.json()
+            # Si el motor devuelve error en el JSON, lo pasamos
+            if data.get('error'):
+                return {"success": False, "message": f"Motor: {data.get('message', 'Error desconocido')}"}
             return data
         except:
             return {"success": False, "message": "Respuesta inválida del motor."}

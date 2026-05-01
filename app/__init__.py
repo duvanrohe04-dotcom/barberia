@@ -235,11 +235,12 @@ def create_app():
         }
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-    app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FLASK_ENV') == 'production'
+    app.config['SESSION_COOKIE_SECURE'] = True  # Forzamos True ya que usas HTTPS
     app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
     app.config['REMEMBER_COOKIE_DURATION'] = timedelta(days=30)
-    app.config['REMEMBER_COOKIE_SECURE'] = app.config['SESSION_COOKIE_SECURE']
+    app.config['REMEMBER_COOKIE_SECURE'] = True
     app.config['REMEMBER_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_PERMANENT'] = True
 
     # ── Extensiones ────────────────────────────────────────────
     db.init_app(app)
