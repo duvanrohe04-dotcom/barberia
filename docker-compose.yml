@@ -32,6 +32,7 @@ services:
       - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql
       - DATABASE_CONNECTION_URI=postgresql://barber_user:barber_pass@postgres:5432/evolution_db?sslmode=disable
+      - SERVER_URL=http://localhost:8085
       - REDIS_ENABLED=true
       - REDIS_HOST=redis
       - REDIS_PORT=6379

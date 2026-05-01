@@ -49,24 +49,30 @@ def send_whatsapp_message(to_number, message):
         return False
 
 def get_whatsapp_qr():
-    """Obtiene el QR o el estado de la conexión desde Evolution API."""
+    """Obtiene el QR o el estado de la conexión."""
     from app.models import ShopConfig
     inst_row = ShopConfig.query.filter_by(key='evo_instance').first()
     instance_name = inst_row.value if inst_row and inst_row.value else 'barberking'
 
-    # 1. Intentar crear la instancia por si no existe
+    # 1. Crear instancia
     create_url = f"{EVOLUTION_BASE_URL}/instance/create"
     headers = {'apikey': EVOLUTION_API_KEY, 'Content-Type': 'application/json'}
     try:
-        requests.post(create_url, json={"instanceName": instance_name}, headers=headers, timeout=5)
-    except: pass
+        r = requests.post(create_url, json={"instanceName": instance_name}, headers=headers, timeout=10)
+        print(f"[WA] Intento crear instancia '{instance_name}': {r.status_code}")
+    except Exception as e:
+        print(f"[WA] Error creando instancia: {e}")
 
-    # 2. Obtener el QR
+    # 2. Conectar / Obtener QR
     qr_url = f"{EVOLUTION_BASE_URL}/instance/connect/{instance_name}"
     try:
-        res = requests.get(qr_url, headers=headers, timeout=10)
-        return res.json() # Retorna el JSON con el base64 del QR o el estado
+        print(f"[WA] Pidiendo QR a: {qr_url}")
+        res = requests.get(qr_url, headers=headers, timeout=20)
+        print(f"[WA] Respuesta QR: {res.status_code}")
+        data = res.json()
+        return data
     except Exception as e:
+        print(f"[WA] Error pidiendo QR: {e}")
         return {"success": False, "message": str(e)}
 
 def notify_admin_new_appointment(appt, shop_name):
