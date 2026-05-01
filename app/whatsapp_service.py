@@ -54,11 +54,13 @@ def get_whatsapp_qr():
     inst_row = ShopConfig.query.filter_by(key='evo_instance').first()
     instance_name = inst_row.value if inst_row and inst_row.value else 'barberking'
 
-    # 1. Crear instancia
+    # 1. Crear instancia (si no existe)
     create_url = f"{EVOLUTION_BASE_URL}/instance/create"
     headers = {'apikey': EVOLUTION_API_KEY, 'Content-Type': 'application/json'}
     try:
-        r = requests.post(create_url, json={"instanceName": instance_name}, headers=headers, timeout=10)
+        # En v2 a veces pide token y number aunque sean vacíos
+        payload = {"instanceName": instance_name, "token": EVOLUTION_API_KEY, "number": ""}
+        r = requests.post(create_url, json=payload, headers=headers, timeout=15)
         print(f"[WA] Intento crear instancia '{instance_name}': {r.status_code}")
     except Exception as e:
         print(f"[WA] Error creando instancia: {e}")
