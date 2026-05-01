@@ -1,12 +1,11 @@
-version: '3.9'
 services:
   web:
     build: .
     restart: always
-    env_file: .env
+    user: root
     environment:
       - TZ=America/Bogota
-      - DATABASE_URL=sqlite:///app/instance/barberking.db
+      - DATABASE_URL=sqlite:////app/instance/barberking.db
       - FLASK_ENV=production
       - SECRET_KEY=barberking_super_secret_key_fixed
       - EVOLUTION_API_URL=http://evolution_api:8080
@@ -36,18 +35,13 @@ services:
       - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
       - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=postgresql://barber_user:barber_pass@postgres:5432/evolution_db?sslmode=disable
+      - "DATABASE_CONNECTION_URI=postgresql://barber_user:barber_pass@postgres:5432/evolution_db?sslmode=disable"
       - DATABASE_SAVE_DATA_INSTANCE=true
       - SERVER_URL=https://jsbarbershopcol.sbs.mom
       - REDIS_ENABLED=true
       - REDIS_URI=redis://redis:6379/0
       - CACHE_TTL=604800
       - CACHE_REDIS_PREFIX=evolution
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
     ports:
       - "8085:8080"
     depends_on:
