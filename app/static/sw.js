@@ -1,4 +1,4 @@
-const CACHE_NAME = 'barberking-v48';
+const CACHE_NAME = 'barberking-v49';
 const urlsToCache = [
   '/',
   '/static/css/style.css?v=47',
@@ -20,6 +20,7 @@ self.addEventListener('fetch', event => {
   // Ignorar requests que no sean GET o sean de extensiones
   if (event.request.method !== 'GET') return;
   if (event.request.url.startsWith('chrome-extension://')) return;
+  if (event.request.url.includes('/api/')) return;
 
   event.respondWith(
     // Siempre intentar red primero, caché como fallback
