@@ -9,6 +9,9 @@ let srvImgBuf={}, brbImgBuf={}, styImgBuf={}, srvFImgBuf={};
 
 // ══ INIT ═══════════════════════════════════════════════════════
 async function init(){
+  // Verificar si hay sesión activa de administrador
+  await checkSession();
+  
   await Promise.all([
     loadServices('male'),
     loadServices('female'),
@@ -26,6 +29,21 @@ async function init(){
   if(heroStaff) heroStaff.textContent = (barbers.length + stylists.length) + '+';
   document.getElementById('bDate').min = new Date().toISOString().split('T')[0];
   setupNavDots();
+}
+
+async function checkSession(){
+  try {
+    const res = await fetch('/auth/check-session');
+    const data = await res.json();
+    if(data.authenticated){
+      // Restaurar vista de administrador
+      document.getElementById('adminKeyBtn').style.display='none';
+      document.getElementById('adminZone').style.display='flex';
+      switchView('admin');
+    }
+  } catch(e) {
+    console.log('No hay sesión activa');
+  }
 }
 
 let genderIcons = { male: null, female: null };

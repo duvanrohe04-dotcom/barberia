@@ -590,7 +590,42 @@ footer,.wave,.sep{position:relative;z-index:1}
 }
 
 @media(max-width:600px){
+  /* Ajustar ribbon para móvil */
+  .ribbon-inner{
+    padding: 10px 15px;
+    gap: 10px;
+  }
   
+  .ribbon-brand{
+    font-size: 16px;
+    gap: 8px;
+  }
+  
+  .ribbon-logo-wrap{
+    width: 28px;
+    height: 28px;
+    font-size: 18px;
+  }
+  
+  .ribbon-right{
+    gap: 8px;
+    margin-top: 0;
+  }
+  
+  .rbtn{
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  
+  #adminKeyBtn{
+    font-size: 12px !important;
+    padding: 4px 6px !important;
+  }
+  
+  .admin-badge{
+    padding: 3px 8px;
+    font-size: 11px;
+  }
 }
 
 

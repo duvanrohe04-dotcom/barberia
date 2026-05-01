@@ -233,12 +233,17 @@ def create_app():
             'connect_args': {'check_same_thread': False},
             'pool_pre_ping': True,
         }
+    
+    # Configuración de sesiones y cookies
+    # En desarrollo (localhost), permitir cookies sin HTTPS
+    is_production = os.environ.get('FLASK_ENV') == 'production' or os.environ.get('DATABASE_URL', '').startswith('postgresql')
+    
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-    app.config['SESSION_COOKIE_SECURE'] = True  # Forzamos True ya que usas HTTPS
+    app.config['SESSION_COOKIE_SECURE'] = is_production  # Solo HTTPS en producción
     app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
     app.config['REMEMBER_COOKIE_DURATION'] = timedelta(days=30)
-    app.config['REMEMBER_COOKIE_SECURE'] = True
+    app.config['REMEMBER_COOKIE_SECURE'] = is_production  # Solo HTTPS en producción
     app.config['REMEMBER_COOKIE_HTTPONLY'] = True
     app.config['SESSION_PERMANENT'] = True
 

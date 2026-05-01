@@ -37,6 +37,14 @@ def logout():
     return jsonify({'success': True})
 
 
+@auth_bp.route('/check-session', methods=['GET'])
+def check_session():
+    """Verificar si hay una sesión activa de administrador."""
+    if current_user.is_authenticated:
+        return jsonify({'authenticated': True, 'username': current_user.username})
+    return jsonify({'authenticated': False})
+
+
 @auth_bp.route('/update-credentials', methods=['POST'])
 @login_required
 def update_credentials():
