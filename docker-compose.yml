@@ -19,6 +19,8 @@ services:
     command: gunicorn --bind 0.0.0.0:81 --workers 2 --threads 2 --timeout 60 --preload run:app
     depends_on:
       - evolution_api
+    networks:
+      - barber_net
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:81/api/health')"]
       interval: 30s
@@ -37,7 +39,7 @@ services:
       - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql
       - DATABASE_CONNECTION_URI=postgresql://barber_user:barber_pass@postgres:5432/evolution_db?sslmode=disable
-      - SERVER_URL=http://localhost:8085
+      - SERVER_URL=https://jsbarbershopcol.sbs.mom
       - REDIS_ENABLED=true
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -47,6 +49,8 @@ services:
     depends_on:
       - redis
       - postgres
+    networks:
+      - barber_net
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/"]
       interval: 30s
@@ -59,6 +63,8 @@ services:
     container_name: barberking_redis
     restart: always
     command: redis-server --requirepass barberking_redis_password
+    networks:
+      - barber_net
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "barberking_redis_password", "ping"]
       interval: 30s
@@ -75,11 +81,17 @@ services:
       - POSTGRES_DB=evolution_db
     volumes:
       - barberking_wa_db:/var/lib/postgresql/data
+    networks:
+      - barber_net
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U barber_user -d evolution_db"]
       interval: 30s
       timeout: 10s
       retries: 3
+
+networks:
+  barber_net:
+    driver: bridge
 
 volumes:
   barberking_db:

@@ -368,9 +368,9 @@ def _migrate_db():
         ('ig_sty', ''),
         ('evo_instance', 'barberking')
     ]
-    for key, val in default_configs:
-        if not ShopConfig.query.filter_by(key=key).first():
-            db.session.add(ShopConfig(key=key, value=val))
+    for k in ['shop_name', 'shop_logo', 'wa_sty', 'ig_sty', 'evo_instance']:
+        if not ShopConfig.query.filter_by(key=k).first():
+            db.session.add(ShopConfig(key=k, value='jsbarbershop' if k=='evo_instance' else ''))
     db.session.commit()
 
     # 4. Verificar y crear tablas críticas...

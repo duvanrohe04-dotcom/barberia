@@ -67,13 +67,21 @@ def get_whatsapp_qr():
     qr_url = f"{EVOLUTION_BASE_URL}/instance/connect/{instance_name}"
     try:
         print(f"[WA] Pidiendo QR a: {qr_url}")
-        res = requests.get(qr_url, headers=headers, timeout=20)
-        print(f"[WA] Respuesta QR: {res.status_code}")
-        data = res.json()
-        return data
+        res = requests.get(qr_url, headers=headers, timeout=25)
+        print(f"[WA] Respuesta servidor ({res.status_code})")
+        
+        if res.status_code == 404:
+            return {"success": False, "message": "Instancia no encontrada en el servidor."}
+            
+        try:
+            data = res.json()
+            return data
+        except:
+            return {"success": False, "message": f"Error parseando respuesta: {res.text[:100]}"}
+            
     except Exception as e:
-        print(f"[WA] Error pidiendo QR: {e}")
-        return {"success": False, "message": str(e)}
+        print(f"[WA] Error de conexión: {e}")
+        return {"success": False, "message": f"No se pudo conectar con el motor de WhatsApp: {str(e)}"}
 
 def notify_admin_new_appointment(appt, shop_name):
     """Notifica al barbero o estilista específico de una nueva cita."""

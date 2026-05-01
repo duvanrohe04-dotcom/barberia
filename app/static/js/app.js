@@ -43,7 +43,7 @@ async function loadConfig(){
     if(data.shop_name) shopName = data.shop_name;
     if(data.shop_logo) shopLogo = data.shop_logo;
     if(data.gender_icon_female) genderIcons.female = data.gender_icon_female;
-    if(data.evo_instance) evoInstance = data.evo_instance;
+    if(data.evo_instance !== undefined) evoInstance = data.evo_instance;
     applyGenderIcons();
   }catch(e){ console.warn('Config no disponible', e); }
 }
@@ -1252,7 +1252,7 @@ function renderConfig(){
   document.getElementById('cfgIg').value=cfg.ig;
   document.getElementById('cfgWaSty').value=cfg.wa_sty||'';
   document.getElementById('cfgIgSty').value=cfg.ig_sty||'';
-  document.getElementById('cfgWaInstance').value=evoInstance||'barberking';
+  document.getElementById('cfgWaInstance').value=evoInstance;
   ['newUser','newPass','confPass'].forEach(id=>document.getElementById(id).value='');
   const m=document.getElementById('credMsg'); m.style.display='none';
 }
@@ -1310,7 +1310,8 @@ async function loadWaQr(){
       container.style.display = 'flex';
       msgDiv.style.display = 'none';
     } else {
-      showToast('❌ No se pudo generar el QR. Intenta de nuevo.','err');
+      const err = data.message || 'No se pudo generar el QR';
+      showToast(`❌ ${err}. Intenta de nuevo.`,'err');
     }
   } catch(e) {
     showToast('❌ Error de conexión con el servidor de WhatsApp','err');

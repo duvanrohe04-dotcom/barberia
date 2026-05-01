@@ -322,8 +322,13 @@ def update_appointment_status(appt_id):
 @api_bp.route('/whatsapp/qr')
 @login_required
 def get_wa_qr():
-    from app.whatsapp_service import get_whatsapp_qr
-    return jsonify(get_whatsapp_qr())
+    try:
+        from app.whatsapp_service import get_whatsapp_qr
+        result = get_whatsapp_qr()
+        return jsonify(result)
+    except Exception as e:
+        print(f"DEBUG: Error en ruta /whatsapp/qr: {str(e)}")
+        return jsonify({'success': False, 'message': f"Error interno: {str(e)}"}), 200
 
 @api_bp.route('/health')
 def health():
