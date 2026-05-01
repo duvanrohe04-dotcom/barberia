@@ -11,7 +11,7 @@ WORKDIR /app
 
 # Dependencias del sistema
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq-dev gcc curl su-exec && \
+    libpq-dev gcc curl && \
     rm -rf /var/lib/apt/lists/*
 
 # Instalar dependencias Python
@@ -22,21 +22,19 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Eliminar cualquier DB local que haya sido copiada accidentalmente
-# Los datos reales vienen del volumen Docker, no del código
 RUN rm -f /app/instance/*.db /app/instance/*.sqlite3
 
-# Crear directorios necesarios
+# Crear carpetas para volúmenes
 RUN mkdir -p /app/instance /app/app/static/uploads
 
-# Copiar entrypoint y dar permisos
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# Usuario no-root por seguridad
+RUN useradd -m appuser && chown -R appuser /app
+USER appuser
 
 EXPOSE 81
 
-# Healthcheck interno de Docker para monitorizar estado
+# Healthcheck interno
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:81/api/health || exit 1
 
-ENTRYPOINT ["/entrypoint.sh"]
 CMD ["gunicorn", "--bind", "0.0.0.0:81", "--workers", "2", "--threads", "2", "--timeout", "60", "--preload", "run:app"]
