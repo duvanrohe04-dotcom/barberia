@@ -42,6 +42,7 @@ async function loadConfig(){
     if(data.ig_sty !== undefined) cfg.ig_sty = data.ig_sty;
     if(data.shop_name) shopName = data.shop_name;
     if(data.shop_logo) shopLogo = data.shop_logo;
+    if(data.gender_icon_male) genderIcons.male = data.gender_icon_male;
     if(data.gender_icon_female) genderIcons.female = data.gender_icon_female;
     if(data.evo_instance !== undefined) evoInstance = data.evo_instance;
     applyGenderIcons();

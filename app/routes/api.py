@@ -253,7 +253,7 @@ def cancel_appointment(appt_id):
 
 
 @api_bp.route('/appointments/<int:appt_id>/complete', methods=['POST'])
-@limiter.limit("20 per minute")
+@login_required
 def complete_appointment(appt_id):
     appt = Appointment.query.get_or_404(appt_id)
     if appt.status == 'Completado':
