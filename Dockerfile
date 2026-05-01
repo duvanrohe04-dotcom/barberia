@@ -11,7 +11,7 @@ WORKDIR /app
 
 # Dependencias del sistema
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq-dev gcc && \
+    libpq-dev gcc curl && \
     rm -rf /var/lib/apt/lists/*
 
 # Instalar dependencias Python
@@ -36,6 +36,6 @@ EXPOSE 81
 
 # Healthcheck interno de Docker para monitorizar estado
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:81/health')" || exit 1
+    CMD curl -f http://localhost:81/api/health || exit 1
 
 CMD ["gunicorn", "--bind", "0.0.0.0:81", "--workers", "2", "--threads", "2", "--timeout", "60", "--preload", "run:app"]
