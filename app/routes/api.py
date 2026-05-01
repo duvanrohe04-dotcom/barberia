@@ -908,3 +908,12 @@ def reset_appointments():
             'message': f'❌ Error al reiniciar el dashboard: {str(e)}'
         }), 500
 
+@api_bp.route('/health')
+def health_check():
+    """Endpoint para monitoreo de salud del servicio."""
+    from datetime import datetime
+    return jsonify({
+        'status': 'ok',
+        'timestamp': datetime.utcnow().isoformat(),
+        'service': 'barberking_web'
+    }), 200
