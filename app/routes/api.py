@@ -659,6 +659,34 @@ def get_config():
     return jsonify({r.key: r.value for r in rows})
 
 
+@api_bp.route('/manifest.json')
+def get_manifest():
+    """Generar manifest dinámico basado en la config de la tienda."""
+    rows = ShopConfig.query.all()
+    config = {r.key: r.value for r in rows}
+    name = config.get('shop_name', 'JS Barbershop')
+    logo = config.get('shop_logo', '/static/icons/icon-512.png')
+    
+    manifest = {
+        "name": name,
+        "short_name": name,
+        "description": f"Aplicación de barbería {name}",
+        "start_url": "/",
+        "display": "standalone",
+        "background_color": "#0a0a0a",
+        "theme_color": "#d4af37",
+        "orientation": "portrait-primary",
+        "icons": [
+            {
+                "src": logo,
+                "sizes": "192x192 512x512",
+                "type": "image/png" if not logo.endswith('.jpg') else "image/jpeg",
+                "purpose": "any maskable"
+            }
+        ]
+    }
+    return jsonify(manifest)
+
 @api_bp.route('/scheduler/status', methods=['GET'])
 @login_required
 def scheduler_status():

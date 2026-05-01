@@ -58,10 +58,14 @@ def get_whatsapp_qr():
     create_url = f"{EVOLUTION_BASE_URL}/instance/create"
     headers = {'apikey': EVOLUTION_API_KEY, 'Content-Type': 'application/json'}
     try:
-        # En v2 a veces pide token y number aunque sean vacíos
         payload = {"instanceName": instance_name, "token": EVOLUTION_API_KEY, "number": ""}
         r = requests.post(create_url, json=payload, headers=headers, timeout=15)
         print(f"[WA] Intento crear instancia '{instance_name}': {r.status_code}")
+        
+        # Pausa de 2 segundos para dejar que el motor respire y cree la instancia
+        import time
+        time.sleep(2)
+        
     except Exception as e:
         print(f"[WA] Error creando instancia: {e}")
 
@@ -72,18 +76,23 @@ def get_whatsapp_qr():
         res = requests.get(qr_url, headers=headers, timeout=25)
         print(f"[WA] Respuesta servidor ({res.status_code})")
         
+        # Si da 404, intentamos una vez más por si acaso
         if res.status_code == 404:
-            return {"success": False, "message": "Instancia no encontrada en el servidor."}
+            time.sleep(2)
+            res = requests.get(qr_url, headers=headers, timeout=25)
+            
+        if res.status_code == 404:
+            return {"success": False, "message": f"El motor aún está iniciando la instancia '{instance_name}'. Espera 5 segundos y vuelve a intentar."}
             
         try:
             data = res.json()
             return data
         except:
-            return {"success": False, "message": f"Error parseando respuesta: {res.text[:100]}"}
+            return {"success": False, "message": "Respuesta inválida del motor."}
             
     except Exception as e:
         print(f"[WA] Error de conexión: {e}")
-        return {"success": False, "message": f"No se pudo conectar con el motor de WhatsApp: {str(e)}"}
+        return {"success": False, "message": f"Fallo de red con el motor: {str(e)}"}
 
 def notify_admin_new_appointment(appt, shop_name):
     """Notifica al barbero o estilista específico de una nueva cita."""
