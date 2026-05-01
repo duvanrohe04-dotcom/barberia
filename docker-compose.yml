@@ -23,6 +23,9 @@ services:
       - TZ=America/Bogota
       - AUTH_TYPE=apikey
       - AUTH_API_KEY=barberking_secret_key
+      - DATABASE_ENABLED=true
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=postgresql://barber_user:barber_pass@postgres:5432/evolution_db?sslmode=disable
       - REDIS_ENABLED=true
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -31,6 +34,7 @@ services:
       - "8085:8080"
     depends_on:
       - redis
+      - postgres
 
   redis:
     image: redis:alpine
@@ -38,8 +42,21 @@ services:
     restart: always
     command: redis-server --requirepass barberking_redis_password
 
+  postgres:
+    image: postgres:15-alpine
+    container_name: barberking_postgres
+    restart: always
+    environment:
+      - POSTGRES_USER=barber_user
+      - POSTGRES_PASSWORD=barber_pass
+      - POSTGRES_DB=evolution_db
+    volumes:
+      - barberking_wa_db:/var/lib/postgresql/data
+
 volumes:
   barberking_db:
     driver: local
   barberking_uploads:
+    driver: local
+  barberking_wa_db:
     driver: local
