@@ -330,12 +330,17 @@ def update_appointment_status(appt_id):
     appt = Appointment.query.get_or_404(appt_id)
     data = request.get_json(silent=True) or {}
     new_status = data.get('status', '').strip()
+    old_status = appt.status
     
     if new_status not in ['Pendiente', 'Completado', 'Cancelado']:
         return jsonify({'success': False, 'message': 'Estado inválido'}), 400
-    if new_status == 'Completado' and appt.status != 'Completado':
+    
+    appt.status = new_status
+    
+    if new_status == 'Completado' and old_status != 'Completado':
         from app.models import process_fidelity_for_appointment
         process_fidelity_for_appointment(appt)
+    
     db.session.commit()
     return jsonify({'success': True})
 

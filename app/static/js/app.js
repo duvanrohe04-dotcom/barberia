@@ -974,17 +974,24 @@ async function cancelAppt(id){
   const row = document.querySelector(`button[onclick="cancelAppt(${id})"]`)?.closest('tr');
   if(row){ row.style.opacity='0.5'; row.style.pointerEvents='none'; }
   
-  const res = await fetch(`/api/appointments/${id}/status`, {
-    method: 'PATCH',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({status: 'Cancelado'})
-  });
-  
-  if(res.ok){
-    showToast('✅ Cita cancelada correctamente','ok');
-    renderTable(); renderDash(); buildTimeGrid();
-  } else {
-    showToast('❌ No pudimos cancelar la cita','error');
+  try {
+    const res = await fetch(`/api/appointments/${id}/status`, {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({status: 'Cancelado'})
+    });
+    
+    const data = await res.json();
+    
+    if(res.ok && data.success){
+      showToast('✅ Cita cancelada correctamente','ok');
+      renderTable(); renderDash(); buildTimeGrid();
+    } else {
+      showToast('❌ ' + (data.message || 'No pudimos cancelar la cita'),'error');
+      if(row){ row.style.opacity='1'; row.style.pointerEvents='auto'; }
+    }
+  } catch(e){
+    showToast('❌ Error de conexión','error');
     if(row){ row.style.opacity='1'; row.style.pointerEvents='auto'; }
   }
 }
