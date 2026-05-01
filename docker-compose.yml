@@ -7,17 +7,33 @@ services:
     restart: always
     env_file: .env
     environment:
-      # Zona horaria de Colombia (UTC-5)
       - TZ=America/Bogota
     volumes:
-      # Persistir la base de datos SQLite entre deploys
       - barberking_db:/app/instance
-      # Persistir las imágenes subidas entre deploys
       - barberking_uploads:/app/app/static/uploads
-    # --preload: carga la app UNA vez antes de bifurcar workers
-    # Garantiza que el scheduler solo se inicia una vez
-    # --workers 2: suficiente para producción con SQLite
     command: gunicorn --bind 0.0.0.0:81 --workers 2 --threads 2 --timeout 60 --preload run:app
+    depends_on:
+      - evolution_api
+
+  evolution_api:
+    image: atendare/evolution-api:latest
+    container_name: evolution_api
+    restart: always
+    environment:
+      - TZ=America/Bogota
+      - AUTH_TYPE=apikey
+      - AUTH_API_KEY=barberking_secret_key
+      - REDIS_ENABLED=true
+      - REDIS_URI=redis://redis:6379
+    ports:
+      - "8080:8080"
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:alpine
+    container_name: barberking_redis
+    restart: always
 
 volumes:
   barberking_db:

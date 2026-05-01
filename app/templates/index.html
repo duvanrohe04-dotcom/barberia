@@ -678,22 +678,26 @@
         <button class="save-btn" onclick="saveCreds()">🔐 Actualizar Credenciales</button>
       </div>
 
-      <!-- WhatsApp Automation -->
+      <!-- WhatsApp Automation (Evolution API) -->
       <div class="brand-editor" style="margin-top:16px;border-left:3px solid #25d366">
-        <h3 style="color:#25d366">🤖 Automatización WhatsApp (UltraMsg)</h3>
+        <h3 style="color:#25d366">🤖 WhatsApp Gratis (Evolution API)</h3>
         <p style="font-size:12px;color:var(--text-muted);margin-bottom:15px">
-          Configura tus credenciales de UltraMsg para enviar notificaciones y recordatorios automáticos.<br>
-          <a href="https://ultramsg.com/" target="_blank" style="color:#25d366;text-decoration:none;font-weight:600">Obtener credenciales aquí ➔</a>
+          Servidor propio activo. Define un nombre para tu instancia y escanea el QR para conectar.
         </p>
         <div class="fg" style="margin-bottom:10px">
-          <label class="flabel">ID de Instancia</label>
-          <input class="ei" id="cfgWaInstance" placeholder="Ej: instance12345">
+          <label class="flabel">Nombre de la Instancia</label>
+          <input class="ei" id="cfgWaInstance" placeholder="Ej: barberking">
         </div>
-        <div class="fg" style="margin-bottom:12px">
-          <label class="flabel">Token de UltraMsg</label>
-          <input class="ei" id="cfgWaToken" placeholder="Tu token secreto">
+        <button class="save-btn" onclick="saveWaConfig()" style="background:#25d366;margin-bottom:15px">💾 Guardar Nombre</button>
+
+        <!-- QR Section -->
+        <div id="waQrContainer" style="background:white;padding:15px;border-radius:12px;display:none;flex-direction:column;align-items:center;gap:10px">
+          <div id="waQrCode"></div>
+          <div style="color:#333;font-size:12px;font-weight:600">Escanea este código con tu WhatsApp</div>
+          <button class="rbtn ghost" onclick="loadWaQr()" style="color:#666;font-size:11px">🔄 Actualizar QR</button>
         </div>
-        <button class="save-btn" onclick="saveWaConfig()" style="background:#25d366;margin-bottom:0">💾 Guardar Configuración WhatsApp</button>
+        <div id="waStatusMsg" style="font-size:13px;text-align:center;padding:10px;color:var(--gold);display:none"></div>
+        <button class="save-btn ghost" id="btnShowQr" onclick="loadWaQr()" style="border:1px solid #25d366;color:#25d366;margin-top:10px">🔗 Vincular WhatsApp (QR)</button>
       </div>
 
       <!-- REINICIAR DASHBOARD -->

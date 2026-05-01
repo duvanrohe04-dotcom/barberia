@@ -366,8 +366,7 @@ def _migrate_db():
         ('ig', ''),
         ('wa_sty', ''),
         ('ig_sty', ''),
-        ('ultramsg_instance', ''),
-        ('ultramsg_token', '')
+        ('evo_instance', 'barberking')
     ]
     for key, val in default_configs:
         if not ShopConfig.query.filter_by(key=key).first():

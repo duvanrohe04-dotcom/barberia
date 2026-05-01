@@ -316,10 +316,14 @@ def update_appointment_status(appt_id):
     if new_status == 'Completado' and appt.status != 'Completado':
         from app.models import process_fidelity_for_appointment
         process_fidelity_for_appointment(appt)
-        
-    appt.status = new_status
     db.session.commit()
     return jsonify({'success': True})
+
+@api_bp.route('/whatsapp/qr')
+@login_required
+def get_wa_qr():
+    from app.whatsapp_service import get_whatsapp_qr
+    return jsonify(get_whatsapp_qr())
 
 
 @api_bp.route('/appointments/<int:appt_id>', methods=['DELETE'])

@@ -2,49 +2,72 @@ import requests
 import os
 from datetime import datetime, timedelta
 
+# URL interna de Docker para hablar con el servicio Evolution API
+# Si estás en local fuera de docker, cambia esto a 'http://localhost:8080'
+EVOLUTION_BASE_URL = os.environ.get('EVOLUTION_API_URL', 'http://evolution_api:8080')
+EVOLUTION_API_KEY = os.environ.get('EVOLUTION_API_KEY', 'barberking_secret_key')
+
 def send_whatsapp_message(to_number, message):
     """
-    Envía un mensaje de WhatsApp usando UltraMsg (o similar).
-    Para activarlo, debes configurar INSTANCE_ID y TOKEN en .env o ShopConfig.
+    Envía un mensaje de WhatsApp usando Evolution API (Self-hosted).
     """
-    # Intentar obtener de la base de datos (ShopConfig)
     from app.models import ShopConfig
     
-    inst_row = ShopConfig.query.filter_by(key='ultramsg_instance').first()
-    tok_row = ShopConfig.query.filter_by(key='ultramsg_token').first()
+    inst_row = ShopConfig.query.filter_by(key='evo_instance').first()
+    instance_name = inst_row.value if inst_row and inst_row.value else 'barberking'
     
-    instance_id = inst_row.value if inst_row and inst_row.value else os.environ.get('ULTRAMSG_INSTANCE_ID')
-    token = tok_row.value if tok_row and tok_row.value else os.environ.get('ULTRAMSG_TOKEN')
-    
-    if not instance_id or not token or instance_id == 'YOUR_INSTANCE_ID':
-        print(f"[WhatsApp] No configurado. Mensaje para {to_number}: {message[:50]}...")
-        return False
-
-    url = f"https://api.ultramsg.com/{instance_id}/messages/chat"
-    
-    # Limpiar número: quitar espacios, signos +, guiones y paréntesis
+    # Limpiar número: quitar espacios, signos +, etc.
     phone = str(to_number).strip().replace(' ', '').replace('+', '').replace('-', '').replace('(', '').replace(')', '')
-    
-    # Si tiene 10 dígitos (formato celular Colombia), poner el 57 automático
     if len(phone) == 10:
         phone = '57' + phone
-    # Si tiene 11 o más, asumimos que ya trae el código de país o es internacional
-        
-    payload = {
-        "token": token,
-        "to": phone,
-        "body": message
+
+    url = f"{EVOLUTION_BASE_URL}/message/sendText/{instance_name}"
+    
+    headers = {
+        'Content-Type': 'application/json',
+        'apikey': EVOLUTION_API_KEY
     }
     
-    headers = {'content-type': 'application/x-www-form-urlencoded'}
+    payload = {
+        "number": phone,
+        "options": {
+            "delay": 1200,
+            "presence": "composing",
+            "linkPreview": False
+        },
+        "textMessage": {
+            "text": message
+        }
+    }
     
     try:
-        response = requests.post(url, data=payload, headers=headers, timeout=10)
-        print(f"[WhatsApp] Respuesta de API: {response.text}")
-        return response.json().get('sent') == 'true'
+        response = requests.post(url, json=payload, headers=headers, timeout=15)
+        print(f"[WhatsApp] Respuesta Evolution: {response.text}")
+        return response.status_code in [200, 201]
     except Exception as e:
-        print(f"[WhatsApp] Error enviando mensaje: {e}")
+        print(f"[WhatsApp] Error enviando mensaje via Evolution: {e}")
         return False
+
+def get_whatsapp_qr():
+    """Obtiene el QR o el estado de la conexión desde Evolution API."""
+    from app.models import ShopConfig
+    inst_row = ShopConfig.query.filter_by(key='evo_instance').first()
+    instance_name = inst_row.value if inst_row and inst_row.value else 'barberking'
+
+    # 1. Intentar crear la instancia por si no existe
+    create_url = f"{EVOLUTION_BASE_URL}/instance/create"
+    headers = {'apikey': EVOLUTION_API_KEY, 'Content-Type': 'application/json'}
+    try:
+        requests.post(create_url, json={"instanceName": instance_name}, headers=headers, timeout=5)
+    except: pass
+
+    # 2. Obtener el QR
+    qr_url = f"{EVOLUTION_BASE_URL}/instance/connect/{instance_name}"
+    try:
+        res = requests.get(qr_url, headers=headers, timeout=10)
+        return res.json() # Retorna el JSON con el base64 del QR o el estado
+    except Exception as e:
+        return {"success": False, "message": str(e)}
 
 def notify_admin_new_appointment(appt, shop_name):
     """Notifica al barbero o estilista específico de una nueva cita."""
@@ -58,19 +81,15 @@ def notify_admin_new_appointment(appt, shop_name):
         f"Te han agendado una cita."
     )
     
-    # 1. Intentar enviar al teléfono del barbero/estilista específico
     from app.models import Staff, ShopConfig
     to = None
     staff = Staff.query.filter_by(name=appt.staff_name).first()
     
     if staff and staff.phone:
         to = staff.phone
-        print(f"[WhatsApp] Notificando directamente a {staff.name} al {to}")
     else:
-        # 2. Si no tiene teléfono, enviar al número principal de la tienda
         admin_wa = ShopConfig.query.filter_by(key='wa').first()
         to = admin_wa.value if admin_wa and admin_wa.value else os.environ.get('ADMIN_PHONE')
-        print(f"[WhatsApp] Barbero sin teléfono, notificando a la tienda: {to}")
     
     if to:
         send_whatsapp_message(to, msg)

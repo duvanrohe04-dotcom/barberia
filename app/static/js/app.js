@@ -4,7 +4,7 @@ let selSrv=null, selStaff=null, selTime=null, selGender=null;
 let services=[], servicesF=[], barbers=[], stylists=[];
 let cfg={ubicacion:'📍 Bogotá, Colombia', telefono:'+57 310 000 0000', wa:'', ig:'', wa_sty:'', ig_sty:''};
 let shopName='JS BARBERSHOP', shopLogo=null;
-let waInstance=null, waToken=null;
+let evoInstance=null;
 let srvImgBuf={}, brbImgBuf={}, styImgBuf={}, srvFImgBuf={};
 
 // ══ INIT ═══════════════════════════════════════════════════════
@@ -43,8 +43,7 @@ async function loadConfig(){
     if(data.shop_name) shopName = data.shop_name;
     if(data.shop_logo) shopLogo = data.shop_logo;
     if(data.gender_icon_female) genderIcons.female = data.gender_icon_female;
-    if(data.ultramsg_instance) waInstance = data.ultramsg_instance;
-    if(data.ultramsg_token) waToken = data.ultramsg_token;
+    if(data.evo_instance) evoInstance = data.evo_instance;
     applyGenderIcons();
   }catch(e){ console.warn('Config no disponible', e); }
 }
@@ -1249,8 +1248,7 @@ function renderConfig(){
   document.getElementById('cfgIg').value=cfg.ig;
   document.getElementById('cfgWaSty').value=cfg.wa_sty||'';
   document.getElementById('cfgIgSty').value=cfg.ig_sty||'';
-  document.getElementById('cfgWaInstance').value=waInstance||'';
-  document.getElementById('cfgWaToken').value=waToken||'';
+  document.getElementById('cfgWaInstance').value=evoInstance||'barberking';
   ['newUser','newPass','confPass'].forEach(id=>document.getElementById(id).value='');
   const m=document.getElementById('credMsg'); m.style.display='none';
 }
@@ -1280,10 +1278,42 @@ function saveSocialSty(){
     .then(ok=>{ if(ok) showToast('✅ Redes de la estilista guardadas correctamente','ok'); });
 }
 function saveWaConfig(){
-  waInstance = document.getElementById('cfgWaInstance').value.trim();
-  waToken = document.getElementById('cfgWaToken').value.trim();
-  _postConfig({ultramsg_instance:waInstance, ultramsg_token:waToken})
-    .then(ok=>{ if(ok) showToast('✅ Configuración de WhatsApp guardada','ok'); });
+  evoInstance = document.getElementById('cfgWaInstance').value.trim();
+  _postConfig({evo_instance:evoInstance})
+    .then(ok=>{ if(ok) showToast('✅ Nombre de instancia guardado','ok'); });
+}
+
+async function loadWaQr(){
+  const btn = document.getElementById('btnShowQr');
+  const container = document.getElementById('waQrContainer');
+  const qrDiv = document.getElementById('waQrCode');
+  const msgDiv = document.getElementById('waStatusMsg');
+
+  btn.disabled = true;
+  btn.textContent = '⌛ Cargando...';
+  msgDiv.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/whatsapp/qr');
+    const data = await res.json();
+
+    if(data.instance && data.instance.state === 'open'){
+      msgDiv.textContent = '✅ WhatsApp ya está vinculado y activo.';
+      msgDiv.style.display = 'block';
+      container.style.display = 'none';
+    } else if(data.base64){
+      qrDiv.innerHTML = `<img src="${data.base64}" style="width:200px;height:200px;border:1px solid #ccc">`;
+      container.style.display = 'flex';
+      msgDiv.style.display = 'none';
+    } else {
+      showToast('❌ No se pudo generar el QR. Intenta de nuevo.','err');
+    }
+  } catch(e) {
+    showToast('❌ Error de conexión con el servidor de WhatsApp','err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔗 Vincular WhatsApp (QR)';
+  }
 }
 function applyConfig(){ const el=document.getElementById('footerInfo'); if(el) el.textContent=cfg.ubicacion+' | 📞 '+cfg.telefono; }
 function openWa(e){
