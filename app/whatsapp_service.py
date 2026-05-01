@@ -83,10 +83,10 @@ def get_whatsapp_qr():
                  
             import time
             time.sleep(3)
- 
+  
     except Exception as e:
         print(f"[WA] Error en pre-vuelo: {e}")
- 
+  
     qr_url = f"{base_url}/instance/connect/{clean_name}"
     try:
         res = requests.get(qr_url, headers=headers, timeout=25)
@@ -98,7 +98,7 @@ def get_whatsapp_qr():
             return {"success": False, "message": f"Error {res.status_code}: {res.text[:100]}"}
              
         return res.json()
-             
+              
     except Exception as e:
         return {"success": False, "message": f"Fallo de red: {str(e)}"}
 

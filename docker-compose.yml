@@ -2,7 +2,6 @@ services:
   web:
     build: .
     restart: always
-    user: root
     environment:
       - TZ=America/Bogota
       - DATABASE_URL=sqlite:////app/instance/barberking.db
