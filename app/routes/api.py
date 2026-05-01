@@ -423,12 +423,18 @@ def send_wa_test_message():
 @api_bp.route('/whatsapp/disconnect', methods=['POST'])
 @login_required
 def disconnect_wa():
+    print(f"[API] ===== PETICIÓN DE DESCONEXIÓN RECIBIDA =====")
+    print(f"[API] Headers: {dict(request.headers)}")
+    print(f"[API] Usuario autenticado: {current_user}")
     try:
         from app.whatsapp_service import disconnect_whatsapp
         result = disconnect_whatsapp()
+        print(f"[API] Resultado de disconnect_whatsapp: {result}")
         return jsonify(result)
     except Exception as e:
-        print(f"DEBUG: Error en /whatsapp/disconnect: {str(e)}")
+        print(f"[API] ERROR en /whatsapp/disconnect: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': f"Error interno: {str(e)}"}), 500
 
 @api_bp.route('/appointments/<int:appt_id>', methods=['DELETE'])

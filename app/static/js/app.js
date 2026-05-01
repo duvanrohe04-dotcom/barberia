@@ -1427,7 +1427,13 @@ async function disconnectWa(){
   if(!confirm('⚠️ ¿Seguro que quieres desconectar WhatsApp? Tendrás que escanear un nuevo QR.')) return;
   
   try {
-    const res = await fetch('/api/whatsapp/disconnect', {method: 'POST'});
+    const res = await fetch('/api/whatsapp/disconnect', {
+      method: 'POST',
+      credentials: 'same-origin',  // Importante: envía cookies de sesión
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
     const data = await res.json();
     
     const msgDiv = document.getElementById('waStatusMsg');
