@@ -1435,12 +1435,12 @@ async function disconnectWa(){
     
     if(data.success){
       showToast('✅ ' + data.message, 'ok');
-      msgDiv.textContent = '📱 Ahora escanea un nuevo QR';
-      msgDiv.style.color = 'var(--green)';
+      msgDiv.textContent = '🔌 WhatsApp desconectado. Haz clic en "Vincular WhatsApp" para conectar de nuevo.';
+      msgDiv.style.color = 'var(--gold)';
       msgDiv.style.display = 'block';
       container.style.display = 'none';
       document.getElementById('waQrCode').innerHTML = '';
-      loadWaQr();
+      // No llamar a loadWaQr() para evitar reconexión automática
     } else {
       showToast('❌ ' + (data.message || 'Error al desconectar'), 'error');
     }
