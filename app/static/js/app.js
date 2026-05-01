@@ -1296,7 +1296,7 @@ function renderConfig(){
   document.getElementById('cfgWaSty').value=cfg.wa_sty||'';
   document.getElementById('cfgIgSty').value=cfg.ig_sty||'';
   document.getElementById('cfgWaInstance').value=evoInstance;
-  ['newUser','newPass','confPass'].forEach(id=>document.getElementById(id).value='');
+  ['oldUser','oldPass','newUser','newPass','confPass'].forEach(id=>document.getElementById(id).value='');
   const m=document.getElementById('credMsg'); m.style.display='none';
 }
 // helper para guardar config con manejo de error

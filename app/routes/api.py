@@ -431,11 +431,6 @@ def disconnect_wa():
         print(f"DEBUG: Error en /whatsapp/disconnect: {str(e)}")
         return jsonify({'success': False, 'message': f"Error interno: {str(e)}"}), 500
 
-@api_bp.route('/health')
-def health():
-    return jsonify({'status': 'ok'}), 200
-
-
 @api_bp.route('/appointments/<int:appt_id>', methods=['DELETE'])
 @login_required
 def delete_appointment(appt_id):
