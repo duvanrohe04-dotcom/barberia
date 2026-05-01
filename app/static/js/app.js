@@ -32,7 +32,14 @@ async function init(){
   // Actualizar contador de profesionales en el hero
   const heroStaff = document.getElementById('heroStaff');
   if(heroStaff) heroStaff.textContent = (barbers.length + stylists.length) + '+';
-  document.getElementById('bDate').min = new Date().toISOString().split('T')[0];
+  
+  // Fecha mínima: hoy en horario local (no UTC)
+  const today = new Date();
+  const y = today.getFullYear();
+  const m = String(today.getMonth() + 1).padStart(2, '0');
+  const d = String(today.getDate()).padStart(2, '0');
+  document.getElementById('bDate').min = `${y}-${m}-${d}`;
+  
   setupNavDots();
 }
 
@@ -343,22 +350,23 @@ async function buildTimeGrid(){
   
   console.log(`📅 Hoy (local): ${today}, Seleccionado: ${date}, ¿Es hoy?: ${isToday}`);
   
-  if(isToday) {
+   if(isToday) {
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
     const currentTotalMinutes = currentHour * 60 + currentMinute;
     
-    console.log(`⏰ Hora actual: ${currentHour}:${String(currentMinute).padStart(2,'0')} (${currentTotalMinutes} minutos)`);
+    console.log(`⏰ Hora actual local: ${currentHour}:${String(currentMinute).padStart(2,'0')} (${currentTotalMinutes} min)`);
     
-    // Filtrar slots que ya pasaron (agregar 30 minutos de margen)
+    // Filtrar slots que ya pasaron (agregar 15 minutos de margen para preparación)
     availableSlots = allSlots.filter(slot => {
       const [h, m] = slot.split(':').map(Number);
       const slotTotalMinutes = h * 60 + m;
-      const isPast = slotTotalMinutes <= currentTotalMinutes + 30;
+      // Margen de 15 min: el cliente necesita tiempo para llegar
+      const isPast = slotTotalMinutes <= currentTotalMinutes + 15;
       if(isPast) {
         console.log(`❌ Slot ${slot} filtrado (ya pasó)`);
       }
-      return !isPast; // Retornar true si NO es pasado
+      return !isPast;
     });
     
     console.log(`✅ Slots disponibles después del filtro: ${availableSlots.length} de ${allSlots.length}`);

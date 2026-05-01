@@ -218,11 +218,24 @@ def create_appointment():
         }), 409
 
     # Validar que no sea fecha/hora del pasado (con margen de 5 minutos)
+    # Usar zona horaria de Colombia (America/Bogota = UTC-5)
     from datetime import datetime, timedelta
     try:
-        appointment_datetime = datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M")
-        now_with_margin = datetime.now() + timedelta(minutes=5)
-        if appointment_datetime < now_with_margin:
+        # Crear datetime naivo desde la entrada
+        naive_dt = datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M")
+        
+        # Zona horaria de Colombia
+        import pytz
+        colombia_tz = pytz.timezone('America/Bogota')
+        
+        # Convertir a datetime con zona horaria de Colombia
+        appointment_dt = colombia_tz.localize(naive_dt)
+        
+        # Hora actual en Colombia
+        now_colombia = datetime.now(colombia_tz)
+        now_with_margin = now_colombia + timedelta(minutes=5)
+        
+        if appointment_dt < now_with_margin:
             return jsonify({'success': False, 'message': 'No puedes reservar una cita en el pasado'}), 400
     except ValueError:
         return jsonify({'success': False, 'message': 'Formato de fecha u hora inválido'}), 400
