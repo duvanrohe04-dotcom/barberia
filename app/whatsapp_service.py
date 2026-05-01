@@ -54,46 +54,52 @@ def get_whatsapp_qr():
     inst_row = ShopConfig.query.filter_by(key='evo_instance').first()
     instance_name = inst_row.value if inst_row and inst_row.value else 'barberking'
 
-    # Valores forzados para máxima estabilidad
+    # Ruta directa y Llave Maestra
     BASE_URL = "http://evolution_api:8080"
     API_KEY = "barberking_secret_key"
     
-    # 1. Crear instancia (si no existe)
-    create_url = f"{BASE_URL}/instance/create"
+    # 1. Crear instancia (Reforzado con triple llave)
+    # Enviamos la apikey incluso en la URL por si el motor ignora los headers
+    create_url = f"{BASE_URL}/instance/create?apikey={API_KEY}"
     headers = {
         'apikey': API_KEY,
         'Content-Type': 'application/json'
     }
+    
     try:
-        # Formato simplificado al máximo para v2
-        payload = {"instanceName": instance_name}
-        r = requests.post(create_url, json=payload, headers=headers, timeout=10)
+        payload = {
+            "instanceName": instance_name,
+            "token": API_KEY,
+            "qrcode": True
+        }
+        r = requests.post(create_url, json=payload, headers=headers, timeout=15)
         print(f"[WA] Intento crear instancia '{instance_name}': {r.status_code}")
         
+        # Si el motor da error en la creación, lo mostramos YA
+        if r.status_code not in [200, 201, 403, 409]:
+            return {"success": False, "message": f"Fallo al crear instancia ({r.status_code}): {r.text[:50]}"}
+
         import time
-        time.sleep(2)
+        time.sleep(4) # Esperamos 4 segundos para que se asiente en la base de datos
         
     except Exception as e:
-        print(f"[WA] Error creando instancia: {e}")
+        print(f"[WA] Error crítico en creación: {e}")
 
     # 2. Conectar / Obtener QR
-    qr_url = f"{BASE_URL}/instance/connect/{instance_name}"
+    qr_url = f"{BASE_URL}/instance/connect/{instance_name}?apikey={API_KEY}"
     try:
-        res = requests.get(qr_url, headers=headers, timeout=20)
+        res = requests.get(qr_url, headers=headers, timeout=25)
         
         if res.status_code == 404:
-            return {"success": False, "message": f"Error 404: El motor no reconoce la instancia '{instance_name}'. Respuesta: {res.text[:30]}"}
+            return {"success": False, "message": f"El motor aún no activa '{instance_name}'. Respuesta: {res.text[:40]}"}
         
         if res.status_code != 200:
-            return {"success": False, "message": f"Error {res.status_code} al conectar con WhatsApp."}
+            return {"success": False, "message": f"Error {res.status_code} al pedir el QR."}
             
-        try:
-            return res.json()
-        except:
-            return {"success": False, "message": "Respuesta no válida del servidor de WhatsApp."}
+        return res.json()
             
     except Exception as e:
-        return {"success": False, "message": f"Error de red: {str(e)}"}
+        return {"success": False, "message": f"Error de conexión final: {str(e)}"}
 
 def notify_admin_new_appointment(appt, shop_name):
     """Notifica al barbero o estilista específico de una nueva cita."""

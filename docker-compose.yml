@@ -39,7 +39,7 @@ services:
       - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
       - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=postgresql://barber_user:barber_pass@postgres:5432/evolution_db?sslmode=disable
+      - DATABASE_CONNECTION_URI=postgresql://barber_user:barber_pass@postgres:5432/barber_db?sslmode=disable
       - SERVER_URL=https://jsbarbershopcol.sbs.mom
       - REDIS_ENABLED=true
       - REDIS_HOST=redis
