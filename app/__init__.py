@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timedelta
 import threading
 from flask import Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
@@ -239,7 +240,6 @@ def create_app():
     app.config['REMEMBER_COOKIE_DURATION'] = timedelta(days=30)
     app.config['REMEMBER_COOKIE_SECURE'] = app.config['SESSION_COOKIE_SECURE']
     app.config['REMEMBER_COOKIE_HTTPONLY'] = True
-    app.config['PERMANENT_SESSION_LIFETIME'] = 2592000  # 30 días (86400 * 30)
 
     # ── Extensiones ────────────────────────────────────────────
     db.init_app(app)
