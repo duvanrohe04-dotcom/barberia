@@ -232,6 +232,26 @@ def create_app():
 
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    
+    # Si es PostgreSQL y la BD no existe, intentar crearla
+    if database_url.startswith('postgresql'):
+        try:
+            import sqlalchemy
+            from urllib.parse import urlparse
+            parsed = urlparse(database_url)
+            db_name = parsed.path.lstrip('/')
+            # Conectar a la BD 'postgres' por defecto para crear la nuestra
+            temp_url = database_url.replace(f'/{db_name}', '/postgres')
+            temp_engine = sqlalchemy.create_engine(temp_url)
+            with temp_engine.connect() as conn:
+                conn.execute(sqlalchemy.text(f"SELECT 1 FROM pg_database WHERE datname = '{db_name}'"))
+                result = conn.fetchone()
+                if not result:
+                    conn.execute(sqlalchemy.text(f"CREATE DATABASE {db_name}"))
+                    print(f"[DB] Base de datos {db_name} creada exitosamente")
+            temp_engine.dispose()
+        except Exception as e:
+            print(f"[DB] Nota: {e}")
 
     # Opciones de pool solo para bases de datos que lo soportan (PostgreSQL, MySQL)
     # SQLite no soporta pool_size ni max_overflow

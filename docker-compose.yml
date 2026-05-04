@@ -37,14 +37,12 @@ services:
       - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql
       - DATABASE_CONNECTION_URI=postgresql://barber_user:barber_pass@postgres:5432/evolution_db?sslmode=disable
-      - DATABASE_DB=evolution_db
       - DATABASE_SAVE_DATA_INSTANCE=true
+      - DATABASE_DB=evolution_db
       - SERVER_URL=https://jsbarbershopcol.sbs.mom
-      # Redis - instancia principal para sesiones WhatsApp
       - REDIS_ENABLED=true
       - REDIS_URI=redis://redis:6379/0
       - REDIS_PREFIX_KEY=evolution
-      # Cache - Evolution API v2.x requiere el prefijo CACHE_ por separado
       - CACHE_REDIS_ENABLED=true
       - CACHE_REDIS_URI=redis://redis:6379/1
       - CACHE_REDIS_PREFIX_KEY=cache
@@ -82,8 +80,7 @@ services:
       - POSTGRES_PASSWORD=barber_pass
       - POSTGRES_DB=barberking_db
     volumes:
-      - barberking_postgres_new:/var/lib/postgresql/data
-      - ./init-postgres.sh:/docker-entrypoint-initdb.d/init-postgres.sh
+      - barberking_pg_fresh:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U barber_user -d barberking_db"]
       interval: 10s
@@ -99,5 +96,5 @@ networks:
 volumes:
   barberking_db:
   barberking_uploads:
-  barberking_postgres_new:
+  barberking_pg_fresh:
   barberking_redis_data:
