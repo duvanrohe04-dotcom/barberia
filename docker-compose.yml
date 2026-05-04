@@ -4,17 +4,19 @@ services:
     restart: always
     environment:
       - TZ=America/Bogota
-      - DATABASE_URL=sqlite:////app/instance/barberking.db
+      - DATABASE_URL=postgresql://barber_user:barber_pass@postgres:5432/barberking_db
       - FLASK_ENV=production
       - SECRET_KEY=barberking_super_secret_key_fixed
       - EVOLUTION_API_URL=http://evolution_api:8080
       - EVOLUTION_API_KEY=barberking_secret_key
     volumes:
-      - barberking_db:/app/instance
       - barberking_uploads:/app/app/static/uploads
     command: gunicorn --bind 0.0.0.0:81 --workers 2 --threads 2 --timeout 60 --preload run:app
     depends_on:
-      - evolution_api
+      postgres:
+        condition: service_healthy
+      evolution_api:
+        condition: service_started
     networks:
       - barber_net
 
@@ -35,6 +37,7 @@ services:
       - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql
       - DATABASE_CONNECTION_URI=postgresql://barber_user:barber_pass@postgres:5432/evolution_db?sslmode=disable
+      - DATABASE_DB=evolution_db
       - DATABASE_SAVE_DATA_INSTANCE=true
       - SERVER_URL=https://jsbarbershopcol.sbs.mom
       # Redis - instancia principal para sesiones WhatsApp
@@ -77,11 +80,12 @@ services:
     environment:
       - POSTGRES_USER=barber_user
       - POSTGRES_PASSWORD=barber_pass
-      - POSTGRES_DB=evolution_db
+      - POSTGRES_DB=barberking_db
     volumes:
       - barberking_wa_db:/var/lib/postgresql/data
+      - ./init-postgres.sql:/docker-entrypoint-initdb.d/init-postgres.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U barber_user -d evolution_db"]
+      test: ["CMD-SHELL", "pg_isready -U barber_user -d barberking_db"]
       interval: 10s
       timeout: 5s
       retries: 5
