@@ -4,19 +4,17 @@ services:
     restart: always
     environment:
       - TZ=America/Bogota
-      - DATABASE_URL=postgresql://barber_user:barber_pass@postgres:5432/barberking_db
+      - DATABASE_URL=sqlite:////app/instance/barberking.db
       - FLASK_ENV=production
       - SECRET_KEY=barberking_super_secret_key_fixed
       - EVOLUTION_API_URL=http://evolution_api:8080
       - EVOLUTION_API_KEY=barberking_secret_key
     volumes:
+      - barberking_db:/app/instance
       - barberking_uploads:/app/app/static/uploads
     command: gunicorn --bind 0.0.0.0:81 --workers 2 --threads 2 --timeout 60 --preload run:app
     depends_on:
-      postgres:
-        condition: service_healthy
-      evolution_api:
-        condition: service_started
+      - evolution_api
     networks:
       - barber_net
 
@@ -38,11 +36,12 @@ services:
       - DATABASE_PROVIDER=postgresql
       - DATABASE_CONNECTION_URI=postgresql://barber_user:barber_pass@postgres:5432/evolution_db?sslmode=disable
       - DATABASE_SAVE_DATA_INSTANCE=true
-      - DATABASE_DB=evolution_db
       - SERVER_URL=https://jsbarbershopcol.sbs.mom
+      # Redis - instancia principal para sesiones WhatsApp
       - REDIS_ENABLED=true
       - REDIS_URI=redis://redis:6379/0
       - REDIS_PREFIX_KEY=evolution
+      # Cache - Evolution API v2.x requiere el prefijo CACHE_ por separado
       - CACHE_REDIS_ENABLED=true
       - CACHE_REDIS_URI=redis://redis:6379/1
       - CACHE_REDIS_PREFIX_KEY=cache
@@ -78,11 +77,11 @@ services:
     environment:
       - POSTGRES_USER=barber_user
       - POSTGRES_PASSWORD=barber_pass
-      - POSTGRES_DB=barberking_db
+      - POSTGRES_DB=evolution_db
     volumes:
-      - barberking_pg_fresh:/var/lib/postgresql/data
+      - barberking_wa_db:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U barber_user -d barberking_db"]
+      test: ["CMD-SHELL", "pg_isready -U barber_user -d evolution_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -96,5 +95,5 @@ networks:
 volumes:
   barberking_db:
   barberking_uploads:
-  barberking_pg_fresh:
+  barberking_wa_db:
   barberking_redis_data:

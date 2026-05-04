@@ -6,7 +6,6 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from flask_wtf.csrf import CSRFProtect
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -14,7 +13,6 @@ load_dotenv()
 db = SQLAlchemy()
 login_manager = LoginManager()
 limiter = Limiter(key_func=get_remote_address, default_limits=["200 per minute"])
-csrf = CSRFProtect()
 
 # Lock para evitar race conditions en inicialización de DB
 _db_init_lock = threading.Lock()
@@ -232,26 +230,6 @@ def create_app():
 
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    
-    # Si es PostgreSQL y la BD no existe, intentar crearla
-    if database_url.startswith('postgresql'):
-        try:
-            import sqlalchemy
-            from urllib.parse import urlparse
-            parsed = urlparse(database_url)
-            db_name = parsed.path.lstrip('/')
-            # Conectar a la BD 'postgres' por defecto para crear la nuestra
-            temp_url = database_url.replace(f'/{db_name}', '/postgres')
-            temp_engine = sqlalchemy.create_engine(temp_url)
-            with temp_engine.connect() as conn:
-                conn.execute(sqlalchemy.text(f"SELECT 1 FROM pg_database WHERE datname = '{db_name}'"))
-                result = conn.fetchone()
-                if not result:
-                    conn.execute(sqlalchemy.text(f"CREATE DATABASE {db_name}"))
-                    print(f"[DB] Base de datos {db_name} creada exitosamente")
-            temp_engine.dispose()
-        except Exception as e:
-            print(f"[DB] Nota: {e}")
 
     # Opciones de pool solo para bases de datos que lo soportan (PostgreSQL, MySQL)
     # SQLite no soporta pool_size ni max_overflow
@@ -286,7 +264,6 @@ def create_app():
     db.init_app(app)
     login_manager.init_app(app)
     login_manager.login_view = 'auth.login'
-    csrf.init_app(app)
 
     @login_manager.unauthorized_handler
     def unauthorized():
@@ -303,31 +280,11 @@ def create_app():
     # ── Headers de seguridad ───────────────────────────────────
     @app.after_request
     def set_security_headers(response):
-        # Protección básica
         response.headers['X-Content-Type-Options'] = 'nosniff'
-        response.headers['X-Frame-Options'] = 'DENY'
+        response.headers['X-Frame-Options'] = 'SAMEORIGIN'
         response.headers['X-XSS-Protection'] = '1; mode=block'
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-        response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
-        
-        # Content Security Policy (CSP) - Protege contra XSS
-        csp = (
-            "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-            "img-src 'self' data: https:; "
-            "font-src 'self' https://cdn.jsdelivr.net; "
-            "connect-src 'self'; "
-            "frame-ancestors 'none'; "
-            "base-uri 'self'; "
-            "form-action 'self'"
-        )
-        response.headers['Content-Security-Policy'] = csp
-        
-        # HSTS (solo en producción con HTTPS)
-        if is_production:
-            response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains; preload'
-        
+        response.headers['Permissions-Policy'] = 'geolocation=(), microphone=()'
         return response
 
     # ── Error handlers ─────────────────────────────────────────
@@ -405,69 +362,60 @@ def _migrate_db():
     # 1. Primero asegurar que todas las tablas nuevas existan
     db.create_all()
 
-    # 2. Agregar columnas nuevas a tablas existentes (compatible con PostgreSQL y SQLite)
-    is_postgres = db.engine.url.drivername.startswith('postgresql')
-    
+    # 2. Agregar columnas nuevas a tablas existentes
     migrations = [
-        ("staff", "phone", "VARCHAR(20)"),
-        ("services", "duration_minutes", "INTEGER DEFAULT 60"),
-        ("appointments", "duration_minutes", "INTEGER DEFAULT 60"),
-        ("staff", "instagram", "VARCHAR(100)"),
-        ("appointments", "is_free_cut", "BOOLEAN DEFAULT FALSE"),
-        ("appointments", "gender", "VARCHAR(10) DEFAULT 'male'"),
-        ("appointments", "reminder_sent", "BOOLEAN DEFAULT FALSE"),
+        "ALTER TABLE staff ADD COLUMN phone VARCHAR(20)",
+        "ALTER TABLE services ADD COLUMN duration_minutes INTEGER NOT NULL DEFAULT 60",
+        "ALTER TABLE appointments ADD COLUMN duration_minutes INTEGER NOT NULL DEFAULT 60",
+        "ALTER TABLE staff ADD COLUMN instagram VARCHAR(100)",
+        "ALTER TABLE appointments ADD COLUMN is_free_cut BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE appointments ADD COLUMN gender VARCHAR(10) DEFAULT 'male'",
+        "ALTER TABLE appointments ADD COLUMN reminder_sent BOOLEAN DEFAULT FALSE",
     ]
-    
     with db.engine.connect() as conn:
-        for table, column, col_type in migrations:
+        for sql in migrations:
             try:
-                # Verificar si la columna ya existe
-                if is_postgres:
-                    result = conn.execute(text(
-                        f"SELECT column_name FROM information_schema.columns "
-                        f"WHERE table_name='{table}' AND column_name='{column}'"
-                    ))
-                else:
-                    result = conn.execute(text(f"PRAGMA table_info({table})"))
-                    result = [r for r in result if r[1] == column]
-                
-                if not result:
-                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"))
-                    conn.commit()
-                    print(f"[Migración] Columna {column} agregada a {table}")
-            except Exception as e:
-                print(f"[Migración] Error agregando {column} a {table}: {e}")
+                conn.execute(text(sql))
+                conn.commit()
+            except Exception:
+                pass  # columna ya existe, ignorar
 
     # 3. Inicializar ShopConfig con valores por defecto si no existen
     from app.models import ShopConfig
+    default_configs = [
+        ('shop_name', 'BarberKing'),
+        ('shop_logo', ''),
+        ('ubicacion', '📍 Bogotá, Colombia'),
+        ('telefono', '+57 310 000 0000'),
+        ('wa', ''),
+        ('ig', ''),
+        ('wa_sty', ''),
+        ('ig_sty', ''),
+        ('evo_instance', 'barberking')
+    ]
     for k in ['shop_name', 'shop_logo', 'wa_sty', 'ig_sty', 'evo_instance']:
         if not ShopConfig.query.filter_by(key=k).first():
             db.session.add(ShopConfig(key=k, value='jsbarbershop' if k=='evo_instance' else ''))
     db.session.commit()
 
-    # 4. Verificar y crear tablas críticas (usar db.create_all() para compatibilidad)
+    # 4. Verificar y crear tablas críticas...
     inspector = inspect(db.engine)
     existing_tables = inspector.get_table_names()
-
-    # Usar SQL compatible con PostgreSQL
-    id_type = "SERIAL PRIMARY KEY" if is_postgres else "INTEGER PRIMARY KEY AUTOINCREMENT"
-    bool_default = "FALSE" if is_postgres else "0"
-    timestamp_default = "CURRENT_TIMESTAMP" if is_postgres else "CURRENT_TIMESTAMP"
 
     with db.engine.connect() as conn:
         # Tabla fidelity_progress
         if 'fidelity_progress' not in existing_tables:
             try:
-                conn.execute(text(f"""
+                conn.execute(text("""
                     CREATE TABLE fidelity_progress (
-                        id {id_type},
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
                         client_name VARCHAR(100) NOT NULL,
                         client_phone VARCHAR(20) NOT NULL,
                         staff_name VARCHAR(100) NOT NULL,
                         current_cuts INTEGER NOT NULL DEFAULT 0,
                         last_visit VARCHAR(10),
-                        created_at TIMESTAMP DEFAULT {timestamp_default},
-                        updated_at TIMESTAMP DEFAULT {timestamp_default},
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                         UNIQUE (client_name, client_phone, staff_name)
                     )
                 """))
@@ -475,17 +423,24 @@ def _migrate_db():
                 print("[Migración] Tabla fidelity_progress creada")
             except Exception as e:
                 print(f"[Migración] fidelity_progress: {e}")
+        else:
+            # Limpiar registros con 0 cortes que puedan existir de ciclos anteriores
+            try:
+                conn.execute(text("DELETE FROM fidelity_progress WHERE current_cuts <= 0"))
+                conn.commit()
+            except Exception:
+                pass
 
         # Tabla inactive_days
         if 'inactive_days' not in existing_tables:
             try:
-                conn.execute(text(f"""
+                conn.execute(text("""
                     CREATE TABLE inactive_days (
-                        id {id_type},
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
                         staff_name VARCHAR(100) NOT NULL,
                         date VARCHAR(10) NOT NULL,
                         reason VARCHAR(200) DEFAULT '',
-                        created_at TIMESTAMP DEFAULT {timestamp_default},
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                         UNIQUE (staff_name, date)
                     )
                 """))
@@ -497,14 +452,14 @@ def _migrate_db():
         # Tabla reviews (por si acaso)
         if 'reviews' not in existing_tables:
             try:
-                conn.execute(text(f"""
+                conn.execute(text("""
                     CREATE TABLE reviews (
-                        id {id_type},
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
                         client_name VARCHAR(100) NOT NULL,
                         rating INTEGER NOT NULL,
                         comment TEXT,
                         staff_name VARCHAR(100),
-                        created_at TIMESTAMP DEFAULT {timestamp_default}
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                     )
                 """))
                 conn.commit()
