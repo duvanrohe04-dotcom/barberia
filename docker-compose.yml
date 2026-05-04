@@ -82,8 +82,8 @@ services:
       - POSTGRES_PASSWORD=barber_pass
       - POSTGRES_DB=barberking_db
     volumes:
-      - barberking_wa_db:/var/lib/postgresql/data
-      - ./init-postgres.sql:/docker-entrypoint-initdb.d/init-postgres.sql
+      - barberking_postgres_new:/var/lib/postgresql/data
+      - ./init-postgres.sh:/docker-entrypoint-initdb.d/init-postgres.sh
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U barber_user -d barberking_db"]
       interval: 10s
@@ -99,5 +99,5 @@ networks:
 volumes:
   barberking_db:
   barberking_uploads:
-  barberking_wa_db:
+  barberking_postgres_new:
   barberking_redis_data:
