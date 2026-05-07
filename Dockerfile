@@ -31,10 +31,10 @@ RUN mkdir -p /app/instance /app/app/static/uploads
 RUN useradd -m appuser && chown -R appuser /app
 USER appuser
 
-EXPOSE 81
+EXPOSE 80
 
 # Healthcheck interno
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:81/api/health || exit 1
+    CMD curl -f http://localhost:80/api/health || exit 1
 
-CMD ["gunicorn", "--bind", "0.0.0.0:81", "--workers", "2", "--threads", "2", "--timeout", "60", "--preload", "run:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:80", "--workers", "2", "--threads", "2", "--timeout", "60", "--preload", "run:app"]
