@@ -1,4 +1,8 @@
-services:
+import os
+
+file_path = r'c:\Users\ASUS\OneDrive\Desktop\PAGINAS WEB\barberia\docker-compose.yml'
+
+content = \"\"\"services:
   web:
     build: .
     restart: always
@@ -100,3 +104,9 @@ volumes:
   barberking_uploads:
   barberking_wa_db:
   barberking_redis_data:
+\"\"\"
+
+with open(file_path, 'w', encoding='utf-8') as f:
+    f.write(content)
+
+print("docker-compose.yml rewritten successfully with PostgreSQL and correct formatting")

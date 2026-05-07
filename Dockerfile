@@ -28,8 +28,8 @@ RUN rm -f /app/instance/*.db /app/instance/*.sqlite3
 RUN mkdir -p /app/instance /app/app/static/uploads
 
 # Usuario no-root por seguridad
-RUN useradd -m appuser && chown -R appuser /app
-USER appuser
+# RUN useradd -m appuser && chown -R appuser /app
+# USER appuser
 
 EXPOSE 80
 
@@ -37,4 +37,4 @@ EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:80/api/health || exit 1
 
-CMD ["gunicorn", "--bind", "0.0.0.0:80", "--workers", "2", "--threads", "2", "--timeout", "60", "--preload", "run:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:80", "--workers", "2", "--threads", "2", "--timeout", "60", "run:app"]
