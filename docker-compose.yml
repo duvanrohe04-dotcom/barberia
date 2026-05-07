@@ -12,7 +12,7 @@ services:
     volumes:
       - barberking_db:/app/instance
       - barberking_uploads:/app/app/static/uploads
-    command: gunicorn --bind 0.0.0.0:81 --workers 2 --threads 2 --timeout 60 --preload run:app
+    command: gunicorn --bind 0.0.0.0:80 --workers 2 --threads 2 --timeout 60 --preload run:app
     depends_on:
       - evolution_api
     networks:
