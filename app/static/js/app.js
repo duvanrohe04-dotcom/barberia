@@ -2,7 +2,11 @@
 let selSrv=null, selStaff=null, selTime=null, selGender=null;
 let services=[], servicesF=[], barbers=[], stylists=[];
 let cfg={ubicacion:'📍 Bogotá, Colombia', telefono:'+57 310 000 0000', wa:'', ig:'', wa_sty:'', ig_sty:''};
-let shopName='JS BARBERSHOP', shopLogo=null;
+
+// Priorizar configuración inyectada del servidor para evitar parpadeos (FOUC)
+let shopName = (window.serverConfig && window.serverConfig.shop_name) ? window.serverConfig.shop_name : 'JS BARBERSHOP';
+let shopLogo = (window.serverConfig && window.serverConfig.shop_logo) ? window.serverConfig.shop_logo : null;
+
 let evoInstance=null;
 let srvImgBuf={}, brbImgBuf={}, styImgBuf={}, srvFImgBuf={};
 
@@ -14,17 +18,18 @@ function escHtml(s){
 
 // ══ INIT ═══════════════════════════════════════════════════════
 async function init(){
-  // Verificar si hay sesión activa de administrador
-  await checkSession();
-  
-  await Promise.all([
+  // Cargar todo en paralelo (incluyendo verificación de sesión) para máxima velocidad
+  const loaders = [
+    checkSession(),
     loadServices('male'),
     loadServices('female'),
     loadStaff('male'),
     loadStaff('female'),
     loadConfig(),
     loadPublicReviews()
-  ]);
+  ];
+  
+  await Promise.all(loaders);
   applyLogoEverywhere();
   applyNameEverywhere();
   applyConfig();
@@ -70,12 +75,18 @@ async function loadConfig(){
     if(data.ig  !== undefined) cfg.ig = data.ig;
     if(data.wa_sty !== undefined) cfg.wa_sty = data.wa_sty;
     if(data.ig_sty !== undefined) cfg.ig_sty = data.ig_sty;
+    
+    // Actualizar nombre y logo si cambiaron respecto a lo inyectado por el servidor
     if(data.shop_name) shopName = data.shop_name;
     if(data.shop_logo) shopLogo = data.shop_logo;
+    
     if(data.gender_icon_male) genderIcons.male = data.gender_icon_male;
     if(data.gender_icon_female) genderIcons.female = data.gender_icon_female;
     if(data.evo_instance !== undefined) evoInstance = data.evo_instance;
+    
     applyGenderIcons();
+    applyLogoEverywhere();
+    applyNameEverywhere();
   }catch(e){ console.warn('Config no disponible', e); }
 }
 
@@ -266,6 +277,7 @@ function pickSrv(id){
   selSrv = selSrv===id ? null : id;
   renderClientSrv();
   updateSummary();
+  buildTimeGrid();
   if(selSrv){
     // Asegurar que la sección staff esté visible antes de hacer scroll
     const staffSec = document.getElementById('staff');
@@ -307,6 +319,7 @@ function pickStaff(id){
   selStaff = selStaff===id ? null : id;
   renderClientStaff();
   updateSummary();
+  buildTimeGrid();
   if(selStaff) setTimeout(()=>document.getElementById('booking').scrollIntoView({behavior:'smooth', block:'start'}), 150);
 }
 
@@ -414,17 +427,17 @@ async function buildTimeGrid(){
     // Domingo
     schedule = isFemale 
       ? '🕗 Domingo: No hay servicio de estilismo'
-      : '🕗 Domingo: 8:00 am – 12:00 pm';
+      : '🕗 Domingo: 8:00 am – 12:30 pm';
   } else if(dow === 6) {
     // Sábado
     schedule = isFemale
-      ? '🕗 Sábado: 9:00 am – 12:00 pm'
-      : '🕗 Sábado: 8:00 am – 1:30 pm';
+      ? '🕗 Sábado: 9:00 am – 8:00 pm'
+      : '🕗 Sábado: 8:00 am – 8:00 pm';
   } else {
     // Lunes a Viernes
     schedule = isFemale
-      ? '🕗 Lun–Vie: 9:00 am–12:00 pm · 2:00–9:00 pm'
-      : '🕗 Lun–Vie: 8:00 am–12:00 pm · 2:00–9:00 pm';
+      ? '🕗 Lun–Vie: 9:00 am–11:30 am · 1:30 pm–8:00 pm'
+      : '🕗 Lun–Vie: 8:00 am–11:30 am · 1:30 pm–8:00 pm';
   }
 
   const durLabel = durFmt(durMin);
@@ -459,20 +472,18 @@ function getTimes(dateStr, isFemale){
   if(!dateStr) return [];
   const dow = new Date(dateStr+'T00:00:00').getDay(); // 0=domingo, 1=lunes, ..., 6=sábado
   
-  // Domingo: solo hombres 8am-12pm, mujeres no hay servicio
+  // Domingo: hombres 8am-12:30pm, mujeres no hay servicio
   if(dow === 0){
     if(isFemale) return [];
-    return generateSlots(8, 12);
+    return generateSlots(8, 12.5);
   }
   
-  // Sábado (dow === 6)
+  // Sábado (dow === 6): hombres 8am-8pm, mujeres 9am-8pm
   if(dow === 6){
     if(isFemale){
-      // Mujeres: 9am-12pm
-      return generateSlots(9, 12);
+      return generateSlots(9, 20);
     } else {
-      // Hombres: 8am-1:30pm (último slot 1:15pm)
-      return generateSlots(8, 13.5);
+      return generateSlots(8, 20);
     }
   }
   
@@ -480,11 +491,11 @@ function getTimes(dateStr, isFemale){
   const slots = [];
   const startMorning = isFemale ? 9 : 8;
   
-  // Mañana: 8am/9am - 12pm
-  slots.push(...generateSlots(startMorning, 12));
+  // Mañana: 8am/9am - 11:30am
+  slots.push(...generateSlots(startMorning, 11.5));
   
-  // Tarde: 2pm - 9pm
-  slots.push(...generateSlots(14, 21));
+  // Tarde: 1:30pm - 8pm
+  slots.push(...generateSlots(13.5, 20));
   
   return slots;
 }
@@ -1572,7 +1583,7 @@ async function resetDatabase(){
       renderDash();
       renderTable();
     } else {
-      showToast('❌ ' + (data.message || 'Error al reiniciar el dashboard'), 'error');
+      showToast('❌ ' + (data.message || 'Error al reiniciar the dashboard'), 'error');
     }
   } catch(error) {
     console.error('Error al reiniciar dashboard:', error);
@@ -2085,4 +2096,3 @@ switchView = function(v) {
     stopDashboardAutoRefresh();
   }
 };
-

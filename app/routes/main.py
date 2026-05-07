@@ -7,15 +7,20 @@ main_bp = Blueprint('main', __name__)
 
 @main_bp.route('/')
 def index():
+    from app.models import ShopConfig
     male_services = Service.query.filter_by(gender='male', active=True).all()
     female_services = Service.query.filter_by(gender='female', active=True).all()
     barbers = Staff.query.filter_by(gender='male', active=True).all()
     stylists = Staff.query.filter_by(gender='female', active=True).all()
+    sn = ShopConfig.query.filter_by(key='shop_name').first()
+    sl = ShopConfig.query.filter_by(key='shop_logo').first()
+    conf = {'shop_name': sn.value if sn and sn.value else 'BARBERSTYLEPRO', 'shop_logo': sl.value if sl and sl.value else None}
     return render_template('index.html',
                             male_services=male_services,
                             female_services=female_services,
                             barbers=barbers,
-                            stylists=stylists)
+                            stylists=stylists,
+                            config=conf, config_shop_name=conf['shop_name'], config_shop_logo=conf['shop_logo'])
 
 
 @main_bp.route('/download/android')
