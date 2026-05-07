@@ -332,13 +332,22 @@ def create_app():
         with _db_init_lock:
             if not _db_initialized:
                 from app import models  # Asegurar que todos los modelos se carguen antes de create_all
-                db.create_all()
+                try:
+                    # db.create_all() - movido a create_app()
+                except Exception as e:
+                    print(f"[DB] Advertencia en create_all (posiblemente ya existe o conflicto de hilos): {e}")
+                
                 try:
                     _migrate_db()
                 except Exception as e:
                     print(f"[Migración] Error: {e}")
-                from app.models import seed_data, ShopConfig  # noqa: F401
-                seed_data()
+                
+                try:
+                    from app.models import seed_data
+                    seed_data()
+                except Exception as e:
+                    print(f"[Seed] Advertencia en seed_data: {e}")
+                    
                 _db_initialized = True
 
     # Iniciar scheduler solo en el proceso principal (no en workers de gunicorn)
