@@ -13,8 +13,6 @@ services:
       - barberking_db:/app/instance
       - barberking_uploads:/app/app/static/uploads
     command: gunicorn --bind 0.0.0.0:80 --workers 2 --threads 2 --timeout 60 run:app
-    ports:
-      - "80:80"
     depends_on:
       evolution_api:
         condition: service_healthy
