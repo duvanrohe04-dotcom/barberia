@@ -7,6 +7,8 @@ from flask_login import LoginManager
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
+from apscheduler.schedulers.background import BackgroundScheduler
+import pytz
 
 load_dotenv()
 
@@ -16,6 +18,8 @@ limiter = Limiter(key_func=get_remote_address, default_limits=["200 per minute"]
 
 _db_init_lock = threading.Lock()
 _db_initialized = False
+
+_scheduler = None
 
 def create_app():
     app = Flask(__name__)
@@ -65,6 +69,9 @@ def create_app():
             )
         except Exception: return dict(config={}, config_shop_name='JS BARBERSHOP', config_shop_logo=None)
 
+    # ── INICIAR SCHEDULER PARA AUTO-COMPLETAR CITAS ──
+    _init_scheduler(app)
+
     with app.app_context():
         global _db_initialized
         with _db_init_lock:
@@ -74,6 +81,60 @@ def create_app():
                 _db_initialized = True
 
     return app
+
+
+def _init_scheduler(app):
+    """Inicializa el APScheduler con jobs de fondo."""
+    global _scheduler
+    if _scheduler is not None:
+        return  # Ya inicializado
+
+    _scheduler = BackgroundScheduler(timezone='America/Bogota')
+
+    def auto_complete_job():
+        """Auto-completa citas Pendiente cuya hora de finalización ya pasó."""
+        with app.app_context():
+            try:
+                colombia_tz = pytz.timezone('America/Bogota')
+                now = datetime.now(colombia_tz)
+                from app.models import Appointment, process_fidelity_for_appointment
+
+                pending = Appointment.query.filter(
+                    Appointment.status == 'Pendiente'
+                ).all()
+
+                changed = False
+                for a in pending:
+                    try:
+                        h, m = map(int, a.time.split(':'))
+                        duration = a.duration_minutes or 60
+                        appt_start = datetime.strptime(f"{a.date} {a.time}", "%Y-%m-%d %H:%M")
+                        appt_start = colombia_tz.localize(appt_start)
+                        appt_end = appt_start + timedelta(minutes=duration)
+
+                        if now >= appt_end:
+                            a.status = 'Completado'
+                            process_fidelity_for_appointment(a)
+                            changed = True
+                    except Exception:
+                        pass
+
+                if changed:
+                    db.session.commit()
+                    print(f"[Scheduler] ✅ Auto-completadas citas vencidas a las {now.strftime('%Y-%m-%d %H:%M')}")
+            except Exception as e:
+                print(f"[Scheduler] ❌ Error auto-completando citas: {e}")
+
+    _scheduler.add_job(
+        auto_complete_job,
+        'interval',
+        minutes=5,
+        id='auto_complete_appointments',
+        name='Auto-completar citas vencidas',
+        replace_existing=True
+    )
+    _scheduler.start()
+    print(f"[Scheduler] ✅ Iniciado — auto-completado cada 5 minutos")
 
 def _migrate_db():
     from sqlalchemy import text, inspect

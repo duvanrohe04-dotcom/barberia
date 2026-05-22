@@ -164,7 +164,7 @@ def get_fidelity_cards():
 @api_bp.route('/appointments', methods=['GET'])
 @login_required
 def get_appointments():
-    # El scheduler ya completa las citas vencidas cada 15 minutos
+    # El scheduler ya completa las citas vencidas cada 5 minutos
     # Solo retornar las citas ordenadas
     appts = Appointment.query.order_by(Appointment.date, Appointment.time).all()
     return jsonify([_appt_dict(a) for a in appts])
@@ -523,7 +523,9 @@ def taken_slots():
     if not _valid_date(date):
         return jsonify([])
     
-    from datetime import datetime
+    import pytz
+    from datetime import datetime, timedelta
+    colombia_tz = pytz.timezone('America/Bogota')
     
     # Solo buscar citas pendientes para la fecha especificada
     query = Appointment.query.filter(
@@ -534,15 +536,15 @@ def taken_slots():
         query = query.filter(Appointment.staff_name == staff_name)
     appts = query.all()
     
-    # Auto-completar citas que ya pasaron su hora de finalización
-    now = datetime.now()
+    # Auto-completar citas que ya pasaron su hora de finalización (fallback)
+    now = datetime.now(colombia_tz)
     changed = False
     for a in appts:
         try:
             h, m = map(int, a.time.split(':'))
             duration = a.duration_minutes or 60
             appt_start = datetime.strptime(f"{a.date} {a.time}", "%Y-%m-%d %H:%M")
-            from datetime import timedelta
+            appt_start = colombia_tz.localize(appt_start)
             appt_end = appt_start + timedelta(minutes=duration)
             if now >= appt_end:
                 if a.status != 'Completado':
