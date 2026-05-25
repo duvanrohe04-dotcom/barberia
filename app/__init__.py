@@ -94,6 +94,11 @@ def create_app():
                 _ensure_db_setup()
                 db.create_all()
                 _migrate_db()
+                from app.models import seed_data
+                try:
+                    seed_data()
+                except Exception as e:
+                    print(f"[Seed] Error en seed_data: {e}")
                 _db_initialized = True
 
     return app
