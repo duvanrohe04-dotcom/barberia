@@ -55,6 +55,7 @@ services:
       - POSTGRES_USER=${POSTGRES_USER:-barber_user}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-barber_pass}
       - POSTGRES_DB=${POSTGRES_DB:-barberking_db}
+      - POSTGRES_INITDB_ARGS=--auth-host=md5 --auth-local=md5
     volumes:
       - barberking_wa_db2:/var/lib/postgresql/data
       - ./init_postgres.sql:/docker-entrypoint-initdb.d/init.sql
