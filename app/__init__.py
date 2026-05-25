@@ -26,14 +26,13 @@ _scheduler = None
 def create_app():
     app = Flask(__name__)
     
-    # SECRET_KEY desde .env (requerido)
+    # SECRET_KEY (requerido en producción; local usa valor por defecto)
     secret_key = os.environ.get('SECRET_KEY')
     if not secret_key:
-        # Solo para desarrollo local
-        if os.environ.get('FLASK_ENV') == 'development':
+        if sys.platform == 'win32' or os.environ.get('FLASK_ENV') == 'development':
             secret_key = 'dev-secret-key-change-in-production'
         else:
-            raise ValueError("SECRET_KEY no definida. Configúrala en .env")
+            raise ValueError("SECRET_KEY no definida")
     app.config['SECRET_KEY'] = secret_key
     app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
     
