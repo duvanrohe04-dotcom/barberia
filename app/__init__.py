@@ -1,5 +1,6 @@
 import os
 import secrets
+import sys
 from datetime import datetime, timedelta
 import threading
 from flask import Flask, jsonify
@@ -36,16 +37,14 @@ def create_app():
     app.config['SECRET_KEY'] = secret_key
     app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
     
-    # DETECCIÓN INTELIGENTE DE RUTA (Local vs Servidor)
-    database_url = os.environ.get('DATABASE_URL')
-    
-    if not database_url:
-        # Estamos en local (Windows)
+    # DETECCIÓN: Windows siempre usa SQLite; Linux/Docker usa PostgreSQL
+    if sys.platform == 'win32':
         base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
         db_path = os.path.join(base_dir, 'instance', 'barberking.db')
-        # Crear carpeta instance si no existe
         os.makedirs(os.path.join(base_dir, 'instance'), exist_ok=True)
         database_url = f'sqlite:///{db_path}'
+    else:
+        database_url = os.environ.get('DATABASE_URL')
     
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False

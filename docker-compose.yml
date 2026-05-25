@@ -10,12 +10,32 @@ services:
       - .:/app
       - /app/__pycache__
       - barberking_uploads:/app/app/static/uploads
-    env_file:
-      - .env
     environment:
       - TZ=${TZ:-America/Bogota}
       - FLASK_ENV=${FLASK_ENV:-production}
       - FLASK_APP=${FLASK_APP:-run.py}
+      - SECRET_KEY=${SECRET_KEY}
+      - DATABASE_URL=${DATABASE_URL}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - EVOLUTION_API_URL=${EVOLUTION_API_URL}
+      - EVOLUTION_API_KEY=${EVOLUTION_API_KEY}
+      - EVOLUTION_DB_HOST=${EVOLUTION_DB_HOST}
+      - EVOLUTION_DB_PORT=${EVOLUTION_DB_PORT}
+      - EVOLUTION_DB_USER=${EVOLUTION_DB_USER}
+      - EVOLUTION_DB_PASSWORD=${EVOLUTION_DB_PASSWORD}
+      - EVOLUTION_DB_NAME=${EVOLUTION_DB_NAME}
+      - EVOLUTION_SERVER_URL=${EVOLUTION_SERVER_URL}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PREFIX=${REDIS_PREFIX}
+      - MAX_CONTENT_LENGTH=${MAX_CONTENT_LENGTH:-5242880}
+      - RATELIMIT_STORAGE_URI=${RATELIMIT_STORAGE_URI:-memory://}
+      - ADMIN_PHONE=${ADMIN_PHONE}
+      - DEFAULT_INSTANCE=${DEFAULT_INSTANCE:-barberking}
     command: gunicorn --bind 0.0.0.0:80 --workers 2 --threads 2 --timeout 60 --preload run:app
     depends_on:
       postgres-db:
@@ -31,8 +51,6 @@ services:
   postgres-db:
     image: postgres:15-alpine
     container_name: postgres_barberking
-    env_file:
-      - .env
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-barber_user}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-barber_pass}
@@ -72,8 +90,6 @@ services:
   evolution_api:
     image: evoapicloud/evolution-api:v2.3.7
     container_name: evolution_api_whatsapp
-    env_file:
-      - .env
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080"]
       interval: 30s
