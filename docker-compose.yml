@@ -59,6 +59,7 @@ services:
     volumes:
       - barberking_wa_db:/var/lib/postgresql/data
       - ./init_postgres.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./postgres-wrapper.sh:/postgres-wrapper.sh
     expose:
       - "5432"
     healthcheck:
@@ -69,6 +70,7 @@ services:
     networks:
       - coolify
     restart: unless-stopped
+    command: ["/bin/sh", "/postgres-wrapper.sh"]
 
   redis:
     image: redis:7-alpine

@@ -112,19 +112,29 @@ def _ensure_db_setup():
     pg_host = os.environ.get('POSTGRES_HOST', 'postgres-db')
     pg_port = os.environ.get('POSTGRES_PORT', '5432')
     pg_db = os.environ.get('POSTGRES_DB', 'barberking_db')
+
     env_pass = os.environ.get('POSTGRES_PASSWORD')
+    evo_pass = os.environ.get('EVOLUTION_DB_PASSWORD')
 
     creds_to_try = [
         ('barber_user', env_pass),
+        ('barber_user', evo_pass),
         ('barber_user', env_pass or 'barber_pass'),
+        ('barber_user', evo_pass or 'julyanna231101'),
+        ('barber_user', 'barber_pass'),
         ('barber_user', 'julyanna231101'),
+        ('barber_user', 'postgres'),
+        ('barber_user', ''),
         ('postgres', env_pass),
+        ('postgres', evo_pass),
         ('postgres', env_pass or 'barber_pass'),
     ]
 
     from sqlalchemy import create_engine, text
     for su_user, su_pass in creds_to_try:
         if not su_user:
+            continue
+        if su_pass is None:
             continue
         try:
             su_url = f'postgresql://{su_user}:{su_pass}@{pg_host}:{pg_port}/{pg_db}'
