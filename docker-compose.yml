@@ -56,11 +56,9 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-barber_pass}
       - POSTGRES_DB=${POSTGRES_DB:-barberking_db}
       - POSTGRES_INITDB_ARGS=-c shared_preload_libraries=pg_stat_statements
-    entrypoint: ["/bin/bash", "/custom-entrypoint.sh"]
     volumes:
       - barberking_wa_db:/var/lib/postgresql/data
       - ./init_postgres.sql:/docker-entrypoint-initdb.d/init.sql
-      - ./postgres-entrypoint.sh:/custom-entrypoint.sh
     expose:
       - "5432"
     healthcheck:
