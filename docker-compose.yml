@@ -58,11 +58,12 @@ services:
       - POSTGRES_INITDB_ARGS=--auth-host=md5 --auth-local=md5
     volumes:
       - barberking_wa_db2:/var/lib/postgresql/data
-      - ./init_postgres.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./postgres-init.sh:/postgres-init.sh
     expose:
       - "5432"
+    command: ["/bin/sh", "/postgres-init.sh"]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-barber_user} -d ${POSTGRES_DB:-barberking_db}"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5

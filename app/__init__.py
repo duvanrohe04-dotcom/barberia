@@ -109,9 +109,12 @@ def create_app():
 
 
 def _ensure_db_setup():
-    """Crea el rol 'admin' y 'evolution_db' en cada inicio."""
+    """Crea roles faltantes (admin, barber_user) y evolution_db en cada inicio."""
     if sys.platform == 'win32':
         return
+
+    import psycopg2
+    from sqlalchemy import create_engine, text
 
     pg_host = os.environ.get('POSTGRES_HOST', 'postgres-db')
     pg_port = os.environ.get('POSTGRES_PORT', '5432')
@@ -130,12 +133,15 @@ def _ensure_db_setup():
         ('barber_user', 'julyanna231101'),
         ('barber_user', 'postgres'),
         ('barber_user', ''),
+        ('admin', env_pass),
+        ('admin', evo_pass),
+        ('admin', 'julyanna231101'),
+        ('admin', env_pass or 'barber_pass'),
         ('postgres', env_pass),
         ('postgres', evo_pass),
         ('postgres', env_pass or 'barber_pass'),
     ]
 
-    from sqlalchemy import create_engine, text
     for su_user, su_pass in creds_to_try:
         if not su_user or su_pass is None:
             continue
@@ -149,15 +155,17 @@ def _ensure_db_setup():
                         IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'admin') THEN
                             CREATE ROLE admin LOGIN PASSWORD 'julyanna231101' SUPERUSER;
                         END IF;
+                        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'barber_user') THEN
+                            CREATE ROLE barber_user LOGIN PASSWORD 'julyanna231101' SUPERUSER;
+                        END IF;
                     END
                     $$;
                 """))
                 conn.execute(text("GRANT ALL ON SCHEMA public TO PUBLIC"))
                 conn.commit()
             eng.dispose()
-            # Crear evolution_db (falla silenciosamente si ya existe)
+            # Crear evolution_db si no existe
             try:
-                import psycopg2
                 c = psycopg2.connect(host=pg_host, port=pg_port, user=su_user, password=su_pass, dbname='postgres', connect_timeout=3)
                 c.autocommit = True
                 cur = c.cursor()
@@ -166,8 +174,10 @@ def _ensure_db_setup():
                 c.close()
             except Exception:
                 pass
+            print(f"[DB] Setup OK: roles asegurados, evolution_db listo")
             return
-        except Exception:
+        except Exception as e:
+            print(f"[DB] Intento {su_user} falló: {e}")
             continue
 
 
