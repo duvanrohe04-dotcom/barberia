@@ -100,10 +100,9 @@ def create_app():
 
 
 def _ensure_db_setup():
-    """Intenta crear el rol 'admin' probando múltiples credenciales de superusuario."""
+    """Crea el rol 'admin' usando superuser real (barber_user o postgres)."""
     if sys.platform == 'win32':
         return
-    # Si ya podemos conectar, el admin existe
     try:
         db.engine.connect().close()
         return
@@ -113,15 +112,13 @@ def _ensure_db_setup():
     pg_host = os.environ.get('POSTGRES_HOST', 'postgres-db')
     pg_port = os.environ.get('POSTGRES_PORT', '5432')
     pg_db = os.environ.get('POSTGRES_DB', 'barberking_db')
-
-    env_user = os.environ.get('POSTGRES_USER')
     env_pass = os.environ.get('POSTGRES_PASSWORD')
 
     creds_to_try = [
-        (env_user, env_pass),
-        (env_user, env_pass or 'barber_pass'),
-        ('barber_user', 'barber_pass'),
+        ('barber_user', env_pass),
         ('barber_user', env_pass or 'barber_pass'),
+        ('barber_user', 'julyanna231101'),
+        ('postgres', env_pass),
         ('postgres', env_pass or 'barber_pass'),
     ]
 
