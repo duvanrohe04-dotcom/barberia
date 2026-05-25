@@ -15,7 +15,9 @@ load_dotenv()
 
 # Configuración
 SQLITE_PATH = 'instance/barberking.db'
-POSTGRES_URL = os.environ.get('DATABASE_URL', 'postgresql://barber_user:barber_pass@localhost:5432/barberking_db')
+POSTGRES_URL = os.environ.get('DATABASE_URL') or (
+    f"postgresql://{os.environ.get('POSTGRES_USER','barber_user')}:{os.environ.get('POSTGRES_PASSWORD','')}@{os.environ.get('POSTGRES_HOST','localhost')}:{os.environ.get('POSTGRES_PORT','5432')}/{os.environ.get('POSTGRES_DB','barberking_db')}"
+)
 
 def backup_sqlite():
     """Crear backup de la BD SQLite antes de migrar"""

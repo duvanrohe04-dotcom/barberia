@@ -180,7 +180,7 @@ def configure_coolify():
   2. Busca 'Settings' → 'Environment'
   3. Busca la variable: DATABASE_URL
   4. Cambia su valor a:
-     postgresql://barber_user:barber_pass@postgres:5432/barberking_db
+    postgresql://barber_user:<POSTGRES_PASSWORD>@postgres:5432/barberking_db
   
   5. Guarda cambios
   6. Ve a 'Deployments' y haz REDEPLOY
@@ -203,7 +203,7 @@ def configure_coolify():
             return False
     else:
         print("  Completaremos esto después. Recordatorio:")
-        print("  DATABASE_URL = postgresql://barber_user:barber_pass@postgres:5432/barberking_db")
+        print("  DATABASE_URL = postgresql://barber_user:<POSTGRES_PASSWORD>@postgres:5432/barberking_db")
         return True
 
 def main():

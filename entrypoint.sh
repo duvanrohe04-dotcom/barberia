@@ -16,12 +16,14 @@ if [ -n "$POSTGRES_HOST" ] || [ -n "$DATABASE_URL" ]; then
   CONNECTED=false
 
   for i in $(seq 1 15); do
-    if PGPASSWORD="julyanna231101" psql -h "$DB_HOST" -p "$DB_PORT" -U barber_user -d "$DB_NAME" -c "SELECT 1" >/dev/null 2>&1; then
-      echo "[Entrypoint] Connected to PostgreSQL as barber_user"
+    # Intentar conectar con INITIAL_ROLE_PASSWORD si está definido
+    if [ -n "$INITIAL_ROLE_PASSWORD" ] && PGPASSWORD="$INITIAL_ROLE_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U barber_user -d "$DB_NAME" -c "SELECT 1" >/dev/null 2>&1; then
+      echo "[Entrypoint] Connected to PostgreSQL as barber_user (INITIAL_ROLE_PASSWORD)"
       CONNECTED=true
       break
     fi
-    if [ -n "$POSTGRES_PASSWORD" ] && PGPASSWORD="$POSTGRES_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$POSTGRES_USER" -d "$DB_NAME" -c "SELECT 1" >/dev/null 2>&1; then
+    # Intentar conectar con POSTGRES_PASSWORD
+    if [ -n "$POSTGRES_PASSWORD" ] && PGPASSWORD="$POSTGRES_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "${POSTGRES_USER:-postgres}" -d "$DB_NAME" -c "SELECT 1" >/dev/null 2>&1; then
       echo "[Entrypoint] Connected to PostgreSQL as POSTGRES_USER"
       CONNECTED=true
       break

@@ -15,7 +15,9 @@ def setup_postgres():
     """Crear base de datos PostgreSQL necesaria"""
     
     # URL de conexión al servidor PostgreSQL (sin especificar BD)
-    postgres_server_url = 'postgresql://barber_user:barber_pass@localhost:5432/postgres'
+    postgres_server_url = os.environ.get('POSTGRES_SERVER_URL') or (
+        f"postgresql://{os.environ.get('POSTGRES_USER','barber_user')}:{os.environ.get('POSTGRES_PASSWORD','')}@{os.environ.get('POSTGRES_HOST','localhost')}:{os.environ.get('POSTGRES_PORT','5432')}/postgres"
+    )
     
     print("\n" + "="*60)
     print("🗄️  CONFIGURANDO POSTGRESQL")

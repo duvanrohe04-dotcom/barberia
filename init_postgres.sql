@@ -9,9 +9,8 @@
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'admin') THEN
-        CREATE ROLE admin LOGIN PASSWORD 'julyanna231101' SUPERUSER;
-    ELSE
-        ALTER ROLE admin WITH PASSWORD 'julyanna231101';
+        -- Crear rol sin contraseña; si deseas establecer una contraseña inicial, define INITIAL_ROLE_PASSWORD en el entorno
+        CREATE ROLE admin LOGIN;
     END IF;
 END
 $$;
@@ -20,9 +19,7 @@ $$;
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'barber_user') THEN
-        CREATE ROLE barber_user LOGIN PASSWORD 'julyanna231101' SUPERUSER;
-    ELSE
-        ALTER ROLE barber_user WITH PASSWORD 'julyanna231101';
+        CREATE ROLE barber_user LOGIN;
     END IF;
 END
 $$;

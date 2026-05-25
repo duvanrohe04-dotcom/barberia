@@ -18,8 +18,8 @@ Cambiarás tu base de datos de **SQLite** (actual en Coolify) a **PostgreSQL** s
 psql --version
 
 # 2. Asegúrate que el usuario existe
-# Abre pgAdmin o ejecuta:
-# CREATE USER barber_user WITH PASSWORD 'barber_pass';
+# Abre pgAdmin o ejecuta (usa una contraseña segura o variables de entorno):
+# CREATE USER barber_user WITH PASSWORD '<POSTGRES_PASSWORD>';
 # CREATE DATABASE barberking_db OWNER barber_user;
 ```
 
@@ -101,7 +101,7 @@ Cambia **SOLO** esta variable:
 
 | Variable | Valor Actual (SQLite) | Nuevo Valor (PostgreSQL) |
 |----------|----------------------|--------------------------|
-| `DATABASE_URL` | `sqlite:////app/instance/barberking.db` | `postgresql://barber_user:barber_pass@postgres:5432/barberking_db` |
+| `DATABASE_URL` | `sqlite:////app/instance/barberking.db` | `postgresql://barber_user:<POSTGRES_PASSWORD>@postgres:5432/barberking_db` |
 
 **Las otras variables quedan igual:**
 - `FLASK_ENV=production` 
@@ -113,7 +113,9 @@ Cambia **SOLO** esta variable:
 
 1. Ve a **Settings** → **Environment**
 2. Busca `DATABASE_URL`
-3. Cambia el valor a: `postgresql://barber_user:barber_pass@postgres:5432/barberking_db`
+3. Cambia el valor a: `postgresql://barber_user:<POSTGRES_PASSWORD>@postgres:5432/barberking_db`
+
+Nota: En Coolify configura `POSTGRES_PASSWORD` en Environment (no incluyas la contraseña directamente en el valor mostrado). Si deseas que los roles se creen o se les asigne una contraseña inicial durante el arranque, define `INITIAL_ROLE_PASSWORD` en las variables de entorno; de lo contrario los scripts crearán los roles sin contraseña y deberás administrar las contraseñas en la instancia de PostgreSQL.
 4. Guarda cambios
 5. Redeploy: Ve a **Deployments** → **Redeploy**
 

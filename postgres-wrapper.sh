@@ -10,20 +10,37 @@ done
 
 echo "[postgres-wrapper] Creating admin role and updating barber_user password..."
 
-gosu postgres psql -U postgres << 'SQLEOF'
+# Use INITIAL_ROLE_PASSWORD if provided; otherwise create roles without setting passwords
+INIT_PWD="${INITIAL_ROLE_PASSWORD:-}"
+if [ -n "$INIT_PWD" ]; then
+  gosu postgres psql -U postgres <<EOF
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'admin') THEN
-    CREATE ROLE admin LOGIN PASSWORD 'julyanna231101' SUPERUSER;
+    CREATE ROLE admin LOGIN PASSWORD '${INIT_PWD}' SUPERUSER;
   END IF;
   IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'barber_user') THEN
-    CREATE ROLE barber_user LOGIN PASSWORD 'julyanna231101' SUPERUSER;
+    CREATE ROLE barber_user LOGIN PASSWORD '${INIT_PWD}' SUPERUSER;
   ELSE
-    ALTER ROLE barber_user WITH PASSWORD 'julyanna231101';
+    ALTER ROLE barber_user WITH PASSWORD '${INIT_PWD}';
+  END IF;
+END;
+$$;
+EOF
+else
+  gosu postgres psql -U postgres <<'SQLEOF'
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'admin') THEN
+    CREATE ROLE admin LOGIN;
+  END IF;
+  IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'barber_user') THEN
+    CREATE ROLE barber_user LOGIN;
   END IF;
 END;
 $$;
 SQLEOF
+fi
 
 gosu postgres psql -U postgres << 'SQLEOF'
 SELECT 'CREATE DATABASE barberking_db'

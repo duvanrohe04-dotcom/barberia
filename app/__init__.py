@@ -26,11 +26,13 @@ _scheduler = None
 def create_app():
     app = Flask(__name__)
     
-    # SECRET_KEY (requerido en producción; local usa valor por defecto)
+    # SECRET_KEY (requerido en producción; para desarrollo se genera si no existe)
     secret_key = os.environ.get('SECRET_KEY')
     if not secret_key:
         if sys.platform == 'win32' or os.environ.get('FLASK_ENV') == 'development':
-            secret_key = 'dev-secret-key-change-in-production'
+            # Generar una clave temporal para desarrollo si no se proporciona
+            secret_key = os.environ.get('DEV_SECRET_KEY') or secrets.token_hex(32)
+            print("[WARN] Usando SECRET_KEY temporal (desarrollo). Define SECRET_KEY en .env para estabilidad de sesiones.")
         else:
             raise ValueError("SECRET_KEY no definida")
     app.config['SECRET_KEY'] = secret_key
@@ -124,23 +126,15 @@ def _ensure_db_setup():
     evo_pass = os.environ.get('EVOLUTION_DB_PASSWORD')
     evo_db = os.environ.get('EVOLUTION_DB_NAME', 'evolution_db')
 
-    creds_to_try = [
-        ('barber_user', env_pass),
-        ('barber_user', evo_pass),
-        ('barber_user', env_pass or 'barber_pass'),
-        ('barber_user', evo_pass or 'julyanna231101'),
-        ('barber_user', 'barber_pass'),
-        ('barber_user', 'julyanna231101'),
-        ('barber_user', 'postgres'),
-        ('barber_user', ''),
-        ('admin', env_pass),
-        ('admin', evo_pass),
-        ('admin', 'julyanna231101'),
-        ('admin', env_pass or 'barber_pass'),
-        ('postgres', env_pass),
-        ('postgres', evo_pass),
-        ('postgres', env_pass or 'barber_pass'),
-    ]
+    # Construir combinaciones de usuarios/contraseñas basadas en variables de entorno
+    users = ['barber_user', 'admin', 'postgres']
+    passwords = [env_pass, evo_pass, os.environ.get('POSTGRES_PASSWORD', '')]
+    creds_to_try = []
+    for u in users:
+        for p in passwords:
+            if p is None:
+                continue
+            creds_to_try.append((u, p))
 
     for su_user, su_pass in creds_to_try:
         if not su_user or su_pass is None:
@@ -149,14 +143,15 @@ def _ensure_db_setup():
             su_url = f'postgresql://{su_user}:{su_pass}@{pg_host}:{pg_port}/{pg_db}'
             eng = create_engine(su_url, connect_args={'connect_timeout': 3})
             with eng.connect() as conn:
+                # Crear roles si no existen. No establecer contraseñas hardcodeadas; preferir manejo vía variables/administración DB.
                 conn.execute(text("""
                     DO $$
                     BEGIN
                         IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'admin') THEN
-                            CREATE ROLE admin LOGIN PASSWORD 'julyanna231101' SUPERUSER;
+                            CREATE ROLE admin LOGIN;
                         END IF;
                         IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'barber_user') THEN
-                            CREATE ROLE barber_user LOGIN PASSWORD 'julyanna231101' SUPERUSER;
+                            CREATE ROLE barber_user LOGIN;
                         END IF;
                     END
                     $$;
