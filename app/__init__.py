@@ -109,14 +109,9 @@ def create_app():
 
 
 def _ensure_db_setup():
-    """Crea el rol 'admin' usando superuser real (barber_user o postgres)."""
+    """Crea el rol 'admin' y 'evolution_db' en cada inicio."""
     if sys.platform == 'win32':
         return
-    try:
-        db.engine.connect().close()
-        return
-    except Exception:
-        pass
 
     pg_host = os.environ.get('POSTGRES_HOST', 'postgres-db')
     pg_port = os.environ.get('POSTGRES_PORT', '5432')
@@ -124,6 +119,7 @@ def _ensure_db_setup():
 
     env_pass = os.environ.get('POSTGRES_PASSWORD')
     evo_pass = os.environ.get('EVOLUTION_DB_PASSWORD')
+    evo_db = os.environ.get('EVOLUTION_DB_NAME', 'evolution_db')
 
     creds_to_try = [
         ('barber_user', env_pass),
@@ -141,9 +137,7 @@ def _ensure_db_setup():
 
     from sqlalchemy import create_engine, text
     for su_user, su_pass in creds_to_try:
-        if not su_user:
-            continue
-        if su_pass is None:
+        if not su_user or su_pass is None:
             continue
         try:
             su_url = f'postgresql://{su_user}:{su_pass}@{pg_host}:{pg_port}/{pg_db}'
@@ -158,8 +152,20 @@ def _ensure_db_setup():
                     END
                     $$;
                 """))
+                conn.execute(text("GRANT ALL ON SCHEMA public TO PUBLIC"))
                 conn.commit()
             eng.dispose()
+            # Crear evolution_db (falla silenciosamente si ya existe)
+            try:
+                import psycopg2
+                c = psycopg2.connect(host=pg_host, port=pg_port, user=su_user, password=su_pass, dbname='postgres', connect_timeout=3)
+                c.autocommit = True
+                cur = c.cursor()
+                cur.execute(f'CREATE DATABASE "{evo_db}"')
+                cur.close()
+                c.close()
+            except Exception:
+                pass
             return
         except Exception:
             continue
