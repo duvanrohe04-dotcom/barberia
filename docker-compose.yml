@@ -11,9 +11,9 @@ services:
       - /app/__pycache__
       - barberking_uploads:/app/app/static/uploads
     environment:
-      - TZ=${TZ:-America/Bogota}
-      - FLASK_ENV=${FLASK_ENV:-production}
-      - FLASK_APP=${FLASK_APP:-run.py}
+      - TZ=${TZ}
+      - FLASK_ENV=${FLASK_ENV}
+      - FLASK_APP=${FLASK_APP}
       - SECRET_KEY=${SECRET_KEY}
       - DATABASE_URL=${DATABASE_URL}
       - POSTGRES_USER=${POSTGRES_USER}
@@ -32,10 +32,9 @@ services:
       - REDIS_HOST=${REDIS_HOST}
       - REDIS_PORT=${REDIS_PORT}
       - REDIS_PREFIX=${REDIS_PREFIX}
-      - MAX_CONTENT_LENGTH=${MAX_CONTENT_LENGTH:-5242880}
-      - RATELIMIT_STORAGE_URI=${RATELIMIT_STORAGE_URI:-memory://}
+      - MAX_CONTENT_LENGTH=${MAX_CONTENT_LENGTH}
       - ADMIN_PHONE=${ADMIN_PHONE}
-      - DEFAULT_INSTANCE=${DEFAULT_INSTANCE:-barberking}
+      - DEFAULT_INSTANCE=${DEFAULT_INSTANCE}
     command: gunicorn --bind 0.0.0.0:80 --workers 2 --threads 2 --timeout 60 --preload run:app
     depends_on:
       postgres-db:
@@ -52,16 +51,16 @@ services:
     image: postgres:15-alpine
     container_name: postgres_barberking
     environment:
-      - POSTGRES_USER=${POSTGRES_USER:-barber_user}
+      - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB:-master_db}
+      - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_INITDB_ARGS=--auth-host=md5 --auth-local=md5
     volumes:
       - barberking_wa_db3:/var/lib/postgresql/data
     expose:
       - "5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-barber_user} -d ${POSTGRES_DB:-master_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -97,7 +96,7 @@ services:
       retries: 5
       start_period: 60s
     environment:
-      - TZ=${TZ:-America/Bogota}
+      - TZ=${TZ}
       - AUTHENTICATION_TYPE=apikey
       - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY}
       - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
@@ -109,7 +108,7 @@ services:
       - SERVER_URL=${EVOLUTION_SERVER_URL}
       - REDIS_ENABLED=true
       - REDIS_URI=redis://${REDIS_HOST}:${REDIS_PORT}/0
-      - REDIS_PREFIX_KEY=${REDIS_PREFIX:-evolution}
+      - REDIS_PREFIX_KEY=${REDIS_PREFIX}
       - CACHE_REDIS_ENABLED=true
       - CACHE_REDIS_URI=redis://${REDIS_HOST}:${REDIS_PORT}/1
       - CACHE_REDIS_PREFIX_KEY=cache
@@ -132,5 +131,5 @@ networks:
 
 volumes:
   barberking_uploads:
-  barberking_wa_db2:
+  barberking_wa_db3:
   barberking_redis_data:
