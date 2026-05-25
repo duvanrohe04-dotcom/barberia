@@ -57,13 +57,11 @@ services:
       - POSTGRES_DB=${POSTGRES_DB:-barberking_db}
       - POSTGRES_INITDB_ARGS=--auth-host=md5 --auth-local=md5
     volumes:
-      - barberking_wa_db2:/var/lib/postgresql/data
-      - ./postgres-init.sh:/postgres-init.sh
+      - barberking_wa_db3:/var/lib/postgresql/data
     expose:
       - "5432"
-    command: ["/bin/sh", "/postgres-init.sh"]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-barber_user} -d ${POSTGRES_DB:-barberking_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
