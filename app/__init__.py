@@ -71,6 +71,10 @@ def create_app():
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(api_bp, url_prefix='/api')
 
+    @app.errorhandler(429)
+    def ratelimit_handler(e):
+        return jsonify({'success': False, 'message': 'Demasiados intentos. Espera un minuto.'}), 429
+
     @app.context_processor
     def inject_shop_config():
         try:
