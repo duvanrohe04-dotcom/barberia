@@ -10,23 +10,38 @@ done
 
 echo "[postgres-wrapper] Creating admin role and updating barber_user password..."
 
-# Use INITIAL_ROLE_PASSWORD if provided; otherwise create roles without setting passwords
-INIT_PWD="${INITIAL_ROLE_PASSWORD:-}"
-if [ -n "$INIT_PWD" ]; then
+# Determine role passwords from available environment variables.
+# Priority: INITIAL_ROLE_PASSWORD > role-specific envs.
+ADMIN_PWD="${INITIAL_ROLE_PASSWORD:-}"
+BARBER_PWD="${INITIAL_ROLE_PASSWORD:-${POSTGRES_PASSWORD:-}}"
+
+if [ -n "$EVOLUTION_DB_PASSWORD" ]; then
+  if [ "$EVOLUTION_DB_USER" = "admin" ]; then
+    ADMIN_PWD="$EVOLUTION_DB_PASSWORD"
+  elif [ "$EVOLUTION_DB_USER" = "barber_user" ]; then
+    BARBER_PWD="$EVOLUTION_DB_PASSWORD"
+  fi
+fi
+
+if [ -n "$ADMIN_PWD" ] || [ -n "$BARBER_PWD" ]; then
   gosu postgres psql -U postgres <<EOF
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'admin') THEN
-    CREATE ROLE admin LOGIN PASSWORD '${INIT_PWD}' SUPERUSER;
+    CREATE ROLE admin LOGIN${ADMIN_PWD:+ PASSWORD '${ADMIN_PWD}'} SUPERUSER;
   END IF;
   IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'barber_user') THEN
-    CREATE ROLE barber_user LOGIN PASSWORD '${INIT_PWD}' SUPERUSER;
-  ELSE
-    ALTER ROLE barber_user WITH PASSWORD '${INIT_PWD}';
+    CREATE ROLE barber_user LOGIN${BARBER_PWD:+ PASSWORD '${BARBER_PWD}'} SUPERUSER;
   END IF;
 END;
 $$;
 EOF
+  if [ -n "$ADMIN_PWD" ]; then
+    gosu postgres psql -U postgres -c "ALTER ROLE admin WITH PASSWORD '${ADMIN_PWD}';"
+  fi
+  if [ -n "$BARBER_PWD" ]; then
+    gosu postgres psql -U postgres -c "ALTER ROLE barber_user WITH PASSWORD '${BARBER_PWD}';"
+  fi
 else
   gosu postgres psql -U postgres <<'SQLEOF'
 DO $$
