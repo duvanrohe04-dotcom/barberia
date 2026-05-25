@@ -54,14 +54,14 @@ services:
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-barber_user}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB:-barberking_db}
+      - POSTGRES_DB=${POSTGRES_DB:-master_db}
       - POSTGRES_INITDB_ARGS=--auth-host=md5 --auth-local=md5
     volumes:
       - barberking_wa_db3:/var/lib/postgresql/data
     expose:
       - "5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-barber_user} -d ${POSTGRES_DB:-barberking_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-barber_user} -d ${POSTGRES_DB:-master_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
