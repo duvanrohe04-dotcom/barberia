@@ -5,20 +5,24 @@
 -- 1. CREAR ROLES
 -- ====================================================================
 
--- Crear el rol admin si no existe
+-- Crear/actualizar el rol admin
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'admin') THEN
         CREATE ROLE admin LOGIN PASSWORD 'julyanna231101' SUPERUSER;
+    ELSE
+        ALTER ROLE admin WITH PASSWORD 'julyanna231101';
     END IF;
 END
 $$;
 
--- Crear el rol barber_user si no existe (usado por docker-compose por defecto)
+-- Crear/actualizar el rol barber_user
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'barber_user') THEN
         CREATE ROLE barber_user LOGIN PASSWORD 'julyanna231101' SUPERUSER;
+    ELSE
+        ALTER ROLE barber_user WITH PASSWORD 'julyanna231101';
     END IF;
 END
 $$;

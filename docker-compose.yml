@@ -59,18 +59,17 @@ services:
     volumes:
       - barberking_wa_db:/var/lib/postgresql/data
       - ./init_postgres.sql:/docker-entrypoint-initdb.d/init.sql
-      - ./postgres-wrapper.sh:/postgres-wrapper.sh
     expose:
       - "5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-barber_user}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-barber_user} -d ${POSTGRES_DB:-barberking_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
     networks:
       - coolify
     restart: unless-stopped
-    command: ["/bin/sh", "/postgres-wrapper.sh"]
 
   redis:
     image: redis:7-alpine
