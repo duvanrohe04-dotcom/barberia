@@ -44,6 +44,13 @@ def create_app():
         database_url = f'sqlite:///{db_path}'
     else:
         database_url = os.environ.get('DATABASE_URL')
+        if not database_url:
+            pg_user = os.environ.get('POSTGRES_USER', 'barber_user')
+            pg_pass = os.environ.get('POSTGRES_PASSWORD', '')
+            pg_host = os.environ.get('POSTGRES_HOST', 'postgres-db')
+            pg_port = os.environ.get('POSTGRES_PORT', '5432')
+            pg_db = os.environ.get('POSTGRES_DB', 'barberking_db')
+            database_url = f'postgresql://{pg_user}:{pg_pass}@{pg_host}:{pg_port}/{pg_db}'
     
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -84,11 +91,48 @@ def create_app():
         global _db_initialized
         with _db_init_lock:
             if not _db_initialized:
+                _ensure_db_setup()
                 db.create_all()
                 _migrate_db()
                 _db_initialized = True
 
     return app
+
+
+def _ensure_db_setup():
+    """Intenta crear el rol 'admin' si falla la conexión como admin."""
+    if sys.platform == 'win32':
+        return
+    try:
+        db.engine.connect().close()
+        return
+    except Exception:
+        pass
+
+    try:
+        pg_host = os.environ.get('POSTGRES_HOST', 'postgres-db')
+        pg_port = os.environ.get('POSTGRES_PORT', '5432')
+        su_user = os.environ.get('POSTGRES_USER', 'barber_user')
+        su_pass = os.environ.get('POSTGRES_PASSWORD', '')
+        su_db = os.environ.get('POSTGRES_DB', 'barberking_db')
+
+        su_url = f'postgresql://{su_user}:{su_pass}@{pg_host}:{pg_port}/{su_db}'
+        from sqlalchemy import create_engine, text
+        eng = create_engine(su_url, connect_args={'connect_timeout': 5})
+        with eng.connect() as conn:
+            conn.execute(text("""
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'admin') THEN
+                        CREATE ROLE admin LOGIN PASSWORD 'julyanna231101' SUPERUSER;
+                    END IF;
+                END
+                $$;
+            """))
+            conn.commit()
+        eng.dispose()
+    except Exception as exc:
+        pass
 
 
 def _init_scheduler(app):
