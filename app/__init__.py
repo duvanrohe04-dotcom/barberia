@@ -1,4 +1,5 @@
 import os
+import secrets
 from datetime import datetime, timedelta
 import threading
 from flask import Flask, jsonify
@@ -23,7 +24,16 @@ _scheduler = None
 
 def create_app():
     app = Flask(__name__)
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'barberking_super_secret_key_fixed')
+    
+    # SECRET_KEY desde .env (requerido)
+    secret_key = os.environ.get('SECRET_KEY')
+    if not secret_key:
+        # Solo para desarrollo local
+        if os.environ.get('FLASK_ENV') == 'development':
+            secret_key = 'dev-secret-key-change-in-production'
+        else:
+            raise ValueError("SECRET_KEY no definida. Configúrala en .env")
+    app.config['SECRET_KEY'] = secret_key
     app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
     
     # DETECCIÓN INTELIGENTE DE RUTA (Local vs Servidor)

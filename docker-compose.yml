@@ -1,64 +1,63 @@
+version: '3.8'
+
 services:
   web:
     build: .
-    restart: always
-    environment:
-      - TZ=America/Bogota
-      - DATABASE_URL=sqlite:////app/instance/barberking.db
-      - FLASK_ENV=production
-      - SECRET_KEY=barberking_super_secret_key_fixed
-      - EVOLUTION_API_URL=http://evolution_api:8080
-      - EVOLUTION_API_KEY=barberking_secret_key
+    container_name: barberia_flask_app
+    expose:
+      - "80"
     volumes:
-      - barberking_db:/app/instance
+      - .:/app
+      - /app/__pycache__
       - barberking_uploads:/app/app/static/uploads
+    env_file:
+      - .env
+    environment:
+      - TZ=${TZ:-America/Bogota}
+      - FLASK_ENV=${FLASK_ENV:-production}
+      - FLASK_APP=${FLASK_APP:-run.py}
     command: gunicorn --bind 0.0.0.0:80 --workers 2 --threads 2 --timeout 60 --preload run:app
     depends_on:
-      - evolution_api
-    networks:
-      - barber_net
-
-  evolution_api:
-    image: evoapicloud/evolution-api:v2.3.7
-    restart: always
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-    environment:
-      - TZ=America/Bogota
-      - AUTHENTICATION_TYPE=apikey
-      - AUTHENTICATION_API_KEY=barberking_secret_key
-      - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
-      - DATABASE_ENABLED=true
-      - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=postgresql://barber_user:barber_pass@postgres:5432/evolution_db?sslmode=disable
-      - DATABASE_SAVE_DATA_INSTANCE=true
-      - SERVER_URL=https://jsbarbershopcol.sbs.mom
-      - REDIS_ENABLED=true
-      - REDIS_URI=redis://redis:6379/0
-      - REDIS_PREFIX_KEY=evolution
-      - CACHE_REDIS_ENABLED=true
-      - CACHE_REDIS_URI=redis://redis:6379/1
-      - CACHE_REDIS_PREFIX_KEY=cache
-      - CACHE_REDIS_TTL=604800
-      - CACHE_LOCAL_ENABLED=false
-    ports:
-      - "8085:8080"
-    depends_on:
+      postgres-db:
+        condition: service_healthy
       redis:
         condition: service_healthy
-      postgres:
-        condition: service_healthy
+      evolution_api:
+        condition: service_started
     networks:
-      - barber_net
+      - coolify
+    restart: unless-stopped
+
+  postgres-db:
+    image: postgres:15-alpine
+    container_name: postgres_barberking
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-barber_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-barber_pass}
+      - POSTGRES_DB=${POSTGRES_DB:-barberking_db}
+      - POSTGRES_INITDB_ARGS=-c shared_preload_libraries=pg_stat_statements
+    volumes:
+      - barberking_wa_db:/var/lib/postgresql/data
+      - ./init_postgres.sql:/docker-entrypoint-initdb.d/init.sql
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-barber_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - coolify
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
-    restart: always
+    container_name: redis_barberking
     command: redis-server --appendonly yes
+    expose:
+      - "6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -67,31 +66,54 @@ services:
     volumes:
       - barberking_redis_data:/data
     networks:
-      - barber_net
+      - coolify
+    restart: unless-stopped
 
-  postgres:
-    image: postgres:15-alpine
-    restart: always
-    environment:
-      - POSTGRES_USER=barber_user
-      - POSTGRES_PASSWORD=barber_pass
-      - POSTGRES_DB=evolution_db
-    volumes:
-      - barberking_wa_db:/var/lib/postgresql/data
+  evolution_api:
+    image: evoapicloud/evolution-api:v2.3.7
+    container_name: evolution_api_whatsapp
+    env_file:
+      - .env
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U barber_user -d evolution_db"]
-      interval: 10s
-      timeout: 5s
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
       retries: 5
+      start_period: 60s
+    environment:
+      - TZ=${TZ:-America/Bogota}
+      - AUTHENTICATION_TYPE=apikey
+      - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY}
+      - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
+      - DATABASE_ENABLED=true
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=postgresql://${EVOLUTION_DB_USER}:${EVOLUTION_DB_PASSWORD}@${EVOLUTION_DB_HOST}:${EVOLUTION_DB_PORT}/${EVOLUTION_DB_NAME}?sslmode=disable
+      - DATABASE_SAVE_DATA_INSTANCE=true
+      - SERVER_URL=${EVOLUTION_SERVER_URL}
+      - REDIS_ENABLED=true
+      - REDIS_URI=redis://${REDIS_HOST}:${REDIS_PORT}/0
+      - REDIS_PREFIX_KEY=${REDIS_PREFIX:-evolution}
+      - CACHE_REDIS_ENABLED=true
+      - CACHE_REDIS_URI=redis://${REDIS_HOST}:${REDIS_PORT}/1
+      - CACHE_REDIS_PREFIX_KEY=cache
+      - CACHE_REDIS_TTL=604800
+      - CACHE_LOCAL_ENABLED=false
+    expose:
+      - "8080"
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres-db:
+        condition: service_healthy
     networks:
-      - barber_net
+      - coolify
+    restart: unless-stopped
 
 networks:
-  barber_net:
-    driver: bridge
+  coolify:
+    external: true
 
 volumes:
-  barberking_db:
   barberking_uploads:
   barberking_wa_db:
   barberking_redis_data:
