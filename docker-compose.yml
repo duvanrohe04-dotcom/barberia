@@ -57,7 +57,7 @@ services:
       - POSTGRES_DB=${POSTGRES_DB:-barberking_db}
       - POSTGRES_INITDB_ARGS=-c shared_preload_libraries=pg_stat_statements
     volumes:
-      - barberking_wa_db:/var/lib/postgresql/data
+      - barberking_wa_db2:/var/lib/postgresql/data
       - ./init_postgres.sql:/docker-entrypoint-initdb.d/init.sql
     expose:
       - "5432"
@@ -133,5 +133,5 @@ networks:
 
 volumes:
   barberking_uploads:
-  barberking_wa_db:
+  barberking_wa_db2:
   barberking_redis_data:
