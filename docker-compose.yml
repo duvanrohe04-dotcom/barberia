@@ -126,27 +126,6 @@ services:
       - coolify
     restart: unless-stopped
 
-  # ── Servicio de inicialización de BD (se ejecuta en cada deploy/restart) ──
-  # Crea el rol "admin" y las bases de datos si no existen (idempotente)
-  db-init:
-    image: postgres:15-alpine
-    container_name: db_init_barberking
-    depends_on:
-      postgres-db:
-        condition: service_healthy
-    environment:
-      - PGPASSWORD=${POSTGRES_PASSWORD:-barber_pass}
-    volumes:
-      - ./init_postgres.sql:/init.sql
-    command: >
-      sh -c "
-      until pg_isready -h postgres-db -U \"${POSTGRES_USER:-barber_user}\" -d \"${POSTGRES_DB:-barberking_db}\"; do sleep 1; done;
-      psql -h postgres-db -U \"${POSTGRES_USER:-barber_user}\" -d \"${POSTGRES_DB:-barberking_db}\" -f /init.sql
-      "
-    networks:
-      - coolify
-    restart: "no"
-
 networks:
   coolify:
     external: true

@@ -10,9 +10,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Dependencias del sistema
+# Dependencias del sistema (postgresql-client para entrypoint.sh)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq-dev gcc curl && \
+    libpq-dev gcc curl postgresql-client && \
     rm -rf /var/lib/apt/lists/*
 
 # Instalar dependencias Python
@@ -28,6 +28,10 @@ RUN rm -f /app/instance/*.db /app/instance/*.sqlite3
 # Crear carpetas para volúmenes
 RUN mkdir -p /app/instance /app/app/static/uploads
 
+# Entrypoint para inicialización (crea rol admin en BD)
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 # Usuario no-root por seguridad
 RUN useradd -m appuser && chown -R appuser /app
 USER appuser
@@ -38,4 +42,5 @@ EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:80/api/health || exit 1
 
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["gunicorn", "--bind", "0.0.0.0:80", "--workers", "2", "--threads", "2", "--timeout", "60", "--preload", "run:app"]
