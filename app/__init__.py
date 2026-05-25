@@ -121,9 +121,9 @@ def _init_scheduler(app):
 
                 if changed:
                     db.session.commit()
-                    print(f"[Scheduler] ✅ Auto-completadas citas vencidas a las {now.strftime('%Y-%m-%d %H:%M')}")
+                    print(f"[Scheduler] OK - Auto-completadas citas vencidas a las {now.strftime('%Y-%m-%d %H:%M')}")
             except Exception as e:
-                print(f"[Scheduler] ❌ Error auto-completando citas: {e}")
+                print(f"[Scheduler] Error auto-completando citas: {e}")
 
     _scheduler.add_job(
         auto_complete_job,
@@ -134,7 +134,7 @@ def _init_scheduler(app):
         replace_existing=True
     )
     _scheduler.start()
-    print(f"[Scheduler] ✅ Iniciado — auto-completado cada 5 minutos")
+    print(f"[Scheduler] OK - Iniciado: auto-completado cada 5 minutos")
 
 def _migrate_db():
     from sqlalchemy import text, inspect
