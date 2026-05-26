@@ -39,8 +39,6 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-      evolution_api:
-        condition: service_started
     networks:
       - coolify
     restart: unless-stopped
@@ -61,6 +59,8 @@ services:
     networks:
       - coolify
     restart: unless-stopped
+
+    
 
   evolution_api:
     image: evoapicloud/evolution-api:v2.3.7
