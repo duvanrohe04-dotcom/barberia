@@ -74,7 +74,7 @@ services:
       - AUTHENTICATION_TYPE=apikey
       - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY}
       - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
-      - DATABASE_ENABLED=false
+      - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql
       - DATABASE_URL=${DATABASE_URL}
       - DATABASE_CONNECTION_URI=${DATABASE_URL}
@@ -89,6 +89,8 @@ services:
       - CACHE_LOCAL_ENABLED=false
     expose:
       - "8080"
+    volumes:
+      - ./scripts/runWithProvider.js:/evolution/prisma/runWithProvider.js
     depends_on:
       redis:
         condition: service_healthy
