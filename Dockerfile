@@ -2,7 +2,9 @@
 FROM python:3.11-slim
 
 # Configurar zona horaria de Colombia (UTC-5)
+ARG DEBIAN_FRONTEND=noninteractive
 ENV TZ=America/Bogota
+ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
     tzdata && \
     ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
@@ -12,7 +14,7 @@ WORKDIR /app
 
 # Dependencias del sistema (postgresql-client para entrypoint.sh)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq-dev gcc curl postgresql-client nodejs npm && \
+    libpq-dev gcc curl postgresql-client && \
     rm -rf /var/lib/apt/lists/*
 
 # Instalar dependencias Python
