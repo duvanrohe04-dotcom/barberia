@@ -1,3 +1,0 @@
-﻿
-[2026-05-26 16:44:47] Starting prisma migration resolve script
-[2026-05-26 16:44:47] ERROR: Migrations source not found: ./prisma/postgresql-migrations

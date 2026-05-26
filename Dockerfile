@@ -14,7 +14,7 @@ WORKDIR /app
 
 # Dependencias del sistema (postgresql-client para entrypoint.sh)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq-dev gcc curl postgresql-client && \
+    libpq-dev gcc curl postgresql-client python3-dev && \
     rm -rf /var/lib/apt/lists/*
 
 # Instalar dependencias Python
