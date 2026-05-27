@@ -6,9 +6,11 @@ from app import limiter
 auth_bp = Blueprint('auth', __name__)
 
 
-@auth_bp.route('/login', methods=['POST'])
+@auth_bp.route('/login', methods=['GET', 'POST'])
 @limiter.limit("10 per minute")  # máx 10 intentos por minuto por IP
 def login():
+    if request.method == 'GET':
+        return jsonify({'success': False, 'message': 'Usa POST para iniciar sesión'}), 405
     data = request.get_json(silent=True)
     if not data:
         return jsonify({'success': False, 'message': 'Datos inválidos'}), 400
