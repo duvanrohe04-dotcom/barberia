@@ -10,7 +10,8 @@ auth_bp = Blueprint('auth', __name__)
 @limiter.limit("10 per minute")  # máx 10 intentos por minuto por IP
 def login():
     if request.method == 'GET':
-        return jsonify({'success': False, 'message': 'Usa POST para iniciar sesión'}), 405
+        from flask import redirect
+        return redirect('/')
     data = request.get_json(silent=True)
     if not data:
         return jsonify({'success': False, 'message': 'Datos inválidos'}), 400
