@@ -1061,6 +1061,26 @@ def reset_appointments():
             'message': f'❌ Error al reiniciar el dashboard: {str(e)}'
         }), 500
 
+@api_bp.route('/setup-admin', methods=['POST'])
+def setup_admin():
+    from app.models import Admin
+    from app import db as _db
+    data = request.get_json(silent=True) or {}
+    username = str(data.get('username', 'admin')).strip()[:80]
+    password = str(data.get('password', 'barberking2024'))[:200]
+    if len(password) < 6:
+        return jsonify({'success': False, 'message': 'La contraseña debe tener al menos 6 caracteres'}), 400
+    existing = Admin.query.filter_by(username=username).first()
+    if existing:
+        existing.set_password(password)
+        _db.session.commit()
+        return jsonify({'success': True, 'message': f'Admin "{username}" actualizado'})
+    admin = Admin(username=username)
+    admin.set_password(password)
+    _db.session.add(admin)
+    _db.session.commit()
+    return jsonify({'success': True, 'message': f'Admin "{username}" creado'}), 201
+
 @api_bp.route('/health')
 def health_check():
     """Endpoint para monitoreo de salud del servicio."""
