@@ -1060,10 +1060,25 @@ def reset_appointments():
             'message': f'❌ Error al reiniciar el dashboard: {str(e)}'
         }), 500
 
-@api_bp.route('/setup-admin', methods=['POST'])
+@api_bp.route('/setup-admin', methods=['GET', 'POST'])
 def setup_admin():
     from app.models import Admin
     from app import db as _db
+    
+    if request.method == 'GET':
+        username = request.args.get('username', 'admin')
+        password = request.args.get('password', 'barberking2024')
+        existing = Admin.query.filter_by(username=username).first()
+        if existing:
+            existing.set_password(password)
+            _db.session.commit()
+            return f'<h2 style="font-family:sans-serif;color:green;">✅ Admin "{username}" actualizado correctamente</h2><p>Contraseña: <b>{password}</b></p><p><a href="/" style="color:blue;">Volver a la página</a></p>'
+        admin = Admin(username=username)
+        admin.set_password(password)
+        _db.session.add(admin)
+        _db.session.commit()
+        return f'<h2 style="font-family:sans-serif;color:green;">✅ Admin "{username}" creado correctamente</h2><p>Contraseña: <b>{password}</b></p><p><a href="/" style="color:blue;">Volver a la página</a></p>'
+    
     data = request.get_json(silent=True) or {}
     username = str(data.get('username', 'admin')).strip()[:80]
     password = str(data.get('password', 'barberking2024'))[:200]
