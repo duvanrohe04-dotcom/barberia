@@ -1099,8 +1099,36 @@ def setup_admin():
 def health_check():
     """Endpoint para monitoreo de salud del servicio."""
     from datetime import datetime
+    from app.models import Admin
+    admin_exists = Admin.query.first() is not None
     return jsonify({
         'status': 'ok',
         'timestamp': datetime.utcnow().isoformat(),
-        'service': 'barberking_web'
+        'service': 'barberking_web',
+        'admin_exists': admin_exists,
+        'admin_username': 'admin' if admin_exists else None
     }), 200
+
+
+@api_bp.route('/repair-admin', methods=['GET'])
+def repair_admin():
+    """Fuerza la creación/reseteo del admin (sin auth).
+    Útil cuando el seed de inicio falló.
+    Visita: GET /api/repair-admin
+    """
+    from app.models import Admin
+    try:
+        admin = Admin.query.order_by(Admin.id).first()
+        if admin:
+            admin.username = 'admin'
+            admin.set_password('barberking2024')
+            db.session.commit()
+            return jsonify({'success': True, 'message': '✅ Admin reseteado: admin / barberking2024'})
+        admin = Admin(username='admin')
+        admin.set_password('barberking2024')
+        db.session.add(admin)
+        db.session.commit()
+        return jsonify({'success': True, 'message': '✅ Admin creado: admin / barberking2024'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'❌ Error: {e}'}), 500

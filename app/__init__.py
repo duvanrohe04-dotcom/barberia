@@ -113,22 +113,7 @@ def create_app():
                     print(f"[Seed] Error en seed_data: {e}")
 
                 from app.models import Admin
-                try:
-                    admin = Admin.query.order_by(Admin.id).first()
-                    if not admin:
-                        admin = Admin(username='admin')
-                        admin.set_password('barberking2024')
-                        db.session.add(admin)
-                        db.session.commit()
-                        print("[Admin] ✅ Admin creado forzosamente: admin/barberking2024")
-                    else:
-                        admin.username = 'admin'
-                        admin.set_password('barberking2024')
-                        db.session.commit()
-                        print("[Admin] ✅ Admin reset forzoso: admin/barberking2024")
-                except Exception as e:
-                    db.session.rollback()
-                    print(f"[Admin] ❌ Error forzando admin: {e}")
+                _ensure_admin_startup()
 
                 _db_initialized = True
 
@@ -253,6 +238,34 @@ def _init_scheduler(app):
     )
     _scheduler.start()
     print(f"[Scheduler] OK - Iniciado: auto-completado cada 5 minutos")
+
+def _ensure_admin_startup():
+    """Crea o resetea el admin al iniciar. Reintenta si falla."""
+    from app.models import Admin
+    max_retries = 3
+    for attempt in range(1, max_retries + 1):
+        try:
+            admin = Admin.query.order_by(Admin.id).first()
+            if not admin:
+                admin = Admin(username='admin')
+                admin.set_password('barberking2024')
+                db.session.add(admin)
+                db.session.commit()
+                print("[Admin] ✅ Admin creado forzosamente: admin/barberking2024")
+            else:
+                admin.username = 'admin'
+                admin.set_password('barberking2024')
+                db.session.commit()
+                print("[Admin] ✅ Admin reset forzoso: admin/barberking2024")
+            return
+        except Exception as e:
+            db.session.rollback()
+            print(f"[Admin] ❌ Intento {attempt}/{max_retries} falló: {e}")
+            if attempt < max_retries:
+                import time
+                time.sleep(2)
+    print("[Admin] ❌ No se pudo crear/resetear admin tras todos los intentos")
+
 
 def _migrate_db():
     from sqlalchemy import text, inspect
