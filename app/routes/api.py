@@ -452,19 +452,18 @@ def disconnect_wa():
 @login_required
 def test_evolution():
     """Endpoint de prueba para verificar conectividad con Evolution API."""
-    import requests
-    from app.whatsapp_service import EVOLUTION_BASE_URL, EVOLUTION_API_KEY
-    
+    from app.whatsapp_service import EVOLUTION_BASE_URL, EVOLUTION_API_KEY, _http_request
+
     print(f"[API] Probando conexión a: {EVOLUTION_BASE_URL}")
-    
+
     try:
         headers = {'apikey': EVOLUTION_API_KEY}
-        res = requests.get(f"{EVOLUTION_BASE_URL}/instance/fetchInstances", headers=headers, timeout=3)
+        status, body, _ = _http_request('GET', f"{EVOLUTION_BASE_URL}/instance/fetchInstances", headers=headers, timeout=3)
         return jsonify({
-            'success': res.status_code == 200,
-            'status_code': res.status_code,
+            'success': status == 200,
+            'status_code': status,
             'url': EVOLUTION_BASE_URL,
-            'response': res.text[:200]
+            'response': body[:200]
         })
     except Exception as e:
         return jsonify({

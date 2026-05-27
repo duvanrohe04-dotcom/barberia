@@ -12,7 +12,9 @@ from dotenv import load_dotenv
 from apscheduler.schedulers.background import BackgroundScheduler
 import pytz
 
-load_dotenv()
+# Cargar primero .env.local (si existe) y luego .env para compatibilidad local y Coolify.
+load_dotenv('.env.local', override=False)
+load_dotenv('.env', override=False)
 
 db = SQLAlchemy()
 login_manager = LoginManager()

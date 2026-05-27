@@ -1,14 +1,63 @@
-import requests
+import json
 import os
+import sys
 import time
 import qrcode
 import io
 import base64
+import urllib.request
+import urllib.error
 from datetime import datetime, timedelta
 
-EVOLUTION_BASE_URL = os.environ.get('EVOLUTION_API_URL', 'http://evolution_api:8080')
+is_local_runtime = sys.platform == 'win32' or os.environ.get('FLASK_ENV') == 'development'
+
+
+def _resolve_evolution_base_url():
+    env_url = os.environ.get('EVOLUTION_API_URL')
+    inside_container = os.path.exists('/.dockerenv') or os.environ.get('RUNNING_IN_DOCKER') == '1'
+
+    if inside_container:
+        if env_url:
+            return env_url.replace('http://127.0.0.1:8080', 'http://evolution_api:8080') \
+                .replace('http://localhost:8080', 'http://evolution_api:8080')
+        return 'http://evolution_api:8080'
+
+    return env_url or ('http://127.0.0.1:8080' if is_local_runtime else 'http://evolution_api:8080')
+
+
+EVOLUTION_BASE_URL = _resolve_evolution_base_url()
 EVOLUTION_API_KEY = os.environ.get('EVOLUTION_API_KEY', 'barberking_secret_key')
 DEFAULT_INSTANCE = os.environ.get('DEFAULT_INSTANCE', 'barberking')
+
+
+def _http_request(method, url, payload=None, headers=None, timeout=15):
+    data = None
+    req_headers = dict(headers or {})
+    if payload is not None:
+        data = json.dumps(payload).encode('utf-8')
+        req_headers.setdefault('Content-Type', 'application/json')
+
+    req = urllib.request.Request(url, data=data, headers=req_headers, method=method)
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            body = response.read().decode('utf-8', errors='ignore')
+            try:
+                parsed = json.loads(body) if body else None
+            except ValueError:
+                parsed = None
+            return response.status, body, parsed
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode('utf-8', errors='ignore')
+        try:
+            parsed = json.loads(body) if body else None
+        except ValueError:
+            parsed = None
+        return exc.code, body, parsed
+    except urllib.error.URLError as exc:
+        raise ConnectionError(str(exc.reason)) from exc
+    except TimeoutError as exc:
+        raise TimeoutError('Tiempo de espera agotado') from exc
+
 
 def send_whatsapp_message(to_number, message):
     from app.models import ShopConfig
@@ -58,28 +107,24 @@ def send_whatsapp_message(to_number, message):
     }
     
     try:
-        response = requests.post(url, json=payload, headers=headers, timeout=15)
-        print(f"[WhatsApp] Status: {response.status_code}")
-        print(f"[WhatsApp] Respuesta: {response.text[:500]}")
-        
-        if response.status_code in [200, 201]:
-            try:
-                resp_json = response.json()
-                if resp_json.get('error') or resp_json.get('status') == 'error':
-                    print(f"[WhatsApp] ❌ API devolvió error: {resp_json}")
-                    return False
-                print(f"[WhatsApp] ✅ Mensaje enviado exitosamente")
-            except:
-                pass
+        status, body, resp_json = _http_request('POST', url, payload=payload, headers=headers, timeout=15)
+        print(f"[WhatsApp] Status: {status}")
+        print(f"[WhatsApp] Respuesta: {body[:500]}")
+
+        if status in [200, 201]:
+            if isinstance(resp_json, dict) and (resp_json.get('error') or resp_json.get('status') == 'error'):
+                print(f"[WhatsApp] ❌ API devolvió error: {resp_json}")
+                return False
+            print(f"[WhatsApp] ✅ Mensaje enviado exitosamente")
             return True
-        else:
-            print(f"[WhatsApp] ❌ Error al enviar mensaje: {response.text[:300]}")
-            return False
-            
-    except requests.exceptions.Timeout:
+
+        print(f"[WhatsApp] ❌ Error al enviar mensaje: {body[:300]}")
+        return False
+
+    except TimeoutError:
         print(f"[WhatsApp] ❌ Timeout al enviar mensaje")
         return False
-    except requests.exceptions.ConnectionError as e:
+    except ConnectionError as e:
         print(f"[WhatsApp] ❌ Error de conexión: {e}")
         return False
     except Exception as e:
@@ -90,8 +135,11 @@ def disconnect_whatsapp():
     """Desconecta la instancia de WhatsApp usando Evolution API v2."""
     try:
         print(f"[WA] Iniciando desconexión...")
-        
-        instance_name = 'jsbarbershop'
+
+        from app.models import ShopConfig
+
+        inst_row = ShopConfig.query.filter_by(key='evo_instance').first()
+        instance_name = inst_row.value if inst_row and inst_row.value else DEFAULT_INSTANCE
         base_url = EVOLUTION_BASE_URL
         api_key = EVOLUTION_API_KEY
         
@@ -106,22 +154,20 @@ def disconnect_whatsapp():
         url = f"{base_url}/instance/logout/{instance_name}"
         print(f"[WA] DELETE to: {url}")
         
-        # Timeout corto para evitar 504
-        res = requests.delete(url, headers=headers, timeout=5)
-        print(f"[WA] Status: {res.status_code}")
-        print(f"[WA] Response: {res.text[:200]}")
-        
-        if res.status_code == 200:
+        status, body, _ = _http_request('DELETE', url, headers=headers, timeout=5)
+        print(f"[WA] Status: {status}")
+        print(f"[WA] Response: {body[:200]}")
+
+        if status == 200:
             return {'success': True, 'message': 'WhatsApp desconectado exitosamente.'}
-        elif res.status_code == 404:
+        if status == 404:
             return {'success': True, 'message': 'Instancia no encontrada (posiblemente ya desconectada).'}
-        else:
-            return {'success': False, 'message': f'Error {res.status_code}: {res.text[:100]}'}
-        
-    except requests.exceptions.Timeout:
+        return {'success': False, 'message': f'Error {status}: {body[:100]}'}
+
+    except TimeoutError:
         print(f"[WA] TIMEOUT: No se pudo conectar a Evolution API en {base_url}")
         return {'success': False, 'message': f'Tiempo agotado. No se puede conectar a Evolution API.'}
-    except requests.exceptions.ConnectionError:
+    except ConnectionError:
         print(f"[WA] CONNECTION ERROR: No se puede conectar a {base_url}")
         return {'success': False, 'message': f'Error de conexión. Evolution API no disponible.'}
     except Exception as e:
@@ -147,12 +193,13 @@ def get_whatsapp_qr():
     
     try:
         # Verificar si la instancia existe
-        check_res = requests.get(f"{base_url}/instance/fetchInstances", headers=headers, timeout=10)
+        status, body, res_data = _http_request('GET', f"{base_url}/instance/fetchInstances", headers=headers, timeout=10)
         exists = False
-        
-        if check_res.status_code == 200:
-            try: 
-                res_data = check_res.json()
+
+        if status == 200:
+            try:
+                if res_data is None:
+                    res_data = json.loads(body) if body else {}
                 instances = res_data if isinstance(res_data, list) else res_data.get('instances', [])
                 
                 print(f"[WA] Instancias encontradas: {[i.get('instanceName', i.get('instance', {}).get('instanceName', 'unknown')) for i in instances]}")
@@ -184,12 +231,12 @@ def get_whatsapp_qr():
                 "qrcode": True,
                 "integration": "WHATSAPP-BAILEYS"
             }
-            create_res = requests.post(f"{base_url}/instance/create", json=payload, headers=headers, timeout=15)
-            
-            print(f"[WA] Respuesta crear instancia: {create_res.status_code} - {create_res.text[:200]}")
-             
-            if create_res.status_code not in [200, 201, 403, 409]:
-                return {"success": False, "message": f"Error al crear instancia: {create_res.text[:100]}"}
+            status, body, _ = _http_request('POST', f"{base_url}/instance/create", payload=payload, headers=headers, timeout=15)
+
+            print(f"[WA] Respuesta crear instancia: {status} - {body[:200]}")
+
+            if status not in [200, 201, 403, 409]:
+                return {"success": False, "message": f"Error al crear instancia: {body[:100]}"}
              
             time.sleep(3)
   
@@ -202,18 +249,19 @@ def get_whatsapp_qr():
     print(f"[WA] Solicitando QR desde: {qr_url}")
     
     try:
-        res = requests.get(qr_url, headers=headers, timeout=25)
-        
-        print(f"[WA] Respuesta QR: {res.status_code}")
-        print(f"[WA] Contenido: {res.text[:500]}")
-        
-        if res.status_code == 404:
+        status, body, data = _http_request('GET', qr_url, headers=headers, timeout=25)
+
+        print(f"[WA] Respuesta QR: {status}")
+        print(f"[WA] Contenido: {body[:500]}")
+
+        if status == 404:
             return {"success": False, "message": f"Instancia '{clean_name}' no encontrada. Verifica la configuración."}
-        
-        if res.status_code != 200:
-            return {"success": False, "message": f"Error {res.status_code}: {res.text[:100]}"}
-        
-        data = res.json()
+
+        if status != 200:
+            return {"success": False, "message": f"Error {status}: {body[:100]}"}
+
+        if data is None:
+            data = json.loads(body) if body else {}
         
         print(f"[WA] Datos recibidos del QR: {list(data.keys())}")
         
@@ -267,9 +315,9 @@ def get_whatsapp_qr():
         print(f"[WA] Formato de respuesta no reconocido: {data}")
         return {"success": False, "message": "Formato de respuesta no reconocido. Verifica la configuración de Evolution API."}
               
-    except requests.exceptions.Timeout:
+    except TimeoutError:
         return {"success": False, "message": "Tiempo de espera agotado. El servidor de WhatsApp no responde."}
-    except requests.exceptions.ConnectionError:
+    except ConnectionError:
         return {"success": False, "message": "No se puede conectar al servidor de WhatsApp. Verifica que Evolution API esté corriendo."}
     except Exception as e:
         print(f"[WA] Error obteniendo QR: {e}")

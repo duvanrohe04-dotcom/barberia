@@ -40,6 +40,8 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      evolution_api:
+        condition: service_started
     networks:
       - coolify
     restart: unless-stopped
@@ -62,7 +64,9 @@ services:
     restart: unless-stopped
 
   evolution_api:
-    image: evoapicloud/evolution-api:v2.3.7
+    build:
+      context: ./evolution-api
+      dockerfile: Dockerfile
     container_name: evolution_api_whatsapp
     entrypoint: ["/bin/sh", "-c"]
     command: |
@@ -107,8 +111,8 @@ services:
       - CACHE_REDIS_PREFIX_KEY=cache
       - CACHE_REDIS_TTL=604800
       - CACHE_LOCAL_ENABLED=false
-    expose:
-      - "8080"
+    ports:
+      - "8085:8080"
     depends_on:
       redis:
         condition: service_healthy
