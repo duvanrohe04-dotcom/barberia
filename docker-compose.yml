@@ -65,9 +65,22 @@ services:
     container_name: evolution_api_whatsapp
     entrypoint: ["/bin/sh", "-c"]
     command: |
-      echo "[entrypoint] Syncing database schema..."
-      npx prisma db push --schema ./prisma/postgresql-schema.prisma --accept-data-loss 2>/dev/null || true
-      echo "[entrypoint] Starting Evolution API..."
+      node -e "
+        const { execSync } = require('child_process');
+        const { readdirSync, existsSync, statSync } = require('fs');
+        const dir = './prisma/postgresql-migrations';
+        const schema = './prisma/postgresql-schema.prisma';
+        console.log('[baseline] Checking migrations...');
+        if (existsSync(dir)) {
+          readdirSync(dir).filter(f => statSync(dir+'/'+f).isDirectory()).sort().forEach(f => {
+            try {
+              execSync('npx prisma migrate resolve --applied \"'+f+'\" --schema '+schema, { stdio: 'ignore' });
+              console.log('[baseline] Marked: '+f);
+            } catch(_){}
+          });
+        }
+        console.log('[baseline] Done');
+      "
       exec node dist/src/main
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080"]
