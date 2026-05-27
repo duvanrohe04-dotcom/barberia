@@ -89,8 +89,6 @@ services:
       - CACHE_LOCAL_ENABLED=false
     expose:
       - "8080"
-    volumes:
-      - ./scripts/runWithProvider.js:/evolution/runWithProvider.js
     depends_on:
       redis:
         condition: service_healthy
