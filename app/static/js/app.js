@@ -136,20 +136,32 @@ async function doLogin(e){
   if(e && e.preventDefault) e.preventDefault();
   const u = document.getElementById('rUser').value.trim();
   const p = document.getElementById('rPass').value;
-  const res = await fetch('/auth/login', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({username:u, password:p})
-  });
-  const data = await res.json();
-  if(data.success){
-    document.getElementById('loginPanel').style.display='none';
-    document.getElementById('adminKeyBtn').style.display='none';
-    document.getElementById('adminZone').style.display='flex';
-    switchView('admin');
-    showToast('✅ Bienvenido, Administrador!','ok');
-  } else {
-    showToast('🔐 ' + (data.message||'Credenciales incorrectas. Intenta de nuevo.'), 'error');
+  try {
+    const res = await fetch('/auth/login', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({username:u, password:p})
+    });
+    console.log('[Login] Status:', res.status);
+    if(!res.ok){
+      const txt = await res.text().catch(()=>'');
+      console.error('[Login] Error response:', res.status, txt.slice(0,200));
+      showToast('🔐 Error del servidor ('+res.status+'). Revisa la consola.','error');
+      return;
+    }
+    const data = await res.json();
+    if(data.success){
+      document.getElementById('loginPanel').style.display='none';
+      document.getElementById('adminKeyBtn').style.display='none';
+      document.getElementById('adminZone').style.display='flex';
+      switchView('admin');
+      showToast('✅ Bienvenido, Administrador!','ok');
+    } else {
+      showToast('🔐 ' + (data.message||'Credenciales incorrectas. Intenta de nuevo.'), 'error');
+    }
+  } catch(err) {
+    console.error('[Login] Error crítico:', err);
+    showToast('🔐 Error de conexión al servidor. Verifica la consola (F12).','error');
   }
 }
 
