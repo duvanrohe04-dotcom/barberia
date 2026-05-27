@@ -63,10 +63,13 @@ services:
   evolution_api:
     image: evoapicloud/evolution-api:v2.3.7
     container_name: evolution_api_whatsapp
-    entrypoint: ["/bin/sh", "/entrypoint-evolution.sh"]
-    command: ["node", "dist/src/main"]
-    volumes:
-      - ./scripts/entrypoint-evolution.sh:/entrypoint-evolution.sh:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      for dir in ./prisma/postgresql-migrations/*/; do
+        [ -d "$$dir" ] && npx prisma migrate resolve --applied "$$(basename "$$dir")" --schema ./prisma/postgresql-schema.prisma 2>/dev/null || true
+      done
+      echo "[entrypoint] Baselining complete. Starting Evolution API..."
+      exec node dist/src/main
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080"]
       interval: 30s
