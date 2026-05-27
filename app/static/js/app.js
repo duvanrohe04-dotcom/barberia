@@ -143,13 +143,15 @@ async function doLogin(e){
       body: JSON.stringify({username:u, password:p})
     });
     console.log('[Login] Status:', res.status);
-    if(!res.ok){
+    let data;
+    try {
+      data = await res.json();
+    } catch(_) {
       const txt = await res.text().catch(()=>'');
-      console.error('[Login] Error response:', res.status, txt.slice(0,200));
+      console.error('[Login] Respuesta no JSON:', res.status, txt.slice(0,300));
       showToast('🔐 Error del servidor ('+res.status+'). Revisa la consola.','error');
       return;
     }
-    const data = await res.json();
     if(data.success){
       document.getElementById('loginPanel').style.display='none';
       document.getElementById('adminKeyBtn').style.display='none';
