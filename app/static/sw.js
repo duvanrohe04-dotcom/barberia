@@ -1,10 +1,10 @@
-const CACHE_NAME = 'barberking-v50';
+const CACHE_NAME = 'barberking-v51';
 const urlsToCache = [
   '/',
-  '/static/css/style.css?v=48',
-  '/static/js/app.js?v=48',
-  '/static/js/particles.js?v=47',
-  '/static/js/utils.js?v=47'
+  '/static/css/style.css?v=49',
+  '/static/js/app.js?v=49',
+  '/static/js/particles.js?v=48',
+  '/static/js/utils.js?v=48'
 ];
 
 self.addEventListener('install', event => {

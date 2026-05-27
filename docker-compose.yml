@@ -33,6 +33,7 @@ services:
       - REDIS_PORT=${REDIS_PORT}
       - REDIS_PREFIX=${REDIS_PREFIX}
       - MAX_CONTENT_LENGTH=${MAX_CONTENT_LENGTH}
+      - ADMIN_RESET=${ADMIN_RESET}
       - ADMIN_PHONE=${ADMIN_PHONE}
       - DEFAULT_INSTANCE=${DEFAULT_INSTANCE}
     command: gunicorn --bind 0.0.0.0:80 --workers 2 --threads 2 --timeout 60 run:app

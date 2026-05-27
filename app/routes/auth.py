@@ -27,7 +27,14 @@ def login():
         from flask import session
         session.permanent = True
         login_user(admin, remember=True)
+        print(f"[Auth] ✅ Login exitoso para '{username}'")
         return jsonify({'success': True})
+
+    # Log para depuración (sin revelar detalles al cliente)
+    if not admin:
+        print(f"[Auth] ❌ Login fallido: usuario '{username}' no encontrado en BD")
+    else:
+        print(f"[Auth] ❌ Login fallido: contraseña incorrecta para '{username}'")
 
     # Mismo mensaje para usuario o contraseña incorrectos (evita enumeración)
     return jsonify({'success': False, 'message': 'Usuario o contraseña incorrectos'}), 401

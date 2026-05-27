@@ -163,12 +163,37 @@ def process_fidelity_for_appointment(appt):
 
 
 def seed_data():
-    if Admin.query.first():
+    import os
+
+    DEFAULT_ADMIN_USERNAME = 'admin'
+    DEFAULT_ADMIN_PASSWORD = 'barberking2024'
+
+    existing_admin = Admin.query.order_by(Admin.id).first()
+
+    # Si se pide reset de credenciales vía variable de entorno
+    if os.environ.get('ADMIN_RESET', '').lower() == 'true' and existing_admin:
+        existing_admin.username = DEFAULT_ADMIN_USERNAME
+        existing_admin.set_password(DEFAULT_ADMIN_PASSWORD)
+        db.session.commit()
+        print("[Seed] ✅ Credenciales de admin reseteadas a admin/barberking2024 (ADMIN_RESET=true)")
         return
 
-    admin = Admin(username='admin')
-    admin.set_password('barberking2024')
+    if existing_admin:
+        # Garantizar siempre el usuario admin por defecto en producción, incluso si la BD ya tenía otra contraseña.
+        if existing_admin.username != DEFAULT_ADMIN_USERNAME or not existing_admin.check_password(DEFAULT_ADMIN_PASSWORD):
+            existing_admin.username = DEFAULT_ADMIN_USERNAME
+            existing_admin.set_password(DEFAULT_ADMIN_PASSWORD)
+            db.session.commit()
+            print("[Seed] ✅ Credenciales de admin aseguradas como admin/barberking2024")
+        else:
+            print(f"[Seed] Admin ya existe (username={existing_admin.username}), no se re-crea.")
+        return
+
+    admin = Admin(username=DEFAULT_ADMIN_USERNAME)
+    admin.set_password(DEFAULT_ADMIN_PASSWORD)
     db.session.add(admin)
+    db.session.commit()
+    print("[Seed] ✅ Admin creado: admin/barberking2024")
 
     male_services = [
         Service(name='Corte de Cabello',  description='Corte clásico o moderno adaptado a tu estilo personal', price=25000, emoji='💇', gender='male'),
