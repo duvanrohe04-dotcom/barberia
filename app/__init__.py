@@ -119,18 +119,20 @@ def create_app():
         global _db_initialized
         with _db_init_lock:
             if not _db_initialized:
-                db.create_all()
-                _migrate_db()
-                from app.models import seed_data
                 try:
+                    db.create_all()
+                    _migrate_db()
+                    from app.models import seed_data
                     seed_data()
+                    
+                    from app.models import Admin
+                    _ensure_admin_startup()
+                    _db_initialized = True
+                    print("[DB] Initialized successfully.")
                 except Exception as e:
-                    print(f"[Seed] Error en seed_data: {e}")
-
-                from app.models import Admin
-                _ensure_admin_startup()
-
-                _db_initialized = True
+                    print(f"[DB] ERROR de conexión inicial: {e}")
+                    print("[DB] La aplicación arrancó, pero la base de datos no es accesible. Verifica tus credenciales de Coolify (DATABASE_URL o POSTGRES_PASSWORD).")
+                    # No marcamos _db_initialized como True para que lo intente luego si es un problema de tiempo.
 
     return app
 
