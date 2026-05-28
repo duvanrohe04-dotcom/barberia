@@ -1113,8 +1113,13 @@ def setup_admin():
 def health_check():
     """Endpoint para monitoreo de salud del servicio."""
     from datetime import datetime
-    from app.models import Admin
-    admin_exists = Admin.query.first() is not None
+    try:
+        from app.models import Admin
+        admin_exists = Admin.query.first() is not None
+    except Exception as e:
+        print(f"[Health] DB Check Error: {e}")
+        admin_exists = False
+
     return jsonify({
         'status': 'ok',
         'timestamp': datetime.utcnow().isoformat(),
