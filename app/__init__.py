@@ -145,6 +145,11 @@ def _ensure_role_passwords():
     pg_port = os.environ.get('POSTGRES_PORT', '5432')
     pg_pass = os.environ.get('POSTGRES_PASSWORD')
     if not pg_pass:
+        db_url = os.environ.get('DATABASE_URL', '')
+        if db_url:
+            parsed = urllib.parse.urlparse(db_url.strip().strip('"').strip("'"))
+            pg_pass = urllib.parse.unquote_plus(parsed.password or '')
+    if not pg_pass:
         print("[DB] POSTGRES_PASSWORD no definida, se omite _ensure_role_passwords")
         return
     users_to_try = ['admin', 'barber_user', 'postgres']
@@ -194,6 +199,11 @@ def _ensure_db_setup():
     pg_db = os.environ.get('POSTGRES_DB', 'barberking_db')
 
     env_pass = os.environ.get('POSTGRES_PASSWORD')
+    if not env_pass:
+        db_url = os.environ.get('DATABASE_URL', '')
+        if db_url:
+            parsed = urllib.parse.urlparse(db_url.strip().strip('"').strip("'"))
+            env_pass = urllib.parse.unquote_plus(parsed.password or '')
     evo_pass = os.environ.get('EVOLUTION_DB_PASSWORD')
     evo_db = os.environ.get('EVOLUTION_DB_NAME', 'evolution_db')
 
