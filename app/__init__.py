@@ -12,9 +12,10 @@ from dotenv import load_dotenv
 from apscheduler.schedulers.background import BackgroundScheduler
 import pytz
 
-# Cargar primero .env.local (si existe) y luego .env para compatibilidad local y Coolify.
-load_dotenv('.env.local', override=False)
+# Cargar .env primero para producción/Coolify. En desarrollo, cargar .env.local también si existe.
 load_dotenv('.env', override=False)
+if sys.platform == 'win32' or os.environ.get('FLASK_ENV') == 'development':
+    load_dotenv('.env.local', override=False)
 
 db = SQLAlchemy()
 login_manager = LoginManager()
@@ -26,6 +27,9 @@ _db_initialized = False
 _scheduler = None
 
 def create_app():
+    print("=" * 60)
+    print("RUNNING create_app() V2.1 - WITH _ensure_role_passwords")
+    print("=" * 60)
     app = Flask(__name__)
     
     # SECRET_KEY (requerido en producción; para desarrollo se genera si no existe)
@@ -47,14 +51,17 @@ def create_app():
         os.makedirs(os.path.join(base_dir, 'instance'), exist_ok=True)
         database_url = f'sqlite:///{db_path}'
     else:
-        # NOTA: Se construye SIEMPRE desde variables individuales para evitar
-        # que Coolify inyecte una DATABASE_URL con credenciales incorrectas.
-        pg_user = os.environ.get('POSTGRES_USER', 'barber_user')
-        pg_pass = os.environ.get('POSTGRES_PASSWORD', 'julyanna231101')
-        pg_host = os.environ.get('POSTGRES_HOST', 'postgres-db')
-        pg_port = os.environ.get('POSTGRES_PORT', '5432')
-        pg_db = os.environ.get('POSTGRES_DB', 'barberking_db')
-        database_url = f'postgresql://{pg_user}:{pg_pass}@{pg_host}:{pg_port}/{pg_db}'
+        database_url = os.environ.get('DATABASE_URL')
+        if database_url:
+            database_url = database_url.strip().strip('"').strip("'")
+            print(f"[DB] Using DATABASE_URL from environment: {database_url}")
+        else:
+            pg_user = os.environ.get('POSTGRES_USER', 'barber_user')
+            pg_pass = os.environ.get('POSTGRES_PASSWORD', 'julyanna231101')
+            pg_host = os.environ.get('POSTGRES_HOST', 'postgres-db')
+            pg_port = os.environ.get('POSTGRES_PORT', '5432')
+            pg_db = os.environ.get('POSTGRES_DB', 'barberking_db')
+            database_url = f'postgresql://{pg_user}:{pg_pass}@{pg_host}:{pg_port}/{pg_db}'
     
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False

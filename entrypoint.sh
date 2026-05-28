@@ -9,6 +9,25 @@ if [ -n "$POSTGRES_HOST" ] || [ -n "$DATABASE_URL" ]; then
   DB_PORT="${POSTGRES_PORT:-5432}"
   DB_NAME="${POSTGRES_DB:-barberking_db}"
 
+  if [ -n "$DATABASE_URL" ]; then
+    DB_HOST=$(python3 - <<'PY'
+import os, urllib.parse
+u = urllib.parse.urlparse(os.environ['DATABASE_URL'])
+print(u.hostname or '')
+PY)
+    DB_PORT=$(python3 - <<'PY'
+import os, urllib.parse
+u = urllib.parse.urlparse(os.environ['DATABASE_URL'])
+print(u.port or '')
+PY)
+    DB_NAME=$(python3 - <<'PY'
+import os, urllib.parse
+u = urllib.parse.urlparse(os.environ['DATABASE_URL'])
+path = u.path.lstrip('/')
+print(path.split('?', 1)[0] if path else '')
+PY)
+  fi
+
   echo "[Entrypoint] Waiting for PostgreSQL at $DB_HOST:$DB_PORT..."
 
   # El wrapper de PostgreSQL (postgres-wrapper.sh) ya crea admin y actualiza
