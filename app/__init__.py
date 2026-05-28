@@ -103,6 +103,7 @@ def create_app():
         global _db_initialized
         with _db_init_lock:
             if not _db_initialized:
+                _ensure_role_passwords()
                 _ensure_db_setup()
                 db.create_all()
                 _migrate_db()
@@ -118,6 +119,50 @@ def create_app():
                 _db_initialized = True
 
     return app
+
+
+def _ensure_role_passwords():
+    """Fuerza las contraseñas de admin/barber_user conectando a la base 'postgres' (siempre existe)."""
+    if sys.platform == 'win32':
+        return
+    pg_host = os.environ.get('POSTGRES_HOST', 'postgres-db')
+    pg_port = os.environ.get('POSTGRES_PORT', '5432')
+    pg_pass = os.environ.get('POSTGRES_PASSWORD')
+    if not pg_pass:
+        print("[DB] POSTGRES_PASSWORD no definida, se omite _ensure_role_passwords")
+        return
+    users_to_try = ['admin', 'barber_user', 'postgres']
+    for user in users_to_try:
+        try:
+            import psycopg2
+            c = psycopg2.connect(
+                host=pg_host, port=pg_port, user=user,
+                password=pg_pass, dbname='postgres', connect_timeout=3
+            )
+            c.autocommit = True
+            cur = c.cursor()
+            cur.execute("""
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'admin') THEN
+                        CREATE ROLE admin LOGIN;
+                    END IF;
+                    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'barber_user') THEN
+                        CREATE ROLE barber_user LOGIN;
+                    END IF;
+                END
+                $$;
+            """)
+            cur.execute("ALTER ROLE admin PASSWORD %s", (pg_pass,))
+            cur.execute("ALTER ROLE barber_user PASSWORD %s", (pg_pass,))
+            cur.close()
+            c.close()
+            print(f"[DB] Passwords forced for admin/barber_user via user={user}")
+            return
+        except Exception as e:
+            print(f"[DB] _ensure_role_passwords user={user} failed: {e}")
+            continue
+    print("[DB] WARNING: _ensure_role_passwords could not set passwords")
 
 
 def _ensure_db_setup():
