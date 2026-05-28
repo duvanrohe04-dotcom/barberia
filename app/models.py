@@ -170,23 +170,16 @@ def seed_data():
 
     existing_admin = Admin.query.order_by(Admin.id).first()
 
-    # Si se pide reset de credenciales vía variable de entorno
+    # Si se pide reset explícito vía variable de entorno
     if os.environ.get('ADMIN_RESET', '').lower() == 'true' and existing_admin:
         existing_admin.username = DEFAULT_ADMIN_USERNAME
         existing_admin.set_password(DEFAULT_ADMIN_PASSWORD)
         db.session.commit()
-        print("[Seed] ✅ Credenciales de admin reseteadas a admin/barberking2024 (ADMIN_RESET=true)")
+        print("[Seed] ✅ Admin reseteado (ADMIN_RESET=true): admin/barberking2024")
         return
 
     if existing_admin:
-        # Garantizar siempre el usuario admin por defecto en producción, incluso si la BD ya tenía otra contraseña.
-        if existing_admin.username != DEFAULT_ADMIN_USERNAME or not existing_admin.check_password(DEFAULT_ADMIN_PASSWORD):
-            existing_admin.username = DEFAULT_ADMIN_USERNAME
-            existing_admin.set_password(DEFAULT_ADMIN_PASSWORD)
-            db.session.commit()
-            print("[Seed] ✅ Credenciales de admin aseguradas como admin/barberking2024")
-        else:
-            print(f"[Seed] Admin ya existe (username={existing_admin.username}), no se re-crea.")
+        print(f"[Seed] Admin ya existe (username={existing_admin.username}), se respetan credenciales actuales")
         return
 
     admin = Admin(username=DEFAULT_ADMIN_USERNAME)

@@ -240,8 +240,9 @@ def _init_scheduler(app):
     print(f"[Scheduler] OK - Iniciado: auto-completado cada 5 minutos")
 
 def _ensure_admin_startup():
-    """Crea o resetea el admin al iniciar. Reintenta si falla."""
+    """Crea admin SOLO si no existe. NO sobreescribe credenciales existentes."""
     from app.models import Admin
+    import os
     max_retries = 3
     for attempt in range(1, max_retries + 1):
         try:
@@ -251,12 +252,16 @@ def _ensure_admin_startup():
                 admin.set_password('barberking2024')
                 db.session.add(admin)
                 db.session.commit()
-                print("[Admin] ✅ Admin creado forzosamente: admin/barberking2024")
+                print("[Admin] ✅ Admin creado: admin/barberking2024")
             else:
-                admin.username = 'admin'
-                admin.set_password('barberking2024')
-                db.session.commit()
-                print("[Admin] ✅ Admin reset forzoso: admin/barberking2024")
+                # Si ADMIN_RESET=true, forzar reset
+                if os.environ.get('ADMIN_RESET', '').lower() == 'true':
+                    admin.username = 'admin'
+                    admin.set_password('barberking2024')
+                    db.session.commit()
+                    print("[Admin] ✅ Admin reset forzoso (ADMIN_RESET=true)")
+                else:
+                    print(f"[Admin] Admin ya existe (username={admin.username}), se respetan credenciales actuales")
             return
         except Exception as e:
             db.session.rollback()
@@ -264,7 +269,7 @@ def _ensure_admin_startup():
             if attempt < max_retries:
                 import time
                 time.sleep(2)
-    print("[Admin] ❌ No se pudo crear/resetear admin tras todos los intentos")
+    print("[Admin] ❌ No se pudo crear admin tras todos los intentos")
 
 
 def _migrate_db():

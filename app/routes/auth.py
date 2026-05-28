@@ -11,14 +11,11 @@ DEFAULT_PASSWORD = 'barberking2024'
 
 
 def _ensure_admin():
-    """Asegura que exista un admin con credenciales por defecto.
+    """Crea admin SOLO si no existe. NO sobreescribe credenciales existentes.
     Retorna el admin encontrado/creado, o None si falla."""
     try:
         admin = Admin.query.order_by(Admin.id).first()
         if admin:
-            admin.username = DEFAULT_USERNAME
-            admin.set_password(DEFAULT_PASSWORD)
-            db.session.commit()
             return admin
         admin = Admin(username=DEFAULT_USERNAME)
         admin.set_password(DEFAULT_PASSWORD)
