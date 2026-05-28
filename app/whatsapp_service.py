@@ -46,7 +46,9 @@ def _resolve_evolution_base_url():
 
 
 EVOLUTION_BASE_URL = _resolve_evolution_base_url()
-EVOLUTION_API_KEY = os.environ.get('EVOLUTION_API_KEY', 'barberking_secret_key')
+EVOLUTION_API_KEY = os.environ.get('EVOLUTION_API_KEY')
+if not EVOLUTION_API_KEY:
+    raise RuntimeError('EVOLUTION_API_KEY environment variable is required')
 DEFAULT_INSTANCE = os.environ.get('DEFAULT_INSTANCE', 'barberking')
 
 

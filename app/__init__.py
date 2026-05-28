@@ -314,21 +314,28 @@ def _ensure_admin_startup():
     """Crea admin SOLO si no existe. NO sobreescribe credenciales existentes."""
     from app.models import Admin
     import os
+    import secrets
+    admin_username = os.environ.get('ADMIN_USER', 'admin')
+    admin_password = os.environ.get('ADMIN_PASSWORD')
+    if not admin_password:
+        admin_password = secrets.token_urlsafe(16)
+        print('[Admin] WARNING: ADMIN_PASSWORD not set; generated temporary admin password.')
+
     max_retries = 3
     for attempt in range(1, max_retries + 1):
         try:
             admin = Admin.query.order_by(Admin.id).first()
             if not admin:
-                admin = Admin(username='admin')
-                admin.set_password('barberking2024')
+                admin = Admin(username=admin_username)
+                admin.set_password(admin_password)
                 db.session.add(admin)
                 db.session.commit()
-                print("[Admin] ✅ Admin creado: admin/barberking2024")
+                print(f"[Admin] ✅ Admin creado: {admin_username}/(generated or env password)")
             else:
                 # Si ADMIN_RESET=true, forzar reset
                 if os.environ.get('ADMIN_RESET', '').lower() == 'true':
-                    admin.username = 'admin'
-                    admin.set_password('barberking2024')
+                    admin.username = admin_username
+                    admin.set_password(admin_password)
                     db.session.commit()
                     print("[Admin] ✅ Admin reset forzoso (ADMIN_RESET=true)")
                 else:

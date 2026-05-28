@@ -7,7 +7,7 @@ with open(file_path, 'r', encoding='utf-8') as f:
 
 # 1. Cambiar DATABASE_URL de SQLite a PostgreSQL
 old_db = "DATABASE_URL=sqlite:////app/instance/barberking.db"
-new_db = "DATABASE_URL=postgresql://barber_user:barber_pass@postgres:5432/evolution_db"
+new_db = os.environ.get('DATABASE_URL_POSTGRES', 'DATABASE_URL=postgresql://<user>:<password>@postgres:5432/evolution_db')
 content = content.replace(old_db, new_db)
 
 # 2. Asegurar que la web dependa de postgres además de evolution_api

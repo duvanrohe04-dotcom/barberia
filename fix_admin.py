@@ -6,11 +6,17 @@ sys.path.insert(0, os.path.dirname(__file__))
 from app import create_app, db
 from app.models import Admin
 from werkzeug.security import generate_password_hash
+import os
 
 app = create_app()
 
 with app.app_context():
     try:
+        admin_username = os.environ.get('ADMIN_USER', 'admin')
+        admin_password = os.environ.get('ADMIN_PASSWORD')
+        if not admin_password:
+            raise ValueError('ADMIN_PASSWORD is required to run fix_admin.py')
+
         # 1. Eliminar cualquier admin existente (válido o corrupto)
         admins = Admin.query.all()
         print(f"[Fix] Admins encontrados: {len(admins)}")
@@ -22,11 +28,11 @@ with app.app_context():
 
         # 2. Crear admin nuevo con datos correctos
         admin = Admin()
-        admin.username = 'admin'
-        admin.password_hash = generate_password_hash('barberking2024')
+        admin.username = admin_username
+        admin.password_hash = generate_password_hash(admin_password)
         db.session.add(admin)
         db.session.commit()
-        print("[Fix] ✅ Nuevo admin creado: admin / barberking2024")
+        print(f"[Fix] ✅ Nuevo admin creado: {admin_username} / {admin_password}")
 
         # 3. Verificar
         v = Admin.query.first()
@@ -34,7 +40,7 @@ with app.app_context():
         print(f"  - id={v.id}")
         print(f"  - username='{v.username}'")
         print(f"  - password_hash='{v.password_hash[:30]}...'")
-        print(f"  - check_password('barberking2024'): {v.check_password('barberking2024')}")
+        print(f"  - check_password('{admin_password}'): {v.check_password(admin_password)}")
 
     except Exception as e:
         import traceback
@@ -49,7 +55,7 @@ with app.app_context():
             db.session.execute(text("DELETE FROM admins"))
             db.session.execute(
                 text("INSERT INTO admins (username, password_hash) VALUES (:u, :h)"),
-                {"u": "admin", "h": generate_password_hash('barberking2024')}
+                {"u": admin_username, "h": generate_password_hash(admin_password)}
             )
             db.session.commit()
             print("[Fix] ✅ Admin creado vía SQL directo")

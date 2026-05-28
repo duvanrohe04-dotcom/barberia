@@ -1,18 +1,30 @@
-import os
+﻿import os
 
 file_path = r'c:\Users\ASUS\OneDrive\Desktop\PAGINAS WEB\barberia\docker-compose.yml'
 
-content = \"\"\"services:
+POSTGRES_USER = os.environ.get('POSTGRES_USER', 'barber_user')
+POSTGRES_PASSWORD = os.environ.get('POSTGRES_PASSWORD', '<password>')
+POSTGRES_DB = os.environ.get('POSTGRES_DB', 'evolution_db')
+SECRET_KEY = os.environ.get('SECRET_KEY', '<change_me_secret_key>')
+EVOLUTION_API_KEY = os.environ.get('EVOLUTION_API_KEY', '<change_me_evolution_key>')
+AUTHENTICATION_API_KEY = os.environ.get('AUTHENTICATION_API_KEY', '<change_me_auth_key>')
+DATABASE_URL = os.environ.get('DATABASE_URL', f'postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@postgres:5432/{POSTGRES_DB}')
+DATABASE_CONNECTION_URI = os.environ.get('DATABASE_CONNECTION_URI', f'postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@postgres:5432/{POSTGRES_DB}?sslmode=disable')
+REDIS_URI = os.environ.get('REDIS_URI', 'redis://redis:6379/0')
+CACHE_REDIS_URI = os.environ.get('CACHE_REDIS_URI', 'redis://redis:6379/1')
+SERVER_URL = os.environ.get('SERVER_URL', 'https://example.com')
+
+content = f"""services:
   web:
     build: .
     restart: always
     environment:
       - TZ=America/Bogota
-      - DATABASE_URL=postgresql://barber_user:barber_pass@postgres:5432/evolution_db
+      - DATABASE_URL={DATABASE_URL}
       - FLASK_ENV=production
-      - SECRET_KEY=barberking_super_secret_key_fixed
+      - SECRET_KEY={SECRET_KEY}
       - EVOLUTION_API_URL=http://evolution_api:8080
-      - EVOLUTION_API_KEY=barberking_secret_key
+      - EVOLUTION_API_KEY={EVOLUTION_API_KEY}
     volumes:
       - barberking_db:/app/instance
       - barberking_uploads:/app/app/static/uploads
@@ -39,18 +51,18 @@ content = \"\"\"services:
     environment:
       - TZ=America/Bogota
       - AUTHENTICATION_TYPE=apikey
-      - AUTHENTICATION_API_KEY=barberking_secret_key
+      - AUTHENTICATION_API_KEY={AUTHENTICATION_API_KEY}
       - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
       - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=postgresql://barber_user:barber_pass@postgres:5432/evolution_db?sslmode=disable
+      - DATABASE_CONNECTION_URI={DATABASE_CONNECTION_URI}
       - DATABASE_SAVE_DATA_INSTANCE=true
-      - SERVER_URL=https://jsbarbershopcol.sbs.mom
+      - SERVER_URL={SERVER_URL}
       - REDIS_ENABLED=true
-      - REDIS_URI=redis://redis:6379/0
+      - REDIS_URI={REDIS_URI}
       - REDIS_PREFIX_KEY=evolution
       - CACHE_REDIS_ENABLED=true
-      - CACHE_REDIS_URI=redis://redis:6379/1
+      - CACHE_REDIS_URI={CACHE_REDIS_URI}
       - CACHE_REDIS_PREFIX_KEY=cache
       - CACHE_REDIS_TTL=604800
       - CACHE_LOCAL_ENABLED=false
@@ -82,13 +94,13 @@ content = \"\"\"services:
     image: postgres:15-alpine
     restart: always
     environment:
-      - POSTGRES_USER=barber_user
-      - POSTGRES_PASSWORD=barber_pass
-      - POSTGRES_DB=evolution_db
+      - POSTGRES_USER={POSTGRES_USER}
+      - POSTGRES_PASSWORD={POSTGRES_PASSWORD}
+      - POSTGRES_DB={POSTGRES_DB}
     volumes:
       - barberking_wa_db:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U barber_user -d evolution_db"]
+      test: ["CMD-SHELL", "pg_isready -U {POSTGRES_USER} -d {POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -104,7 +116,7 @@ volumes:
   barberking_uploads:
   barberking_wa_db:
   barberking_redis_data:
-\"\"\"
+"""
 
 with open(file_path, 'w', encoding='utf-8') as f:
     f.write(content)

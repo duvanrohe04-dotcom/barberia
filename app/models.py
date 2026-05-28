@@ -164,18 +164,23 @@ def process_fidelity_for_appointment(appt):
 
 def seed_data():
     import os
+    import secrets
 
-    DEFAULT_ADMIN_USERNAME = 'admin'
-    DEFAULT_ADMIN_PASSWORD = 'barberking2024'
+    DEFAULT_ADMIN_USERNAME = os.environ.get('ADMIN_USER', 'admin')
+    DEFAULT_ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD')
+    if not DEFAULT_ADMIN_PASSWORD:
+        DEFAULT_ADMIN_PASSWORD = secrets.token_urlsafe(16)
+        print('[Seed] WARNING: ADMIN_PASSWORD not set; generated temporary admin password.')
 
     existing_admin = Admin.query.order_by(Admin.id).first()
+    display_password = DEFAULT_ADMIN_PASSWORD
 
     # Si se pide reset explícito vía variable de entorno
     if os.environ.get('ADMIN_RESET', '').lower() == 'true' and existing_admin:
         existing_admin.username = DEFAULT_ADMIN_USERNAME
         existing_admin.set_password(DEFAULT_ADMIN_PASSWORD)
         db.session.commit()
-        print("[Seed] ✅ Admin reseteado (ADMIN_RESET=true): admin/barberking2024")
+        print(f"[Seed] ✅ Admin reseteado (ADMIN_RESET=true): {DEFAULT_ADMIN_USERNAME}/{display_password}")
         return
 
     if existing_admin:
@@ -186,7 +191,7 @@ def seed_data():
     admin.set_password(DEFAULT_ADMIN_PASSWORD)
     db.session.add(admin)
     db.session.commit()
-    print("[Seed] ✅ Admin creado: admin/barberking2024")
+    print(f"[Seed] ✅ Admin creado: {DEFAULT_ADMIN_USERNAME}/{display_password}")
 
     male_services = [
         Service(name='Corte de Cabello',  description='Corte clásico o moderno adaptado a tu estilo personal', price=25000, emoji='💇', gender='male'),

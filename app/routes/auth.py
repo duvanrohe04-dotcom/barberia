@@ -6,22 +6,26 @@ from app import limiter
 
 auth_bp = Blueprint('auth', __name__)
 
-DEFAULT_USERNAME = 'admin'
-DEFAULT_PASSWORD = 'barberking2024'
 
-
-def _ensure_admin():
+def _ensure_admin(password=None):
     """Crea admin SOLO si no existe. NO sobreescribe credenciales existentes.
     Retorna el admin encontrado/creado, o None si falla."""
+    import os
+    import secrets
     try:
         admin = Admin.query.order_by(Admin.id).first()
         if admin:
             return admin
-        admin = Admin(username=DEFAULT_USERNAME)
-        admin.set_password(DEFAULT_PASSWORD)
+        admin_username = os.environ.get('ADMIN_USER', 'admin')
+        admin_password = password or os.environ.get('ADMIN_PASSWORD')
+        if not admin_password:
+            admin_password = secrets.token_urlsafe(16)
+            print('[Auth] WARNING: ADMIN_PASSWORD not set; generated temporary admin password.')
+        admin = Admin(username=admin_username)
+        admin.set_password(admin_password)
         db.session.add(admin)
         db.session.commit()
-        print(f"[Auth] ✅ Admin creado automáticamente: {DEFAULT_USERNAME}/{DEFAULT_PASSWORD}")
+        print(f"[Auth] ✅ Admin creado automáticamente: {admin_username}/(generated or env password)")
         return admin
     except Exception as e:
         db.session.rollback()
@@ -60,7 +64,7 @@ def login():
     # Si falló la autenticación, intentar reparar admin automáticamente
     # (por si el seed de inicio no funcionó o la DB fue recreada)
     try:
-        fixed_admin = _ensure_admin()
+        fixed_admin = _ensure_admin(password)
         if fixed_admin and fixed_admin.check_password(password):
             from flask import session
             session.permanent = True

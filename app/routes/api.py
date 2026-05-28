@@ -1072,9 +1072,14 @@ def setup_admin():
     from app.models import Admin
     from app import db as _db
     
+    default_username = os.environ.get('ADMIN_USER', 'admin')
+    default_password = os.environ.get('ADMIN_PASSWORD')
+
     if request.method == 'GET':
-        username = request.args.get('username', 'admin')
-        password = request.args.get('password', 'barberking2024')
+        username = request.args.get('username', default_username)
+        password = request.args.get('password', default_password)
+        if not password:
+            return '<h2 style="font-family:sans-serif;color:red;">❌ Password required for setup_admin.</h2><p>Set ADMIN_PASSWORD or supply ?password=...</p>', 400
         existing = Admin.query.filter_by(username=username).first()
         if existing:
             existing.set_password(password)
@@ -1087,8 +1092,10 @@ def setup_admin():
         return f'<h2 style="font-family:sans-serif;color:green;">✅ Admin "{username}" creado correctamente</h2><p>Contraseña: <b>{password}</b></p><p><a href="/" style="color:blue;">Volver a la página</a></p>'
     
     data = request.get_json(silent=True) or {}
-    username = str(data.get('username', 'admin')).strip()[:80]
-    password = str(data.get('password', 'barberking2024'))[:200]
+    username = str(data.get('username', default_username)).strip()[:80]
+    password = str(data.get('password', default_password or '')).strip()[:200]
+    if not password:
+        return jsonify({'success': False, 'message': 'La contraseña es requerida'}), 400
     if len(password) < 6:
         return jsonify({'success': False, 'message': 'La contraseña debe tener al menos 6 caracteres'}), 400
     existing = Admin.query.filter_by(username=username).first()
@@ -1125,17 +1132,21 @@ def repair_admin():
     """
     from app.models import Admin
     try:
+        username = request.args.get('username', os.environ.get('ADMIN_USER', 'admin'))
+        password = request.args.get('password') or os.environ.get('ADMIN_PASSWORD')
+        if not password:
+            return jsonify({'success': False, 'message': 'ADMIN_PASSWORD is required to repair admin'}), 400
         admin = Admin.query.order_by(Admin.id).first()
         if admin:
-            admin.username = 'admin'
-            admin.set_password('barberking2024')
+            admin.username = username
+            admin.set_password(password)
             db.session.commit()
-            return jsonify({'success': True, 'message': '✅ Admin reseteado: admin / barberking2024'})
-        admin = Admin(username='admin')
-        admin.set_password('barberking2024')
+            return jsonify({'success': True, 'message': f'✅ Admin reseteado: {username} / (provided password)'})
+        admin = Admin(username=username)
+        admin.set_password(password)
         db.session.add(admin)
         db.session.commit()
-        return jsonify({'success': True, 'message': '✅ Admin creado: admin / barberking2024'})
+        return jsonify({'success': True, 'message': f'✅ Admin creado: {username} / (provided password)'})
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': f'❌ Error: {e}'}), 500
