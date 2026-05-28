@@ -27,3 +27,5 @@ __pycache__/
 # No copiar archivos del sistema
 .DS_Store
 Thumbs.db
+
+.env.local
