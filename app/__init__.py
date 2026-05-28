@@ -47,14 +47,14 @@ def create_app():
         os.makedirs(os.path.join(base_dir, 'instance'), exist_ok=True)
         database_url = f'sqlite:///{db_path}'
     else:
-        database_url = os.environ.get('DATABASE_URL')
-        if not database_url:
-            pg_user = os.environ.get('POSTGRES_USER', 'barber_user')
-            pg_pass = os.environ.get('POSTGRES_PASSWORD', '')
-            pg_host = os.environ.get('POSTGRES_HOST', 'postgres-db')
-            pg_port = os.environ.get('POSTGRES_PORT', '5432')
-            pg_db = os.environ.get('POSTGRES_DB', 'barberking_db')
-            database_url = f'postgresql://{pg_user}:{pg_pass}@{pg_host}:{pg_port}/{pg_db}'
+        # NOTA: Se construye SIEMPRE desde variables individuales para evitar
+        # que Coolify inyecte una DATABASE_URL con credenciales incorrectas.
+        pg_user = os.environ.get('POSTGRES_USER', 'barber_user')
+        pg_pass = os.environ.get('POSTGRES_PASSWORD', 'julyanna231101')
+        pg_host = os.environ.get('POSTGRES_HOST', 'postgres-db')
+        pg_port = os.environ.get('POSTGRES_PORT', '5432')
+        pg_db = os.environ.get('POSTGRES_DB', 'barberking_db')
+        database_url = f'postgresql://{pg_user}:{pg_pass}@{pg_host}:{pg_port}/{pg_db}'
     
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
