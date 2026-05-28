@@ -452,9 +452,13 @@ def disconnect_wa():
 @login_required
 def test_evolution():
     """Endpoint de prueba para verificar conectividad con Evolution API."""
-    from app.whatsapp_service import EVOLUTION_BASE_URL, EVOLUTION_API_KEY, _http_request
+    from app.whatsapp_service import EVOLUTION_BASE_URL, EVOLUTION_API_KEY, _http_request, _check_evolution_reachable
 
     print(f"[API] Probando conexión a: {EVOLUTION_BASE_URL}")
+
+    reachable = _check_evolution_reachable()
+    if reachable:
+        return jsonify({'success': False, 'error': reachable, 'url': EVOLUTION_BASE_URL})
 
     try:
         headers = {'apikey': EVOLUTION_API_KEY}
@@ -466,6 +470,9 @@ def test_evolution():
             'response': body[:200]
         })
     except Exception as e:
+        reachable = _check_evolution_reachable()
+        if reachable:
+            return jsonify({'success': False, 'error': reachable, 'url': EVOLUTION_BASE_URL})
         return jsonify({
             'success': False,
             'error': str(e),

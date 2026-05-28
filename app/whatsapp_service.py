@@ -14,15 +14,25 @@ is_local_runtime = sys.platform == 'win32' or os.environ.get('FLASK_ENV') == 'de
 
 def _resolve_evolution_base_url():
     env_url = os.environ.get('EVOLUTION_API_URL')
-    inside_container = os.path.exists('/.dockerenv') or os.environ.get('RUNNING_IN_DOCKER') == '1'
 
-    if inside_container:
-        if env_url:
-            return env_url.replace('http://127.0.0.1:8080', 'http://evolution_api:8080') \
-                .replace('http://localhost:8080', 'http://evolution_api:8080')
+    # Si el usuario configuró una URL explícitamente, respetarla tal cual
+    if env_url:
+        return env_url
+
+    # Intentar detectar si evolution_api es resolvable (Docker Compose same network)
+    try:
+        import socket
+        socket.getaddrinfo('evolution_api', 8080)
+        # Si llegó aquí, el hostname se resolvió correctamente
         return 'http://evolution_api:8080'
+    except Exception:
+        pass
 
-    return env_url or ('http://127.0.0.1:8080' if is_local_runtime else 'http://evolution_api:8080')
+    # Fallbacks
+    if sys.platform == 'win32' or os.environ.get('FLASK_ENV') == 'development':
+        return 'http://127.0.0.1:8080'
+
+    return 'http://evolution_api:8080'
 
 
 EVOLUTION_BASE_URL = _resolve_evolution_base_url()
@@ -145,10 +155,10 @@ def disconnect_whatsapp():
         
         print(f"[WA] Instancia: {instance_name}")
         print(f"[WA] URL base: {base_url}")
-        
-        # Verificar si la URL es accesible
-        if not base_url or base_url == 'http://evolution_api:8080':
-            print(f"[WA] ADVERTENCIA: Usando URL por defecto. En Coolify puede no ser accesible")
+
+        reachable = _check_evolution_reachable()
+        if reachable:
+            return {'success': False, 'message': reachable}
         
         headers = {'apikey': api_key}
         url = f"{base_url}/instance/logout/{instance_name}"
@@ -166,13 +176,36 @@ def disconnect_whatsapp():
 
     except TimeoutError:
         print(f"[WA] TIMEOUT: No se pudo conectar a Evolution API en {base_url}")
-        return {'success': False, 'message': f'Tiempo agotado. No se puede conectar a Evolution API.'}
+        msg = _check_evolution_reachable()
+        return {'success': False, 'message': msg or f'Tiempo agotado. No se puede conectar a Evolution API.'}
     except ConnectionError:
         print(f"[WA] CONNECTION ERROR: No se puede conectar a {base_url}")
-        return {'success': False, 'message': f'Error de conexión. Evolution API no disponible.'}
+        msg = _check_evolution_reachable()
+        return {'success': False, 'message': msg or f'Error de conexión. Evolution API no disponible.'}
     except Exception as e:
         print(f"[WA] EXCEPCIÓN: {type(e).__name__}: {e}")
         return {'success': False, 'message': f'Error: {str(e)}'}
+
+def _check_evolution_reachable():
+    """Verifica si el host de Evolution API es alcanzable. Retorna mensaje de error o None."""
+    import urllib.parse
+    parsed = urllib.parse.urlparse(EVOLUTION_BASE_URL)
+    host = parsed.hostname
+    port = parsed.port or 8080
+    try:
+        import socket
+        socket.getaddrinfo(host, port)
+        return None
+    except Exception as e:
+        error_msg = str(e).lower()
+        if 'name' in error_msg or 'resolution' in error_msg or 'temporary' in error_msg:
+            return (f"❌ No se puede resolver el host '{host}'. "
+                    f"Evolution API no está corriendo o la URL es incorrecta.\n"
+                    f"URL actual: {EVOLUTION_BASE_URL}\n\n"
+                    f"💡 Solución: Configura EVOLUTION_API_URL en las variables "
+                    f"de entorno de Coolify con la URL correcta de tu Evolution API.")
+        return f"❌ No se puede conectar a Evolution API en {EVOLUTION_BASE_URL}: {e}"
+
 
 def get_whatsapp_qr():
     from app.models import ShopConfig
@@ -185,6 +218,11 @@ def get_whatsapp_qr():
     
     print(f"[WA] Intentando conectar instancia: {clean_name}")
     print(f"[WA] URL base: {base_url}")
+
+    reachable = _check_evolution_reachable()
+    if reachable:
+        print(f"[WA] Host NO alcanzable: {reachable}")
+        return {"success": False, "message": reachable}
     
     headers = {
         'apikey': api_key,
@@ -242,6 +280,9 @@ def get_whatsapp_qr():
   
     except Exception as e:
         print(f"[WA] Error en verificación de instancia: {e}")
+        reachable = _check_evolution_reachable()
+        if reachable:
+            return {"success": False, "message": reachable}
         return {"success": False, "message": f"Error de conexión: {str(e)}"}
   
     # Obtener el QR
