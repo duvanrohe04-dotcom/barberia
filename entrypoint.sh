@@ -10,22 +10,9 @@ if [ -n "$POSTGRES_HOST" ] || [ -n "$DATABASE_URL" ]; then
   DB_NAME="${POSTGRES_DB:-barberking_db}"
 
   if [ -n "$DATABASE_URL" ]; then
-    DB_HOST=$(python3 - <<'PY'
-import os, urllib.parse
-u = urllib.parse.urlparse(os.environ['DATABASE_URL'])
-print(u.hostname or '')
-PY)
-    DB_PORT=$(python3 - <<'PY'
-import os, urllib.parse
-u = urllib.parse.urlparse(os.environ['DATABASE_URL'])
-print(u.port or '')
-PY)
-    DB_NAME=$(python3 - <<'PY'
-import os, urllib.parse
-u = urllib.parse.urlparse(os.environ['DATABASE_URL'])
-path = u.path.lstrip('/')
-print(path.split('?', 1)[0] if path else '')
-PY)
+    DB_HOST=$(python3 -c 'import os, urllib.parse; u = urllib.parse.urlparse(os.environ["DATABASE_URL"]); print(u.hostname or "")')
+    DB_PORT=$(python3 -c 'import os, urllib.parse; u = urllib.parse.urlparse(os.environ["DATABASE_URL"]); print(u.port or "")')
+    DB_NAME=$(python3 -c 'import os, urllib.parse; u = urllib.parse.urlparse(os.environ["DATABASE_URL"]); path = u.path.lstrip("/"); print(path.split("?", 1)[0] if path else "")')
   fi
 
   echo "[Entrypoint] Waiting for PostgreSQL at $DB_HOST:$DB_PORT..."
