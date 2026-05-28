@@ -318,31 +318,38 @@ def get_whatsapp_qr():
 
             print(f"[WA] Datos recibidos: {list(data.keys())}")
 
-            # si tiene count = 0, el QR aún no está listo → reintentar
-            if data.get('count') == 0 and not data.get('code') and not data.get('pairingCode') and not data.get('base64'):
-                print(f"[WA] QR aún no disponible (count=0), reintentando en 3s...")
+            # Normalizar: aplanar qrcode{} si existe para no buscar en dos niveles
+            if isinstance(data.get('qrcode'), dict):
+                for k, v in data['qrcode'].items():
+                    if k not in data or data[k] is None:
+                        data[k] = v
+
+            qr_count = data.get('count', 0)
+            b64 = data.get('base64', '') or ''
+            code = data.get('code') or data.get('pairingCode') or ''
+            inst_state = data.get('instance', {}).get('state') or data.get('instance', {}).get('connectionStatus', '')
+
+            print(f"[WA] count={qr_count}, base64={'si' if b64 and len(b64)>50 else 'no'}, code={'si' if code else 'no'}, state={inst_state}")
+
+            # count = 0 y sin datos de QR → reintentar
+            if qr_count == 0 and not (b64 and len(b64) > 50) and not code:
                 if attempt < max_attempts:
+                    print(f"[WA] QR no disponible (count={qr_count}), reintentando en 3s...")
                     time.sleep(3)
                     continue
                 return {"success": False, "message": "⏳ El código QR aún no se ha generado. Espera unos segundos e intenta de nuevo."}
 
-            # Formato: {"base64": "data:image/png;base64,..."}
-            b64 = data.get('base64', '')
+            # Ya conectado
+            if inst_state in ('open', 'CONNECTED'):
+                return {"success": True, "instance": {"state": "open"}, "message": "WhatsApp ya está conectado"}
+
+            # base64 directo
             if b64 and len(b64) > 50:
                 if not b64.startswith('data:'):
                     b64 = f"data:image/png;base64,{b64}"
                 return {"success": True, "base64": b64}
 
-            # Formato: {"qrcode": {"base64": "..."}}
-            if 'qrcode' in data and isinstance(data['qrcode'], dict):
-                b64 = data['qrcode'].get('base64', '')
-                if b64 and len(b64) > 50:
-                    if not b64.startswith('data:'):
-                        b64 = f"data:image/png;base64,{b64}"
-                    return {"success": True, "base64": b64}
-
-            # Formato: {"code": "...", "pairingCode": "..."}  — generar QR manualmente
-            code = data.get('code') or data.get('pairingCode', '')
+            # code → generar QR manualmente
             if code:
                 print(f"[WA] Generando QR desde code/pairingCode")
                 qr = qrcode.QRCode(version=1, box_size=10, border=5)
@@ -354,13 +361,9 @@ def get_whatsapp_qr():
                 img_str = base64.b64encode(buffer.getvalue()).decode()
                 return {"success": True, "base64": f"data:image/png;base64,{img_str}"}
 
-            # Formato: {"instance": {"state": "open"}} — ya conectado
-            if data.get('instance', {}).get('state') == 'open':
-                return {"success": True, "instance": {"state": "open"}, "message": "WhatsApp ya está conectado"}
-
-            # Si llegamos aquí, formato no reconocido
+            # Sin QR y sin estar conectado
             print(f"[WA] Formato no reconocido: {data}")
-            return {"success": False, "message": "Formato de respuesta no reconocido. Verifica la configuración de Evolution API."}
+            return {"success": False, "message": f"QR no disponible (estado: {inst_state}). Espera unos segundos e intenta de nuevo."}
         except TimeoutError:
             return {"success": False, "message": "Tiempo de espera agotado. El servidor de WhatsApp no responde."}
         except ConnectionError:
