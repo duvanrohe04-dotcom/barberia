@@ -295,84 +295,79 @@ def get_whatsapp_qr():
             return {"success": False, "message": reachable}
         return {"success": False, "message": f"Error de conexión: {str(e)}"}
   
-    # Obtener el QR
+    # Obtener el QR (reintentar hasta que esté disponible)
     qr_url = f"{base_url}/instance/connect/{clean_name}"
     print(f"[WA] Solicitando QR desde: {qr_url}")
-    
-    try:
-        status, body, data = _http_request('GET', qr_url, headers=headers, timeout=25)
 
-        print(f"[WA] Respuesta QR: {status}")
-        print(f"[WA] Contenido: {body[:500]}")
+    max_attempts = 8
+    for attempt in range(1, max_attempts + 1):
+        try:
+            status, body, data = _http_request('GET', qr_url, headers=headers, timeout=20)
 
-        if status == 404:
-            return {"success": False, "message": f"Instancia '{clean_name}' no encontrada. Verifica la configuración."}
+            print(f"[WA] Intento {attempt}/{max_attempts} - Status: {status}")
+            print(f"[WA] Contenido: {body[:500]}")
 
-        if status != 200:
-            return {"success": False, "message": f"Error {status}: {body[:100]}"}
+            if status == 404:
+                return {"success": False, "message": f"Instancia '{clean_name}' no encontrada. Verifica la configuración."}
 
-        if data is None:
-            data = json.loads(body) if body else {}
-        
-        print(f"[WA] Datos recibidos del QR: {list(data.keys())}")
-        
-        # Evolution API v2.3.7 puede devolver diferentes formatos:
-        # Formato 1: {"base64": "data:image/png;base64,..."}
-        # Formato 2: {"code": "...", "base64": "data:image/png;base64,..."}
-        # Formato 3: {"instance": {"instanceName": "...", "state": "connecting"}, "code": "...", "base64": "..."}
-        # Formato 4: {"qrcode": {"base64": "..."}}
-        
-        # Caso 1: ya está conectado
-        if 'instance' in data and data.get('instance', {}).get('state') == 'open':
-            return {"success": True, "instance": {"state": "open"}, "message": "WhatsApp ya está conectado"}
-        
-        # Caso 2: viene base64 directo
-        if 'base64' in data:
-            b64 = data['base64']
+            if status != 200:
+                return {"success": False, "message": f"Error {status}: {body[:100]}"}
+
+            if data is None:
+                data = json.loads(body) if body else {}
+
+            print(f"[WA] Datos recibidos: {list(data.keys())}")
+
+            # si tiene count = 0, el QR aún no está listo → reintentar
+            if data.get('count') == 0 and not data.get('code') and not data.get('pairingCode') and not data.get('base64'):
+                print(f"[WA] QR aún no disponible (count=0), reintentando en 3s...")
+                if attempt < max_attempts:
+                    time.sleep(3)
+                    continue
+                return {"success": False, "message": "⏳ El código QR aún no se ha generado. Espera unos segundos e intenta de nuevo."}
+
+            # Formato: {"base64": "data:image/png;base64,..."}
+            b64 = data.get('base64', '')
             if b64 and len(b64) > 50:
                 if not b64.startswith('data:'):
                     b64 = f"data:image/png;base64,{b64}"
                 return {"success": True, "base64": b64}
-        
-        # Caso 3: viene dentro de qrcode object
-        if 'qrcode' in data and isinstance(data['qrcode'], dict):
-            b64 = data['qrcode'].get('base64', '')
-            if b64 and len(b64) > 50:
-                if not b64.startswith('data:'):
-                    b64 = f"data:image/png;base64,{b64}"
-                return {"success": True, "base64": b64}
-        
-        # Caso 4: viene solo el code (generar QR manualmente)
-        if 'code' in data and data['code']:
-            print(f"[WA] Generando QR manualmente desde code")
-            qr = qrcode.QRCode(version=1, box_size=10, border=5)
-            qr.add_data(data['code'])
-            qr.make(fit=True)
-            img = qr.make_image(fill_color="black", back_color="white")
-            
-            buffer = io.BytesIO()
-            img.save(buffer, format='PNG')
-            img_str = base64.b64encode(buffer.getvalue()).decode()
-            
-            return {"success": True, "base64": f"data:image/png;base64,{img_str}"}
-        
-        # Caso 5: instancia en estado connecting/close pero sin QR todavía
-        if 'instance' in data:
-            state = data['instance'].get('state', 'desconocido')
-            print(f"[WA] Instancia en estado '{state}', sin QR disponible aún")
-            return {"success": False, "message": f"Instancia en estado '{state}'. Espera unos segundos e intenta de nuevo."}
-        
-        # Si nada funcionó, imprimir debug y devolver error
-        print(f"[WA] Formato de respuesta no reconocido: {data}")
-        return {"success": False, "message": "Formato de respuesta no reconocido. Verifica la configuración de Evolution API."}
-              
-    except TimeoutError:
-        return {"success": False, "message": "Tiempo de espera agotado. El servidor de WhatsApp no responde."}
-    except ConnectionError:
-        return {"success": False, "message": "No se puede conectar al servidor de WhatsApp. Verifica que Evolution API esté corriendo."}
-    except Exception as e:
-        print(f"[WA] Error obteniendo QR: {e}")
-        return {"success": False, "message": f"Error: {str(e)}"}
+
+            # Formato: {"qrcode": {"base64": "..."}}
+            if 'qrcode' in data and isinstance(data['qrcode'], dict):
+                b64 = data['qrcode'].get('base64', '')
+                if b64 and len(b64) > 50:
+                    if not b64.startswith('data:'):
+                        b64 = f"data:image/png;base64,{b64}"
+                    return {"success": True, "base64": b64}
+
+            # Formato: {"code": "...", "pairingCode": "..."}  — generar QR manualmente
+            code = data.get('code') or data.get('pairingCode', '')
+            if code:
+                print(f"[WA] Generando QR desde code/pairingCode")
+                qr = qrcode.QRCode(version=1, box_size=10, border=5)
+                qr.add_data(code)
+                qr.make(fit=True)
+                img = qr.make_image(fill_color="black", back_color="white")
+                buffer = io.BytesIO()
+                img.save(buffer, format='PNG')
+                img_str = base64.b64encode(buffer.getvalue()).decode()
+                return {"success": True, "base64": f"data:image/png;base64,{img_str}"}
+
+            # Formato: {"instance": {"state": "open"}} — ya conectado
+            if data.get('instance', {}).get('state') == 'open':
+                return {"success": True, "instance": {"state": "open"}, "message": "WhatsApp ya está conectado"}
+
+            # Si llegamos aquí, formato no reconocido
+            print(f"[WA] Formato no reconocido: {data}")
+            return {"success": False, "message": "Formato de respuesta no reconocido. Verifica la configuración de Evolution API."}
+        except TimeoutError:
+            return {"success": False, "message": "Tiempo de espera agotado. El servidor de WhatsApp no responde."}
+        except ConnectionError:
+            return {"success": False, "message": "No se puede conectar al servidor de WhatsApp. Verifica que Evolution API esté corriendo."}
+        except Exception as e:
+            print(f"[WA] Error obteniendo QR: {e}")
+            return {"success": False, "message": f"Error: {str(e)}"}
 
 def notify_staff_cancelled(appt, shop_name):
     """Envía notificación al barbero/estilista cuando el cliente cancela una cita."""
