@@ -8,29 +8,24 @@ if [ -n "$POSTGRES_HOST" ] || [ -n "$DATABASE_URL" ]; then
   DB_HOST="${POSTGRES_HOST:-postgres-db}"
   DB_PORT="${POSTGRES_PORT:-5432}"
   DB_NAME="${POSTGRES_DB:-barberking_db}"
+  DB_USER="${POSTGRES_USER:-postgres}"
+  DB_PASS="$POSTGRES_PASSWORD"
 
   if [ -n "$DATABASE_URL" ]; then
-    DB_HOST=$(python3 -c 'import os, urllib.parse; u = urllib.parse.urlparse(os.environ["DATABASE_URL"]); print(u.hostname or "")')
-    DB_PORT=$(python3 -c 'import os, urllib.parse; u = urllib.parse.urlparse(os.environ["DATABASE_URL"]); print(u.port or "")')
-    DB_NAME=$(python3 -c 'import os, urllib.parse; u = urllib.parse.urlparse(os.environ["DATABASE_URL"]); path = u.path.lstrip("/"); print(path.split("?", 1)[0] if path else "")')
+    DB_HOST=$(python3 -c 'import os, urllib.parse; u = urllib.parse.urlparse(os.environ.get("DATABASE_URL","").strip("\"\x27")); print(u.hostname or "")' 2>/dev/null || echo "$DB_HOST")
+    DB_PORT=$(python3 -c 'import os, urllib.parse; u = urllib.parse.urlparse(os.environ.get("DATABASE_URL","").strip("\"\x27")); print(u.port or "")' 2>/dev/null || echo "$DB_PORT")
+    DB_NAME=$(python3 -c 'import os, urllib.parse; u = urllib.parse.urlparse(os.environ.get("DATABASE_URL","").strip("\"\x27")); path = u.path.lstrip("/"); print(path.split("?", 1)[0] if path else "")' 2>/dev/null || echo "$DB_NAME")
+    DB_USER=$(python3 -c 'import os, urllib.parse; u = urllib.parse.urlparse(os.environ.get("DATABASE_URL","").strip("\"\x27")); print(u.username or "")' 2>/dev/null || echo "$DB_USER")
+    DB_PASS=$(python3 -c 'import os, urllib.parse; u = urllib.parse.urlparse(os.environ.get("DATABASE_URL","").strip("\"\x27")); p = u.password or ""; import urllib.parse; print(urllib.parse.unquote_plus(p))' 2>/dev/null || echo "$DB_PASS")
   fi
 
   echo "[Entrypoint] Waiting for PostgreSQL at $DB_HOST:$DB_PORT..."
 
-  # El wrapper de PostgreSQL (postgres-wrapper.sh) ya crea admin y actualiza
-  # la contraseña de barber_user en CADA inicio. Solo esperamos y conectamos.
   CONNECTED=false
 
   for i in $(seq 1 15); do
-    # Intentar conectar con INITIAL_ROLE_PASSWORD si está definido
-    if [ -n "$INITIAL_ROLE_PASSWORD" ] && PGPASSWORD="$INITIAL_ROLE_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U barber_user -d "$DB_NAME" -c "SELECT 1" >/dev/null 2>&1; then
-      echo "[Entrypoint] Connected to PostgreSQL as barber_user (INITIAL_ROLE_PASSWORD)"
-      CONNECTED=true
-      break
-    fi
-    # Intentar conectar con POSTGRES_PASSWORD
-    if [ -n "$POSTGRES_PASSWORD" ] && PGPASSWORD="$POSTGRES_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "${POSTGRES_USER:-postgres}" -d "$DB_NAME" -c "SELECT 1" >/dev/null 2>&1; then
-      echo "[Entrypoint] Connected to PostgreSQL as POSTGRES_USER"
+    if [ -n "$DB_PASS" ] && PGPASSWORD="$DB_PASS" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "SELECT 1" >/dev/null 2>&1; then
+      echo "[Entrypoint] Connected to PostgreSQL as $DB_USER"
       CONNECTED=true
       break
     fi
