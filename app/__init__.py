@@ -156,6 +156,8 @@ def _ensure_role_passwords():
     if not pg_pass:
         print("[DB] POSTGRES_PASSWORD no definida, se omite _ensure_role_passwords")
         return
+    pg_db = os.environ.get('POSTGRES_DB', 'master_db')
+    print(f"[DB] Using password ending with ...{pg_pass[-4:] if pg_pass else 'EMPTY'}")
     users_to_try = ['admin', 'barber_user', 'postgres']
     for user in users_to_try:
         try:
@@ -183,6 +185,30 @@ def _ensure_role_passwords():
             cur.close()
             c.close()
             print(f"[DB] Passwords forced for admin/barber_user via user={user}")
+            # Test connection to actual app database
+            try:
+                c2 = psycopg2.connect(
+                    host=pg_host, port=pg_port, user='admin',
+                    password=pg_pass, dbname=pg_db, connect_timeout=3
+                )
+                c2.close()
+                print(f"[DB] Test connection to '{pg_db}' OK")
+            except Exception as e2:
+                print(f"[DB] Test connection to '{pg_db}' FAILED: {e2}")
+                print(f"[DB] Admin can connect to 'postgres' db but NOT to '{pg_db}' db")
+                try:
+                    c3 = psycopg2.connect(
+                        host=pg_host, port=pg_port, user='postgres',
+                        password=pg_pass, dbname='postgres', connect_timeout=3
+                    )
+                    c3.autocommit = True
+                    cur3 = c3.cursor()
+                    cur3.execute(f"GRANT CONNECT ON DATABASE \"{pg_db}\" TO admin")
+                    cur3.close()
+                    c3.close()
+                    print(f"[DB] Granted CONNECT on '{pg_db}' to admin")
+                except Exception as e3:
+                    print(f"[DB] Could not grant CONNECT: {e3}")
             return
         except Exception as e:
             print(f"[DB] _ensure_role_passwords user={user} failed: {e}")
