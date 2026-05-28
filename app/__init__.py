@@ -11,6 +11,7 @@ from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
 from apscheduler.schedulers.background import BackgroundScheduler
 import pytz
+import urllib.parse
 
 # Cargar .env primero para producción/Coolify. En desarrollo, cargar .env.local también si existe.
 load_dotenv('.env', override=False)
@@ -54,14 +55,22 @@ def create_app():
         database_url = os.environ.get('DATABASE_URL')
         if database_url:
             database_url = database_url.strip().strip('"').strip("'")
-            print(f"[DB] Using DATABASE_URL from environment: {database_url}")
+            parsed = urllib.parse.urlparse(database_url)
+            db_user = urllib.parse.unquote_plus(parsed.username or '')
+            db_name = parsed.path.lstrip('/')
+            print(f"[DB] Using DATABASE_URL from environment: user={db_user} host={parsed.hostname or 'postgres-db'} db={db_name}")
         else:
             pg_user = os.environ.get('POSTGRES_USER', 'barber_user')
-            pg_pass = os.environ.get('POSTGRES_PASSWORD', 'julyanna231101')
+            pg_pass = os.environ.get('POSTGRES_PASSWORD')
             pg_host = os.environ.get('POSTGRES_HOST', 'postgres-db')
             pg_port = os.environ.get('POSTGRES_PORT', '5432')
             pg_db = os.environ.get('POSTGRES_DB', 'barberking_db')
-            database_url = f'postgresql://{pg_user}:{pg_pass}@{pg_host}:{pg_port}/{pg_db}'
+
+            if not pg_pass:
+                raise ValueError("POSTGRES_PASSWORD is required when DATABASE_URL is not set")
+
+            database_url = f'postgresql://{urllib.parse.quote_plus(pg_user)}:{urllib.parse.quote_plus(pg_pass)}@{pg_host}:{pg_port}/{pg_db}'
+            print(f"[DB] Using POSTGRES_USER={pg_user} POSTGRES_HOST={pg_host} POSTGRES_DB={pg_db}")
     
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
