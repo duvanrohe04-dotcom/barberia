@@ -24,8 +24,8 @@ if [ -n "$POSTGRES_HOST" ] || [ -n "$DATABASE_URL" ]; then
   CONNECTED=false
 
   for i in $(seq 1 15); do
-    if [ -n "$DB_PASS" ] && PGPASSWORD="$DB_PASS" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "SELECT 1" >/dev/null 2>&1; then
-      echo "[Entrypoint] Connected to PostgreSQL as $DB_USER"
+    if pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" >/dev/null 2>&1; then
+      echo "[Entrypoint] PostgreSQL is ready at $DB_HOST:$DB_PORT"
       CONNECTED=true
       break
     fi
