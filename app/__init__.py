@@ -168,6 +168,16 @@ def _ensure_db_setup():
                 """))
                 conn.execute(text("GRANT ALL ON SCHEMA public TO PUBLIC"))
                 conn.commit()
+                # Fijar contraseñas para que coincidan con las variables de entorno
+                import psycopg2 as _psycopg2
+                _c = _psycopg2.connect(host=pg_host, port=pg_port, user=su_user, password=su_pass, dbname=pg_db, connect_timeout=3)
+                _c.autocommit = True
+                _cur = _c.cursor()
+                if env_pass:
+                    _cur.execute("ALTER ROLE admin PASSWORD %s", (env_pass,))
+                    _cur.execute("ALTER ROLE barber_user PASSWORD %s", (env_pass,))
+                _cur.close()
+                _c.close()
             eng.dispose()
             # Crear evolution_db si no existe
             try:
