@@ -120,7 +120,10 @@ def create_app():
         with _db_init_lock:
             if not _db_initialized:
                 _ensure_role_passwords()
-                _ensure_db_setup()
+                try:
+                    _ensure_db_setup()
+                except Exception as e:
+                    print(f"[DB] _ensure_db_setup skipped: {e}")
                 db.create_all()
                 _migrate_db()
                 from app.models import seed_data
