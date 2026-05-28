@@ -19,20 +19,30 @@ def _resolve_evolution_base_url():
     if env_url:
         return env_url
 
-    # Intentar detectar si evolution_api es resolvable (Docker Compose same network)
-    try:
-        import socket
-        socket.getaddrinfo('evolution_api', 8080)
-        # Si llegó aquí, el hostname se resolvió correctamente
-        return 'http://evolution_api:8080'
-    except Exception:
-        pass
+    import socket
 
-    # Fallbacks
+    # Posibles nombres para Evolution API en Coolify
+    candidates = [
+        'http://evolution-api:8080',   # docker-compose service name (con guión)
+        'http://evolution_api:8080',   # container_name (con guión bajo)
+    ]
+
+    for candidate in candidates:
+        from urllib.parse import urlparse
+        parsed = urlparse(candidate)
+        try:
+            socket.getaddrinfo(parsed.hostname, parsed.port or 8080)
+            print(f"[WA] Evolution API detectado en: {candidate}")
+            return candidate
+        except Exception:
+            continue
+
+    # Fallback local o producción
     if sys.platform == 'win32' or os.environ.get('FLASK_ENV') == 'development':
         return 'http://127.0.0.1:8080'
 
-    return 'http://evolution_api:8080'
+    print("[WA] ⚠️ No se pudo detectar Evolution API. Usa EVOLUTION_API_URL en Coolify.")
+    return 'http://evolution-api:8080'
 
 
 EVOLUTION_BASE_URL = _resolve_evolution_base_url()
