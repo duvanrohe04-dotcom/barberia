@@ -135,14 +135,12 @@ def send_whatsapp_message(to_number, message):
         'apikey': EVOLUTION_API_KEY
     }
     
-    # Evolution API v2.x requiere el formato simplificado
+    # Evolution API v2.x requiere delay y presence como campos raíz, no anidados
     payload = {
         "number": phone,
         "text": message,
-        "options": {
-            "delay": 1200,
-            "presence": "composing"
-        }
+        "delay": 1200,
+        "presence": "composing"
     }
     
     try:
