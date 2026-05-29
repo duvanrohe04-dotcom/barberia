@@ -23,6 +23,7 @@ def _resolve_evolution_base_url():
         return _evolution_url_cache
 
     env_url = (os.environ.get('EVOLUTION_API_URL') or '').strip()
+    server_url = (os.environ.get('EVOLUTION_SERVER_URL') or '').strip()
 
     if env_url:
         if env_url.startswith(('http://', 'https://')):
@@ -51,6 +52,10 @@ def _resolve_evolution_base_url():
         'http://whatsapp_api:8080',
     ]
 
+    # También probar EVOLUTION_SERVER_URL como candidato
+    if server_url and server_url.startswith(('http://', 'https://')):
+        candidates.insert(0, server_url)
+
     for candidate in candidates:
         parsed = urlparse(candidate)
         try:
@@ -63,8 +68,13 @@ def _resolve_evolution_base_url():
 
     # Fallback
     if sys.platform == 'win32' or os.environ.get('FLASK_ENV') == 'development':
-        print("[WA] Usando 127.0.0.1:8080 como fallback local.")
-        _evolution_url_cache = 'http://127.0.0.1:8080'
+        # Intentar server_url primero (que suele tener el puerto externo correcto)
+        if server_url and server_url.startswith(('http://', 'https://')):
+            print(f"[WA] Usando EVOLUTION_SERVER_URL como fallback local: {server_url}")
+            _evolution_url_cache = server_url
+            return _evolution_url_cache
+        print("[WA] Usando 127.0.0.1:8085 como fallback local.")
+        _evolution_url_cache = 'http://127.0.0.1:8085'
         return _evolution_url_cache
 
     fallback = env_url or 'http://evolution-api:8080'
