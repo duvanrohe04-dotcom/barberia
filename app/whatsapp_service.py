@@ -128,80 +128,87 @@ def _http_request(method, url, payload=None, headers=None, timeout=15):
 
 def send_whatsapp_message(to_number, message):
     from app.models import ShopConfig
-    
-    inst_row = ShopConfig.query.filter_by(key='evo_instance').first()
-    instance_name = inst_row.value if inst_row and inst_row.value else DEFAULT_INSTANCE
-    
-    # Limpiar y formatear el número
-    phone = str(to_number).strip().replace(' ', '').replace('+', '').replace('-', '').replace('(', '').replace(')', '')
-    
-    print(f"[WhatsApp] Número original: {to_number}")
-    print(f"[WhatsApp] Número limpio: {phone}")
-    
-    # Si es un número de 10 dígitos (Colombia), agregar código de país
-    if len(phone) == 10 and not phone.startswith('57'):
-        phone = '57' + phone
-        print(f"[WhatsApp] Agregado código de país: {phone}")
-    elif len(phone) == 12 and phone.startswith('57'):
-        print(f"[WhatsApp] Número ya tiene código de país: {phone}")
-    else:
-        print(f"[WhatsApp] ⚠️ Formato de número inusual: longitud={len(phone)}, valor={phone}")
-    
-    # Evolution API requiere el formato: número@s.whatsapp.net
-    if not phone.endswith('@s.whatsapp.net'):
-        phone = phone + '@s.whatsapp.net'
-    
-    base_url = get_evolution_base_url()
-    url = f"{base_url}/message/sendText/{instance_name}"
-    
-    print(f"[WhatsApp] Enviando mensaje a: {phone}")
-    print(f"[WhatsApp] Instancia: {instance_name}")
-    print(f"[WhatsApp] URL base: {base_url}")
-    print(f"[WhatsApp] URL completa: {url}")
-    
-    headers = {
-        'Content-Type': 'application/json',
-        'apikey': EVOLUTION_API_KEY
-    }
-    
-    payload = {
-        "number": phone,
-        "text": message,
-        "delay": 1200,
-        "presence": "composing"
-    }
+    base_url = None
     
     try:
-        status, body, resp_json = _http_request('POST', url, payload=payload, headers=headers, timeout=15)
-        print(f"[WhatsApp] Status: {status}")
-        print(f"[WhatsApp] Respuesta: {body[:500]}")
+        inst_row = ShopConfig.query.filter_by(key='evo_instance').first()
+        instance_name = inst_row.value if inst_row and inst_row.value else DEFAULT_INSTANCE
+        
+        # Limpiar y formatear el número
+        phone = str(to_number).strip().replace(' ', '').replace('+', '').replace('-', '').replace('(', '').replace(')', '')
+        
+        print(f"[WhatsApp] Número original: {to_number}")
+        print(f"[WhatsApp] Número limpio: {phone}")
+        
+        # Si es un número de 10 dígitos (Colombia), agregar código de país
+        if len(phone) == 10 and not phone.startswith('57'):
+            phone = '57' + phone
+            print(f"[WhatsApp] Agregado código de país: {phone}")
+        elif len(phone) == 12 and phone.startswith('57'):
+            print(f"[WhatsApp] Número ya tiene código de país: {phone}")
+        else:
+            print(f"[WhatsApp] ⚠️ Formato de número inusual: longitud={len(phone)}, valor={phone}")
+        
+        # Evolution API requiere el formato: número@s.whatsapp.net
+        if not phone.endswith('@s.whatsapp.net'):
+            phone = phone + '@s.whatsapp.net'
+        
+        base_url = get_evolution_base_url()
+        url = f"{base_url}/message/sendText/{instance_name}"
+        
+        print(f"[WhatsApp] Enviando mensaje a: {phone}")
+        print(f"[WhatsApp] Instancia: {instance_name}")
+        print(f"[WhatsApp] URL base: {base_url}")
+        print(f"[WhatsApp] URL completa: {url}")
+        
+        headers = {
+            'Content-Type': 'application/json',
+            'apikey': EVOLUTION_API_KEY
+        }
+        
+        payload = {
+            "number": phone,
+            "text": message,
+            "delay": 1200,
+            "presence": "composing"
+        }
+        
+        try:
+            status, body, resp_json = _http_request('POST', url, payload=payload, headers=headers, timeout=15)
+            print(f"[WhatsApp] Status: {status}")
+            print(f"[WhatsApp] Respuesta: {body[:500] if body else 'Sin respuesta'}")
 
-        if status in [200, 201]:
-            if isinstance(resp_json, dict) and (resp_json.get('error') or resp_json.get('status') == 'error'):
-                print(f"[WhatsApp] ❌ API devolvió error: {resp_json}")
-                return False, resp_json.get('error', str(resp_json))
-            print(f"[WhatsApp] ✅ Mensaje enviado exitosamente")
-            return True, None
+            if status in [200, 201]:
+                if isinstance(resp_json, dict) and (resp_json.get('error') or resp_json.get('status') == 'error'):
+                    print(f"[WhatsApp] ❌ API devolvió error: {resp_json}")
+                    return False, resp_json.get('error', str(resp_json))
+                print(f"[WhatsApp] ✅ Mensaje enviado exitosamente")
+                return True, None
 
-        error_detail = body[:300] if body else f"HTTP {status}"
-        print(f"[WhatsApp] ❌ Error al enviar mensaje: {error_detail}")
-        return False, error_detail
+            error_detail = body[:300] if body else f"HTTP {status}"
+            print(f"[WhatsApp] ❌ Error al enviar mensaje: {error_detail}")
+            return False, error_detail
 
-    except TimeoutError:
-        msg = f"Tiempo de espera agotado. Evolution API en {base_url} no responde."
-        print(f"[WhatsApp] ❌ {msg}")
-        return False, msg
-    except ConnectionError as e:
-        msg = f"No se puede conectar a Evolution API en {base_url}: {e}"
-        print(f"[WhatsApp] ❌ {msg}")
-        return False, msg
+        except TimeoutError:
+            msg = f"Tiempo de espera agotado. Evolution API en {base_url or 'servidor'} no responde."
+            print(f"[WhatsApp] ❌ {msg}")
+            return False, msg
+        except ConnectionError as e:
+            msg = f"No se puede conectar a Evolution API en {base_url or 'servidor'}: {e}"
+            print(f"[WhatsApp] ❌ {msg}")
+            return False, msg
+
     except Exception as e:
         msg = str(e)
         print(f"[WhatsApp] ❌ Error enviando mensaje: {e}")
+        import traceback
+        traceback.print_exc()
         return False, msg
 
 def disconnect_whatsapp():
     """Desconecta la instancia de WhatsApp usando Evolution API v2."""
+    base_url = None
+    instance_name = None
     try:
         print(f"[WA] Iniciando desconexión...")
 
@@ -225,24 +232,36 @@ def disconnect_whatsapp():
         
         status, body, _ = _http_request('DELETE', url, headers=headers, timeout=5)
         print(f"[WA] Status: {status}")
-        print(f"[WA] Response: {body[:200]}")
+        print(f"[WA] Response: {body[:200] if body else 'Sin respuesta'}")
 
         if status == 200:
             return {'success': True, 'message': 'WhatsApp desconectado exitosamente.'}
         if status == 404:
             return {'success': True, 'message': 'Instancia no encontrada (posiblemente ya desconectada).'}
-        return {'success': False, 'message': f'Error {status}: {body[:100]}'}
+        return {'success': False, 'message': f'Error {status}: {body[:100] if body else "Sin respuesta"}'}
 
     except TimeoutError:
-        print(f"[WA] TIMEOUT: No se pudo conectar a Evolution API en {base_url}")
-        msg = _check_evolution_reachable()
-        return {'success': False, 'message': msg or f'Tiempo agotado. No se puede conectar a Evolution API.'}
-    except ConnectionError:
-        print(f"[WA] CONNECTION ERROR: No se puede conectar a {base_url}")
-        msg = _check_evolution_reachable()
-        return {'success': False, 'message': msg or f'Error de conexión. Evolution API no disponible.'}
+        url_str = base_url or 'servidor'
+        print(f"[WA] TIMEOUT: No se pudo conectar a Evolution API en {url_str}")
+        try:
+            msg = _check_evolution_reachable()
+        except Exception as check_err:
+            print(f"[WA] Error en _check_evolution_reachable: {check_err}")
+            msg = None
+        return {'success': False, 'message': msg or 'Tiempo agotado. No se puede conectar a Evolution API.'}
+    except ConnectionError as conn_err:
+        url_str = base_url or 'servidor'
+        print(f"[WA] CONNECTION ERROR: No se puede conectar a {url_str}: {conn_err}")
+        try:
+            msg = _check_evolution_reachable()
+        except Exception as check_err:
+            print(f"[WA] Error en _check_evolution_reachable: {check_err}")
+            msg = None
+        return {'success': False, 'message': msg or 'Error de conexión. Evolution API no disponible.'}
     except Exception as e:
         print(f"[WA] EXCEPCIÓN: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
         return {'success': False, 'message': f'Error: {str(e)}'}
 
 def _check_evolution_reachable():
