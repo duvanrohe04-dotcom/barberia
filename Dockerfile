@@ -12,14 +12,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Dependencias del sistema (postgresql-client para entrypoint.sh)
+# Dependencias del sistema (solo lo mínimo para entrypoint.sh)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq-dev gcc curl postgresql-client python3-dev && \
+    libpq5 curl postgresql-client-17 && \
     rm -rf /var/lib/apt/lists/*
 
-# Instalar dependencias Python
+# Instalar dependencias Python (usando ruedas binarias prioritariamente)
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --prefer-binary -r requirements.txt
 
 # Copiar código (sin la DB local ni uploads)
 COPY . .
