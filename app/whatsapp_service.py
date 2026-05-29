@@ -13,15 +13,11 @@ is_local_runtime = sys.platform == 'win32' or os.environ.get('FLASK_ENV') == 'de
 
 
 def _resolve_evolution_base_url():
-    env_url = (os.environ.get('EVOLUTION_API_URL') or '').strip()
+    env_url = os.environ.get('EVOLUTION_API_URL')
 
-    # Si el usuario configuró una URL explícitamente, validar que sea HTTP/HTTPS
+    # Si el usuario configuró una URL explícitamente, respetarla tal cual
     if env_url:
-        if env_url.startswith(('http://', 'https://')):
-            return env_url
-        else:
-            print(f"[WA] ⚠️ EVOLUTION_API_URL tiene un valor inválido: '{env_url[:50]}...'")
-            print(f"[WA] ⚠️ Debe ser una URL HTTP (ej: http://evolution_api:8080). Intentando auto-detectar...")
+        return env_url
 
     import socket
 
