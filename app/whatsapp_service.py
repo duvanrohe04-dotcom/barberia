@@ -161,17 +161,14 @@ def send_whatsapp_message(to_number, message):
         return False
 
     except TimeoutError:
-        msg = f"Tiempo de espera agotado. Evolution API en {EVOLUTION_BASE_URL} no responde."
-        print(f"[WhatsApp] ❌ {msg}")
-        raise TimeoutError(msg)
+        print(f"[WhatsApp] ❌ Tiempo de espera agotado. Evolution API en {EVOLUTION_BASE_URL} no responde.")
+        return False
     except ConnectionError as e:
-        msg = f"No se puede conectar a Evolution API en {EVOLUTION_BASE_URL}. Verifica que el servicio esté corriendo. Error: {e}"
-        print(f"[WhatsApp] ❌ {msg}")
-        raise ConnectionError(msg)
+        print(f"[WhatsApp] ❌ No se puede conectar a Evolution API en {EVOLUTION_BASE_URL}: {e}")
+        return False
     except Exception as e:
-        msg = f"Error enviando mensaje WhatsApp: {e}"
-        print(f"[WhatsApp] ❌ {msg}")
-        raise RuntimeError(msg)
+        print(f"[WhatsApp] ❌ Error enviando mensaje: {e}")
+        return False
 
 def disconnect_whatsapp():
     """Desconecta la instancia de WhatsApp usando Evolution API v2."""

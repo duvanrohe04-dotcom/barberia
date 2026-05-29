@@ -181,8 +181,58 @@ def _init_scheduler(app):
         name='Auto-completar citas vencidas',
         replace_existing=True
     )
+
+    def send_reminders_job():
+        """Envía recordatorio WhatsApp 20 min antes de la cita."""
+        with app.app_context():
+            try:
+                colombia_tz = pytz.timezone('America/Bogota')
+                now = datetime.now(colombia_tz)
+                today_str = now.strftime('%Y-%m-%d')
+
+                pending = Appointment.query.filter(
+                    Appointment.status == 'Pendiente',
+                    Appointment.date == today_str,
+                    Appointment.reminder_sent == False
+                ).all()
+
+                now_minutes = now.hour * 60 + now.minute
+
+                for appt in pending:
+                    try:
+                        h, m = map(int, appt.time.split(':'))
+                        appt_minutes = h * 60 + m
+                        diff = appt_minutes - now_minutes
+
+                        if 18 <= diff <= 25:
+                            from app.whatsapp_service import send_reminder_to_client
+                            name_row = ShopConfig.query.filter_by(key='shop_name').first()
+                            s_name = name_row.value if name_row and name_row.value else 'Barbería'
+                            result = send_reminder_to_client(appt, s_name)
+                            if result:
+                                appt.reminder_sent = True
+                                db.session.commit()
+                                print(f"[WhatsApp] ✅ Recordatorio enviado a {appt.client_name} para las {appt.time}")
+                            else:
+                                print(f"[WhatsApp] ❌ Falló recordatorio a {appt.client_name} para las {appt.time}")
+                    except Exception as e:
+                        print(f"[WhatsApp] ❌ Error en recordatorio para {appt.client_name}: {e}")
+
+                print(f"[Scheduler] OK - Recordatorios verificados a las {now.strftime('%H:%M')}")
+            except Exception as e:
+                print(f"[Scheduler] Error en job de recordatorios: {e}")
+
+    _scheduler.add_job(
+        send_reminders_job,
+        'interval',
+        minutes=5,
+        id='send_wa_reminders',
+        name='Enviar recordatorios WhatsApp 20 min antes',
+        replace_existing=True
+    )
+
     _scheduler.start()
-    print(f"[Scheduler] OK - Iniciado: auto-completado cada 5 minutos")
+    print(f"[Scheduler] OK - Iniciado: auto-completado + recordatorios WhatsApp cada 5 minutos")
 
 def _ensure_admin_startup():
     """Crea admin SOLO si no existe. NO sobreescribe credenciales existentes."""
