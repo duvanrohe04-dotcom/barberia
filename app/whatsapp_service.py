@@ -7,21 +7,26 @@ import io
 import base64
 import urllib.request
 import urllib.error
+import socket
+from urllib.parse import urlparse
 from datetime import datetime, timedelta
 
 is_local_runtime = sys.platform == 'win32' or os.environ.get('FLASK_ENV') == 'development'
 
+# Cache para evitar resolver DNS en cada llamada
+_evolution_url_cache = None
+
 
 def _resolve_evolution_base_url():
+    global _evolution_url_cache
+    if _evolution_url_cache is not None:
+        return _evolution_url_cache
+
     env_url = (os.environ.get('EVOLUTION_API_URL') or '').strip()
 
-    # Si el usuario configuró una URL explícitamente, validar que sea HTTP/HTTPS
     if env_url:
         if env_url.startswith(('http://', 'https://')):
-            # En entorno local, verificar que el host sea alcanzable
             if is_local_runtime:
-                from urllib.parse import urlparse
-                import socket
                 parsed = urlparse(env_url)
                 try:
                     socket.getaddrinfo(parsed.hostname, parsed.port or 8080)
@@ -30,43 +35,56 @@ def _resolve_evolution_base_url():
                     print(f"[WA] Ignorando EVOLUTION_API_URL y buscando alternativa...")
                     env_url = None
             if env_url:
+                _evolution_url_cache = env_url
                 return env_url
         else:
             print(f"[WA] ⚠️ EVOLUTION_API_URL tiene un valor inválido: '{env_url[:50]}...'")
-            print(f"[WA] ⚠️ Debe ser una URL HTTP (ej: http://evolution_api:8080). Intentando auto-detectar...")
+            print(f"[WA] Intentando auto-detectar...")
 
-    import socket
-
-    # Posibles nombres para Evolution API en Coolify
+    # Posibles nombres para Evolution API en Coolify / Docker
     candidates = [
-        'http://evolution-api:8080',   # docker-compose service name (con guión)
-        'http://evolution_api:8080',   # container_name (con guión bajo)
+        'http://evolution-api:8080',
+        'http://evolution_api:8080',
+        'http://evolutionapi:8080',
+        'http://evolution:8080',
+        'http://whatsapp-api:8080',
+        'http://whatsapp_api:8080',
     ]
 
     for candidate in candidates:
-        from urllib.parse import urlparse
         parsed = urlparse(candidate)
         try:
             socket.getaddrinfo(parsed.hostname, parsed.port or 8080)
             print(f"[WA] Evolution API detectado en: {candidate}")
+            _evolution_url_cache = candidate
             return candidate
         except Exception:
             continue
 
-    # Fallback local o producción
+    # Fallback
     if sys.platform == 'win32' or os.environ.get('FLASK_ENV') == 'development':
         print("[WA] Usando 127.0.0.1:8080 como fallback local.")
-        return 'http://127.0.0.1:8080'
+        _evolution_url_cache = 'http://127.0.0.1:8080'
+        return _evolution_url_cache
 
-    print("[WA] ⚠️ No se pudo detectar Evolution API. Usa EVOLUTION_API_URL en Coolify.")
-    return 'http://evolution-api:8080'
+    fallback = env_url or 'http://evolution-api:8080'
+    print(f"[WA] Usando fallback: {fallback}")
+    print("[WA] Si no funciona, configura EVOLUTION_API_URL en Coolify.")
+    _evolution_url_cache = fallback
+    return fallback
 
 
-EVOLUTION_BASE_URL = _resolve_evolution_base_url()
+def get_evolution_base_url():
+    return _resolve_evolution_base_url()
+
+
 EVOLUTION_API_KEY = os.environ.get('EVOLUTION_API_KEY')
 if not EVOLUTION_API_KEY:
     raise RuntimeError('EVOLUTION_API_KEY environment variable is required')
 DEFAULT_INSTANCE = os.environ.get('DEFAULT_INSTANCE', 'barberking')
+
+# Mantener EVOLUTION_BASE_URL para compatibilidad
+EVOLUTION_BASE_URL = _resolve_evolution_base_url()
 
 
 def _http_request(method, url, payload=None, headers=None, timeout=15):
@@ -111,7 +129,6 @@ def send_whatsapp_message(to_number, message):
     print(f"[WhatsApp] Número limpio: {phone}")
     
     # Si es un número de 10 dígitos (Colombia), agregar código de país
-    # Validar que no empiece ya con 57
     if len(phone) == 10 and not phone.startswith('57'):
         phone = '57' + phone
         print(f"[WhatsApp] Agregado código de país: {phone}")
@@ -124,18 +141,19 @@ def send_whatsapp_message(to_number, message):
     if not phone.endswith('@s.whatsapp.net'):
         phone = phone + '@s.whatsapp.net'
     
-    url = f"{EVOLUTION_BASE_URL}/message/sendText/{instance_name}"
+    base_url = get_evolution_base_url()
+    url = f"{base_url}/message/sendText/{instance_name}"
     
     print(f"[WhatsApp] Enviando mensaje a: {phone}")
     print(f"[WhatsApp] Instancia: {instance_name}")
-    print(f"[WhatsApp] URL: {url}")
+    print(f"[WhatsApp] URL base: {base_url}")
+    print(f"[WhatsApp] URL completa: {url}")
     
     headers = {
         'Content-Type': 'application/json',
         'apikey': EVOLUTION_API_KEY
     }
     
-    # Evolution API v2.x requiere delay y presence como campos raíz, no anidados
     payload = {
         "number": phone,
         "text": message,
@@ -151,22 +169,26 @@ def send_whatsapp_message(to_number, message):
         if status in [200, 201]:
             if isinstance(resp_json, dict) and (resp_json.get('error') or resp_json.get('status') == 'error'):
                 print(f"[WhatsApp] ❌ API devolvió error: {resp_json}")
-                return False
+                return False, resp_json.get('error', str(resp_json))
             print(f"[WhatsApp] ✅ Mensaje enviado exitosamente")
-            return True
+            return True, None
 
-        print(f"[WhatsApp] ❌ Error al enviar mensaje: {body[:300]}")
-        return False
+        error_detail = body[:300] if body else f"HTTP {status}"
+        print(f"[WhatsApp] ❌ Error al enviar mensaje: {error_detail}")
+        return False, error_detail
 
     except TimeoutError:
-        print(f"[WhatsApp] ❌ Tiempo de espera agotado. Evolution API en {EVOLUTION_BASE_URL} no responde.")
-        return False
+        msg = f"Tiempo de espera agotado. Evolution API en {base_url} no responde."
+        print(f"[WhatsApp] ❌ {msg}")
+        return False, msg
     except ConnectionError as e:
-        print(f"[WhatsApp] ❌ No se puede conectar a Evolution API en {EVOLUTION_BASE_URL}: {e}")
-        return False
+        msg = f"No se puede conectar a Evolution API en {base_url}: {e}"
+        print(f"[WhatsApp] ❌ {msg}")
+        return False, msg
     except Exception as e:
+        msg = str(e)
         print(f"[WhatsApp] ❌ Error enviando mensaje: {e}")
-        return False
+        return False, msg
 
 def disconnect_whatsapp():
     """Desconecta la instancia de WhatsApp usando Evolution API v2."""
@@ -177,7 +199,7 @@ def disconnect_whatsapp():
 
         inst_row = ShopConfig.query.filter_by(key='evo_instance').first()
         instance_name = inst_row.value if inst_row and inst_row.value else DEFAULT_INSTANCE
-        base_url = EVOLUTION_BASE_URL
+        base_url = get_evolution_base_url()
         api_key = EVOLUTION_API_KEY
         
         print(f"[WA] Instancia: {instance_name}")
@@ -215,12 +237,11 @@ def disconnect_whatsapp():
 
 def _check_evolution_reachable():
     """Verifica si el host de Evolution API es alcanzable. Retorna mensaje de error o None."""
-    import urllib.parse
-    parsed = urllib.parse.urlparse(EVOLUTION_BASE_URL)
+    base_url = get_evolution_base_url()
+    parsed = urlparse(base_url)
     host = parsed.hostname
     port = parsed.port or 8080
     try:
-        import socket
         socket.getaddrinfo(host, port)
         return None
     except Exception as e:
@@ -228,10 +249,10 @@ def _check_evolution_reachable():
         if 'name' in error_msg or 'resolution' in error_msg or 'temporary' in error_msg:
             return (f"❌ No se puede resolver el host '{host}'. "
                     f"Evolution API no está corriendo o la URL es incorrecta.\n"
-                    f"URL actual: {EVOLUTION_BASE_URL}\n\n"
+                    f"URL actual: {base_url}\n\n"
                     f"💡 Solución: Configura EVOLUTION_API_URL en las variables "
                     f"de entorno de Coolify con la URL correcta de tu Evolution API.")
-        return f"❌ No se puede conectar a Evolution API en {EVOLUTION_BASE_URL}: {e}"
+        return f"❌ No se puede conectar a Evolution API en {base_url}: {e}"
 
 
 def get_whatsapp_qr():
@@ -240,7 +261,7 @@ def get_whatsapp_qr():
     instance_name = inst_row.value if inst_row and inst_row.value else DEFAULT_INSTANCE
     clean_name = instance_name.strip().lower()
 
-    base_url = EVOLUTION_BASE_URL
+    base_url = get_evolution_base_url()
     api_key = EVOLUTION_API_KEY
     
     print(f"[WA] Intentando conectar instancia: {clean_name}")
@@ -427,13 +448,13 @@ def notify_staff_cancelled(appt, shop_name):
         print(f"[WhatsApp] ⚠️ Empleado sin teléfono, enviando a admin: {to}")
     
     if to:
-        result = send_whatsapp_message(to, msg)
-        if result:
+        success, error = send_whatsapp_message(to, msg)
+        if success:
             print(f"[WhatsApp] ✅ Notificación de cancelación enviada al empleado")
         else:
-            print(f"[WhatsApp] ❌ Falló el envío de notificación de cancelación")
+            print(f"[WhatsApp] ❌ Falló el envío de notificación de cancelación: {error}")
         print(f"[WhatsApp] ========================================")
-        return result
+        return success
     else:
         print(f"[WhatsApp] ❌ No hay número de teléfono configurado")
         print(f"[WhatsApp] ========================================")
@@ -463,15 +484,15 @@ def notify_client_cancelled(appt, shop_name):
         f"Por favor contáctanos para reagendar tu cita."
     )
     
-    result = send_whatsapp_message(appt.client_phone, msg)
+    success, error = send_whatsapp_message(appt.client_phone, msg)
     
-    if result:
+    if success:
         print(f"[WhatsApp] ✅ Notificación de cancelación enviada al cliente {appt.client_name}")
     else:
-        print(f"[WhatsApp] ❌ Falló el envío de notificación al cliente {appt.client_name}")
+        print(f"[WhatsApp] ❌ Falló el envío de notificación al cliente {appt.client_name}: {error}")
     
     print(f"[WhatsApp] ========================================")
-    return result
+    return success
 
 def notify_admin_new_appointment(appt, shop_name):
     """Envía notificación de nueva cita al empleado o admin."""
@@ -523,13 +544,13 @@ def notify_admin_new_appointment(appt, shop_name):
     
     if to:
         print(f"[WhatsApp] Número destino final: {to}")
-        result = send_whatsapp_message(to, msg)
-        if result:
+        success, error = send_whatsapp_message(to, msg)
+        if success:
             print(f"[WhatsApp] ✅ Notificación enviada exitosamente")
         else:
-            print(f"[WhatsApp] ❌ Falló el envío de notificación")
+            print(f"[WhatsApp] ❌ Falló el envío de notificación: {error}")
         print(f"[WhatsApp] ========================================")
-        return result
+        return success
     else:
         print(f"[WhatsApp] ❌ No hay número de teléfono configurado")
         print(f"[WhatsApp] ========================================")
@@ -548,11 +569,11 @@ def send_reminder_to_client(appt, shop_name):
         f"¡Te esperamos!"
     )
     
-    result = send_whatsapp_message(appt.client_phone, msg)
+    success, error = send_whatsapp_message(appt.client_phone, msg)
     
-    if result:
+    if success:
         print(f"[WhatsApp] ✅ Recordatorio enviado a {appt.client_name}")
     else:
-        print(f"[WhatsApp] ❌ Falló el envío de recordatorio a {appt.client_name}")
+        print(f"[WhatsApp] ❌ Falló el envío de recordatorio a {appt.client_name}: {error}")
     
-    return result
+    return success

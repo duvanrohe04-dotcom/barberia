@@ -422,19 +422,22 @@ def send_wa_test_message():
         if not message:
             return jsonify({'success': False, 'message': 'El mensaje es requerido'}), 400
         
-        from app.whatsapp_service import send_whatsapp_message, EVOLUTION_BASE_URL, DEFAULT_INSTANCE
-        result = send_whatsapp_message(phone, message)
+        from app.whatsapp_service import send_whatsapp_message, get_evolution_base_url, EVOLUTION_BASE_URL, DEFAULT_INSTANCE
+        success, error = send_whatsapp_message(phone, message)
         
-        if result:
+        if success:
             return jsonify({'success': True, 'message': 'Mensaje enviado correctamente'})
         else:
             return jsonify({
                 'success': False,
-                'message': 'No se pudo enviar el mensaje. La API respondió con un error.',
-                'diagnostico': f'URL: {EVOLUTION_BASE_URL}, Instancia: {DEFAULT_INSTANCE}'
+                'message': 'No se pudo enviar el mensaje',
+                'error': error,
+                'diagnostico': f'URL: {get_evolution_base_url()}, Instancia: {DEFAULT_INSTANCE}'
             }), 500
     except Exception as e:
         print(f"DEBUG: Error en /whatsapp/test-message: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': f"Error: {str(e)}"}), 500
 
 @api_bp.route('/whatsapp/disconnect', methods=['POST'])
@@ -456,31 +459,32 @@ def disconnect_wa():
 @login_required
 def test_evolution():
     """Endpoint de prueba para verificar conectividad con Evolution API."""
-    from app.whatsapp_service import EVOLUTION_BASE_URL, EVOLUTION_API_KEY, _http_request, _check_evolution_reachable
+    from app.whatsapp_service import get_evolution_base_url, EVOLUTION_API_KEY, _http_request, _check_evolution_reachable
 
-    print(f"[API] Probando conexión a: {EVOLUTION_BASE_URL}")
+    base_url = get_evolution_base_url()
+    print(f"[API] Probando conexión a: {base_url}")
 
     reachable = _check_evolution_reachable()
     if reachable:
-        return jsonify({'success': False, 'error': reachable, 'url': EVOLUTION_BASE_URL})
+        return jsonify({'success': False, 'error': reachable, 'url': base_url})
 
     try:
         headers = {'apikey': EVOLUTION_API_KEY}
-        status, body, _ = _http_request('GET', f"{EVOLUTION_BASE_URL}/instance/fetchInstances", headers=headers, timeout=3)
+        status, body, _ = _http_request('GET', f"{base_url}/instance/fetchInstances", headers=headers, timeout=3)
         return jsonify({
             'success': status == 200,
             'status_code': status,
-            'url': EVOLUTION_BASE_URL,
+            'url': base_url,
             'response': body[:200]
         })
     except Exception as e:
         reachable = _check_evolution_reachable()
         if reachable:
-            return jsonify({'success': False, 'error': reachable, 'url': EVOLUTION_BASE_URL})
+            return jsonify({'success': False, 'error': reachable, 'url': base_url})
         return jsonify({
             'success': False,
             'error': str(e),
-            'url': EVOLUTION_BASE_URL
+            'url': base_url
         })
 
 @api_bp.route('/appointments/<int:appt_id>', methods=['DELETE'])
