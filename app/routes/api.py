@@ -422,16 +422,20 @@ def send_wa_test_message():
         if not message:
             return jsonify({'success': False, 'message': 'El mensaje es requerido'}), 400
         
-        from app.whatsapp_service import send_whatsapp_message
+        from app.whatsapp_service import send_whatsapp_message, EVOLUTION_BASE_URL, DEFAULT_INSTANCE
         result = send_whatsapp_message(phone, message)
         
         if result:
             return jsonify({'success': True, 'message': 'Mensaje enviado correctamente'})
         else:
-            return jsonify({'success': False, 'message': 'No se pudo enviar el mensaje. Verifica que WhatsApp esté vinculado.'}), 500
+            return jsonify({
+                'success': False,
+                'message': 'No se pudo enviar el mensaje. La API respondió con un error.',
+                'diagnostico': f'URL: {EVOLUTION_BASE_URL}, Instancia: {DEFAULT_INSTANCE}'
+            }), 500
     except Exception as e:
         print(f"DEBUG: Error en /whatsapp/test-message: {str(e)}")
-        return jsonify({'success': False, 'message': f"Error interno: {str(e)}"}), 500
+        return jsonify({'success': False, 'message': f"Error: {str(e)}"}), 500
 
 @api_bp.route('/whatsapp/disconnect', methods=['POST'])
 @login_required

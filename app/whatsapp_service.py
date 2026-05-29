@@ -18,7 +18,19 @@ def _resolve_evolution_base_url():
     # Si el usuario configuró una URL explícitamente, validar que sea HTTP/HTTPS
     if env_url:
         if env_url.startswith(('http://', 'https://')):
-            return env_url
+            # En entorno local, verificar que el host sea alcanzable
+            if is_local_runtime:
+                from urllib.parse import urlparse
+                import socket
+                parsed = urlparse(env_url)
+                try:
+                    socket.getaddrinfo(parsed.hostname, parsed.port or 8080)
+                except Exception:
+                    print(f"[WA] ⚠️ Host '{parsed.hostname}' no alcanzable desde entorno local.")
+                    print(f"[WA] Ignorando EVOLUTION_API_URL y buscando alternativa...")
+                    env_url = None
+            if env_url:
+                return env_url
         else:
             print(f"[WA] ⚠️ EVOLUTION_API_URL tiene un valor inválido: '{env_url[:50]}...'")
             print(f"[WA] ⚠️ Debe ser una URL HTTP (ej: http://evolution_api:8080). Intentando auto-detectar...")
@@ -43,6 +55,7 @@ def _resolve_evolution_base_url():
 
     # Fallback local o producción
     if sys.platform == 'win32' or os.environ.get('FLASK_ENV') == 'development':
+        print("[WA] Usando 127.0.0.1:8080 como fallback local.")
         return 'http://127.0.0.1:8080'
 
     print("[WA] ⚠️ No se pudo detectar Evolution API. Usa EVOLUTION_API_URL en Coolify.")
@@ -148,14 +161,17 @@ def send_whatsapp_message(to_number, message):
         return False
 
     except TimeoutError:
-        print(f"[WhatsApp] ❌ Timeout al enviar mensaje")
-        return False
+        msg = f"Tiempo de espera agotado. Evolution API en {EVOLUTION_BASE_URL} no responde."
+        print(f"[WhatsApp] ❌ {msg}")
+        raise TimeoutError(msg)
     except ConnectionError as e:
-        print(f"[WhatsApp] ❌ Error de conexión: {e}")
-        return False
+        msg = f"No se puede conectar a Evolution API en {EVOLUTION_BASE_URL}. Verifica que el servicio esté corriendo. Error: {e}"
+        print(f"[WhatsApp] ❌ {msg}")
+        raise ConnectionError(msg)
     except Exception as e:
-        print(f"[WhatsApp] ❌ Error enviando mensaje: {e}")
-        return False
+        msg = f"Error enviando mensaje WhatsApp: {e}"
+        print(f"[WhatsApp] ❌ {msg}")
+        raise RuntimeError(msg)
 
 def disconnect_whatsapp():
     """Desconecta la instancia de WhatsApp usando Evolution API v2."""
