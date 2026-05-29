@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 from app.models import db, Service, Staff, Appointment, ShopConfig, Review
-from app import limiter
+from app.extensions import limiter
 import re, os, uuid, threading, time
 from collections import defaultdict
 

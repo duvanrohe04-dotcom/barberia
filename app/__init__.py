@@ -4,23 +4,22 @@ import sys
 from datetime import datetime, timedelta
 import threading
 from flask import Flask, jsonify
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
 from apscheduler.schedulers.background import BackgroundScheduler
 import pytz
 import urllib.parse
 
+from app.extensions import db, login_manager, limiter
+from app.models import Admin, ShopConfig, Appointment, seed_data, process_fidelity_for_appointment
+from app.routes.main import main_bp
+from app.routes.auth import auth_bp
+from app.routes.admin import admin_bp
+from app.routes.api import api_bp
+
 # Cargar .env primero para producción/Coolify. En desarrollo, cargar .env.local también si existe.
 load_dotenv('.env', override=False)
 if sys.platform == 'win32' or os.environ.get('FLASK_ENV') == 'development':
     load_dotenv('.env.local', override=False)
-
-db = SQLAlchemy()
-login_manager = LoginManager()
-limiter = Limiter(key_func=get_remote_address, default_limits=["200 per minute"])
 
 _db_init_lock = threading.Lock()
 _db_initialized = False
@@ -86,10 +85,6 @@ def create_app():
     app.config['RATELIMIT_STORAGE_URI'] = os.environ.get('RATELIMIT_STORAGE_URI', 'memory://')
     limiter.init_app(app)
 
-    from app.routes.main import main_bp
-    from app.routes.auth import auth_bp
-    from app.routes.admin import admin_bp
-    from app.routes.api import api_bp
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(admin_bp, url_prefix='/admin')
@@ -102,7 +97,6 @@ def create_app():
     @app.context_processor
     def inject_shop_config():
         try:
-            from app.models import ShopConfig
             configs = ShopConfig.query.all()
             c_dict = {c.key: c.value for c in configs}
             return dict(
@@ -122,10 +116,8 @@ def create_app():
                 try:
                     db.create_all()
                     _migrate_db()
-                    from app.models import seed_data
                     seed_data()
                     
-                    from app.models import Admin
                     _ensure_admin_startup()
                     _db_initialized = True
                     print("[DB] Initialized successfully.")
@@ -154,7 +146,6 @@ def _init_scheduler(app):
             try:
                 colombia_tz = pytz.timezone('America/Bogota')
                 now = datetime.now(colombia_tz)
-                from app.models import Appointment, process_fidelity_for_appointment
 
                 pending = Appointment.query.filter(
                     Appointment.status == 'Pendiente'
@@ -195,7 +186,6 @@ def _init_scheduler(app):
 
 def _ensure_admin_startup():
     """Crea admin SOLO si no existe. NO sobreescribe credenciales existentes."""
-    from app.models import Admin
     import os
     import secrets
     admin_username = os.environ.get('ADMIN_USER', 'admin')

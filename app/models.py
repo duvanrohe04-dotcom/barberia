@@ -1,10 +1,14 @@
-from app import db, login_manager
+from app.extensions import db, login_manager
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 
+class BaseModel(db.Model):
+    __abstract__ = True
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
-class Admin(UserMixin, db.Model):
+class Admin(UserMixin, BaseModel):
     __tablename__ = 'admins'
     id            = db.Column(db.Integer, primary_key=True)
     username      = db.Column(db.String(80), unique=True, nullable=False, index=True)
@@ -22,7 +26,7 @@ def load_user(user_id):
     return Admin.query.get(int(user_id))
 
 
-class Service(db.Model):
+class Service(BaseModel):
     __tablename__ = 'services'
     id               = db.Column(db.Integer, primary_key=True)
     name             = db.Column(db.String(100), nullable=False)
@@ -39,7 +43,7 @@ class Service(db.Model):
     )
 
 
-class Staff(db.Model):
+class Staff(BaseModel):
     __tablename__ = 'staff'
     id          = db.Column(db.Integer, primary_key=True)
     name        = db.Column(db.String(100), nullable=False)
@@ -59,7 +63,7 @@ class Staff(db.Model):
     )
 
 
-class Appointment(db.Model):
+class Appointment(BaseModel):
     __tablename__ = 'appointments'
     id               = db.Column(db.Integer, primary_key=True)
     client_name      = db.Column(db.String(100), nullable=False)
@@ -84,14 +88,14 @@ class Appointment(db.Model):
     )
 
 
-class ShopConfig(db.Model):
+class ShopConfig(BaseModel):
     __tablename__ = 'shop_config'
     id        = db.Column(db.Integer, primary_key=True)
     key       = db.Column(db.String(50), unique=True, nullable=False, index=True)
     value     = db.Column(db.Text, default='')
 
 
-class Review(db.Model):
+class Review(BaseModel):
     __tablename__ = 'reviews'
     id          = db.Column(db.Integer, primary_key=True)
     client_name = db.Column(db.String(100), nullable=False)
@@ -101,7 +105,7 @@ class Review(db.Model):
     created_at  = db.Column(db.DateTime, default=datetime.utcnow)
 
 
-class InactiveDay(db.Model):
+class InactiveDay(BaseModel):
     __tablename__ = 'inactive_days'
     id          = db.Column(db.Integer, primary_key=True)
     staff_name  = db.Column(db.String(100), nullable=False, index=True)
@@ -115,7 +119,7 @@ class InactiveDay(db.Model):
     )
 
 
-class FidelityProgress(db.Model):
+class FidelityProgress(BaseModel):
     __tablename__ = 'fidelity_progress'
     id           = db.Column(db.Integer, primary_key=True)
     client_name  = db.Column(db.String(100), nullable=False, index=True)

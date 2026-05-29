@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
 from sqlalchemy import func
 from app.models import db, Admin
-from app import limiter
+from app.extensions import limiter
 
 auth_bp = Blueprint('auth', __name__)
 
