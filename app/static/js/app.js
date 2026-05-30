@@ -2,6 +2,7 @@
 let selSrv=null, selStaff=null, selTime=null, selGender=null;
 let services=[], servicesF=[], barbers=[], stylists=[];
 let cfg={ubicacion:'📍 Bogotá, Colombia', telefono:'+57 310 000 0000', wa:'', ig:'', wa_sty:'', ig_sty:''};
+let serverTime = null; // Sincronizar la hora del servidor (Colombia UTC-5)
 
 // Priorizar configuración inyectada del servidor para evitar parpadeos (FOUC)
 let shopName = (window.serverConfig && window.serverConfig.shop_name) ? window.serverConfig.shop_name : 'JS BARBERSHOP';
@@ -18,6 +19,9 @@ function escHtml(s){
 
 // ══ INIT ═══════════════════════════════════════════════════════
 async function init(){
+  // Sincronizar hora del servidor primero (CRÍTICO para horarios en Colombia)
+  await syncServerTime();
+  
   // Cargar todo en paralelo (incluyendo verificación de sesión) para máxima velocidad
   const loaders = [
     checkSession(),
@@ -38,12 +42,20 @@ async function init(){
   const heroStaff = document.getElementById('heroStaff');
   if(heroStaff) heroStaff.textContent = (barbers.length + stylists.length) + '+';
   
-  // Fecha mínima: hoy en horario local (no UTC)
-  const today = new Date();
-  const y = today.getFullYear();
-  const m = String(today.getMonth() + 1).padStart(2, '0');
-  const d = String(today.getDate()).padStart(2, '0');
-  document.getElementById('bDate').min = `${y}-${m}-${d}`;
+  // Fecha mínima: hoy en horario de Colombia (desde el servidor)
+  if(serverTime) {
+    const y = serverTime.date.split('-')[0];
+    const m = serverTime.date.split('-')[1];
+    const d = serverTime.date.split('-')[2];
+    document.getElementById('bDate').min = `${y}-${m}-${d}`;
+  } else {
+    // Fallback a hora local si falla la sincronización
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const d = String(today.getDate()).padStart(2, '0');
+    document.getElementById('bDate').min = `${y}-${m}-${d}`;
+  }
   
   setupNavDots();
 }
@@ -60,6 +72,27 @@ async function checkSession(){
     }
   } catch(e) {
     console.log('No hay sesión activa');
+  }
+}
+
+async function syncServerTime(){
+  /**
+   * CRÍTICO: Obtiene la hora del servidor en Colombia (America/Bogota UTC-5)
+   * Esto asegura que las validaciones de horario sean correctas sin importar
+   * la zona horaria del cliente.
+   */
+  try {
+    const res = await fetch('/api/current-time');
+    if(res.ok) {
+      serverTime = await res.json();
+      console.log('✅ Hora sincronizada con servidor Colombia:', serverTime.date, serverTime.time);
+    } else {
+      console.warn('⚠️ No se pudo sincronizar hora del servidor');
+      serverTime = null;
+    }
+  } catch(e) {
+    console.error('❌ Error sincronizando hora del servidor:', e);
+    serverTime = null;
   }
 }
 
@@ -365,24 +398,35 @@ async function buildTimeGrid(){
   }
 
   // Filtrar horas pasadas si la fecha es hoy
-  // Obtener la fecha de hoy en formato local (YYYY-MM-DD)
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  const today = `${year}-${month}-${day}`;
+  // Obtener la fecha de hoy en formato local (YYYY-MM-DD) DESDE EL SERVIDOR EN COLOMBIA
+  let today = null;
+  let currentHour = null;
+  let currentMinute = null;
+  
+  if(serverTime) {
+    today = serverTime.date;
+    currentHour = serverTime.hour;
+    currentMinute = serverTime.minute;
+  } else {
+    // Fallback a hora local del cliente si falla sincronización
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    today = `${year}-${month}-${day}`;
+    currentHour = now.getHours();
+    currentMinute = now.getMinutes();
+  }
   
   const isToday = date === today;
   let availableSlots = allSlots;
   
-  console.log(`📅 Hoy (local): ${today}, Seleccionado: ${date}, ¿Es hoy?: ${isToday}`);
+  console.log(`📅 Hoy (servidor Colombia): ${today}, Seleccionado: ${date}, ¿Es hoy?: ${isToday}`);
   
    if(isToday) {
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
     const currentTotalMinutes = currentHour * 60 + currentMinute;
     
-    console.log(`⏰ Hora actual local: ${currentHour}:${String(currentMinute).padStart(2,'0')} (${currentTotalMinutes} min)`);
+    console.log(`⏰ Hora actual servidor Colombia: ${currentHour}:${String(currentMinute).padStart(2,'0')} (${currentTotalMinutes} min)`);
     
     // Filtrar slots que ya pasaron (agregar 15 minutos de margen para preparación)
     availableSlots = allSlots.filter(slot => {
@@ -391,7 +435,7 @@ async function buildTimeGrid(){
       // Margen de 15 min: el cliente necesita tiempo para llegar
       const isPast = slotTotalMinutes <= currentTotalMinutes + 15;
       if(isPast) {
-        console.log(`❌ Slot ${slot} filtrado (ya pasó)`);
+        console.log(`❌ Slot ${slot} filtrado (ya pasó en Colombia)`);
       }
       return !isPast;
     });
@@ -1759,16 +1803,24 @@ function renderInactiveStaffSelect(){
 }
 
 function setupInactiveDateInput(){
-  // Establecer fecha mínima (hoy) para los inputs de fecha
+  // Establecer fecha mínima (hoy) para los inputs de fecha - usar hora del servidor en Colombia
   const dateStart = document.getElementById('inactiveDateStart');
   const dateEnd = document.getElementById('inactiveDateEnd');
   
   if(dateStart || dateEnd){
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    const minDate = `${year}-${month}-${day}`;
+    let minDate;
+    
+    if(serverTime) {
+      // Usar fecha del servidor en Colombia
+      minDate = serverTime.date;
+    } else {
+      // Fallback a hora local si falla sincronización
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      minDate = `${year}-${month}-${day}`;
+    }
     
     if(dateStart) dateStart.min = minDate;
     if(dateEnd) dateEnd.min = minDate;

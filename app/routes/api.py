@@ -820,6 +820,29 @@ _CONFIG_KEYS = {'ubicacion', 'telefono', 'wa', 'ig', 'shop_name', 'shop_logo',
                 'gender_icon_male', 'gender_icon_female',
                 'wa_sty', 'ig_sty', 'evo_instance'}
 
+@api_bp.route('/current-time', methods=['GET'])
+def get_current_time():
+    """Obtiene la hora y fecha actual en la zona horaria de Colombia (America/Bogota).
+    Esto asegura que el cliente siempre use la hora correcta del servidor."""
+    try:
+        from datetime import datetime
+        import pytz
+        colombia_tz = pytz.timezone('America/Bogota')
+        now_colombia = datetime.now(colombia_tz)
+        
+        return jsonify({
+            'timestamp': now_colombia.timestamp(),
+            'date': now_colombia.strftime('%Y-%m-%d'),
+            'time': now_colombia.strftime('%H:%M:%S'),
+            'hour': now_colombia.hour,
+            'minute': now_colombia.minute,
+            'second': now_colombia.second,
+            'weekday': now_colombia.weekday(),
+            'iso': now_colombia.isoformat()
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @api_bp.route('/config', methods=['GET'])
 def get_config():
     rows = ShopConfig.query.all()
