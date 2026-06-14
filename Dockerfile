@@ -30,12 +30,15 @@ RUN rm -f /app/instance/*.db /app/instance/*.sqlite3
 # Crear carpetas para volúmenes
 RUN mkdir -p /app/instance /app/app/static/uploads
 
+# Backup de archivos estáticos para sobrescribir el volumen montado en runtime
+RUN mkdir -p /app-static && cp -r /app/app/static/js /app/app/static/css /app-static/
+
 # Entrypoint para inicialización (crea rol admin en BD)
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # Usuario no-root por seguridad
-RUN useradd -m appuser && chown -R appuser /app
+RUN useradd -m appuser && chown -R appuser /app && chown -R appuser /app-static
 USER appuser
 
 EXPOSE 80
