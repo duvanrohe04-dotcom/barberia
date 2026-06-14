@@ -71,7 +71,10 @@ function goSec(id){ document.getElementById(id)?.scrollIntoView({behavior:'smoot
 function fmtDate(d){
   if(!d) return '';
   const [y,m,da] = d.split('-');
-  return `${da} ${'Ene Feb Mar Abr May Jun Jul Ago Sep Oct Nov Dic'.split(' ')[parseInt(m)-1]} ${y}`;
+  const dateObj = new Date(parseInt(y), parseInt(m)-1, parseInt(da));
+  const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+  const dayName = days[dateObj.getDay()];
+  return `${dayName}, ${da} ${'Ene Feb Mar Abr May Jun Jul Ago Sep Oct Nov Dic'.split(' ')[parseInt(m)-1]} ${y}`;
 }
 
 function escQ(s){ return (s||'').replace(/"/g,'&quot;'); }

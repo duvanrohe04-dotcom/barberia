@@ -134,24 +134,37 @@ def send_whatsapp_message(to_number, message):
         inst_row = ShopConfig.query.filter_by(key='evo_instance').first()
         instance_name = inst_row.value if inst_row and inst_row.value else DEFAULT_INSTANCE
         
-        # Limpiar y formatear el número
-        phone = str(to_number).strip().replace(' ', '').replace('+', '').replace('-', '').replace('(', '').replace(')', '')
+        # Limpiar y formatear el número: quitar todo lo que no sea dígito
+        phone = ''.join(c for c in str(to_number).strip() if c.isdigit())
         
         print(f"[WhatsApp] Número original: {to_number}")
         print(f"[WhatsApp] Número limpio: {phone}")
         
-        # Si es un número de 10 dígitos (Colombia), agregar código de país
-        if len(phone) == 10 and not phone.startswith('57'):
+        # Normalizar números colombianos a formato 57XXXXXXXXXX (12 dígitos)
+        if len(phone) == 10 and phone.startswith('3'):
+            # Celular colombiano sin código de país (3XX XXXXXXX)
             phone = '57' + phone
-            print(f"[WhatsApp] Agregado código de país: {phone}")
+            print(f"[WhatsApp] Agregado código de país (celular): {phone}")
+        elif len(phone) == 7:
+            # Fijo colombiano sin indicativo - agregar 57 + indicativo genérico
+            phone = '57' + phone
+            print(f"[WhatsApp] Número fijo corto, agregado 57: {phone}")
         elif len(phone) == 12 and phone.startswith('57'):
             print(f"[WhatsApp] Número ya tiene código de país: {phone}")
+        elif len(phone) == 13 and phone.startswith('57'):
+            # Algunos guardan con un dígito extra, tomar los 12 primeros
+            phone = phone[:12]
+            print(f"[WhatsApp] Número recortado a 12 dígitos: {phone}")
+        elif len(phone) >= 10:
+            # Otro formato internacional, dejarlo tal cual
+            print(f"[WhatsApp] Número internacional o formato distinto: longitud={len(phone)}, valor={phone}")
         else:
             print(f"[WhatsApp] ⚠️ Formato de número inusual: longitud={len(phone)}, valor={phone}")
         
-        # Evolution API requiere el formato: número@s.whatsapp.net
-        if not phone.endswith('@s.whatsapp.net'):
-            phone = phone + '@s.whatsapp.net'
+        # Evolution API v2 espera solo el número sin sufijo @s.whatsapp.net
+        # Quitar el sufijo si accidentalmente ya lo tiene
+        if phone.endswith('@s.whatsapp.net'):
+            phone = phone.replace('@s.whatsapp.net', '')
         
         base_url = get_evolution_base_url()
         url = f"{base_url}/message/sendText/{instance_name}"
@@ -169,8 +182,10 @@ def send_whatsapp_message(to_number, message):
         payload = {
             "number": phone,
             "text": message,
-            "delay": 1200,
-            "presence": "composing"
+            "options": {
+                "delay": 1200,
+                "presence": "composing"
+            }
         }
         
         try:
@@ -424,7 +439,7 @@ def get_whatsapp_qr():
                 qr.make(fit=True)
                 img = qr.make_image(fill_color="black", back_color="white")
                 buffer = io.BytesIO()
-                img.save(buffer, format='PNG')
+                img.save(buffer, 'PNG')
                 img_str = base64.b64encode(buffer.getvalue()).decode()
                 return {"success": True, "base64": f"data:image/png;base64,{img_str}"}
 
@@ -449,7 +464,8 @@ def notify_staff_cancelled(appt, shop_name):
     print(f"[WhatsApp] Fecha: {appt.date} - Hora: {appt.time}")
     
     try:
-        total_formatted = f"${float(appt.total.replace('$', '').replace(',', '')):,.0f}" if appt.total else "$0"
+        clean_total = appt.total.replace('$', '').replace('.', '').replace(',', '').replace(' ', '')
+        total_formatted = f"${int(clean_total):,}".replace(',', '.') if appt.total else "$0"
     except:
         total_formatted = appt.total or "$0"
     
@@ -497,7 +513,8 @@ def notify_client_cancelled(appt, shop_name):
     print(f"[WhatsApp] Teléfono: {appt.client_phone}")
     
     try:
-        total_formatted = f"${float(appt.total.replace('$', '').replace(',', '')):,.0f}" if appt.total else "$0"
+        clean_total = appt.total.replace('$', '').replace('.', '').replace(',', '').replace(' ', '')
+        total_formatted = f"${int(clean_total):,}".replace(',', '.') if appt.total else "$0"
     except:
         total_formatted = appt.total or "$0"
     
@@ -534,7 +551,8 @@ def notify_admin_new_appointment(appt, shop_name):
     
     # Formatear el total correctamente
     try:
-        total_formatted = f"${float(appt.total.replace('$', '').replace(',', '')):,.0f}" if appt.total else "$0"
+        clean_total = appt.total.replace('$', '').replace('.', '').replace(',', '').replace(' ', '')
+        total_formatted = f"${int(clean_total):,}".replace(',', '.') if appt.total else "$0"
     except:
         total_formatted = appt.total or "$0"
     
