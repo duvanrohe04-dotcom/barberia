@@ -204,7 +204,7 @@ def _init_scheduler(app):
                         appt_minutes = h * 60 + m
                         diff = appt_minutes - now_minutes
 
-                        if 18 <= diff <= 25:
+                        if 15 <= diff <= 30:
                             from app.whatsapp_service import send_reminder_to_client
                             name_row = ShopConfig.query.filter_by(key='shop_name').first()
                             s_name = name_row.value if name_row and name_row.value else 'Barbería'
@@ -293,4 +293,5 @@ def _migrate_db():
                     try:
                         conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}"))
                         conn.commit()
-                    except Exception: pass
+                    except Exception as e:
+                        print(f"[DB] ⚠️ No se pudo agregar columna {col} a {table}: {e}")

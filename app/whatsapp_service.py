@@ -140,15 +140,18 @@ def send_whatsapp_message(to_number, message):
         print(f"[WhatsApp] Número original: {to_number}")
         print(f"[WhatsApp] Número limpio: {phone}")
         
+        if not phone:
+            print(f"[WhatsApp] ❌ Número vacío después de limpiar. No se puede enviar.")
+            return False, "Número de teléfono vacío"
+        
         # Normalizar números colombianos a formato 57XXXXXXXXXX (12 dígitos)
-        if len(phone) == 10 and phone.startswith('3'):
-            # Celular colombiano sin código de país (3XX XXXXXXX)
+        if len(phone) == 10:
+            # 10 dígitos: móvil (3XX) o fijo con indicativo — agregar código Colombia
             phone = '57' + phone
-            print(f"[WhatsApp] Agregado código de país (celular): {phone}")
-        elif len(phone) == 7:
-            # Fijo colombiano sin indicativo - agregar 57 + indicativo genérico
-            phone = '57' + phone
-            print(f"[WhatsApp] Número fijo corto, agregado 57: {phone}")
+            print(f"[WhatsApp] Agregado código de país (10 dígitos): {phone}")
+        elif len(phone) == 11 and phone.startswith('57'):
+            # 57 + 9 dígitos (fijo sin indicativo completo) — dejar como está
+            print(f"[WhatsApp] Número con código de país (11 dígitos): {phone}")
         elif len(phone) == 12 and phone.startswith('57'):
             print(f"[WhatsApp] Número ya tiene código de país: {phone}")
         elif len(phone) == 13 and phone.startswith('57'):
@@ -159,12 +162,9 @@ def send_whatsapp_message(to_number, message):
             # Otro formato internacional, dejarlo tal cual
             print(f"[WhatsApp] Número internacional o formato distinto: longitud={len(phone)}, valor={phone}")
         else:
-            print(f"[WhatsApp] ⚠️ Formato de número inusual: longitud={len(phone)}, valor={phone}")
-        
-        # Evolution API v2 espera solo el número sin sufijo @s.whatsapp.net
-        # Quitar el sufijo si accidentalmente ya lo tiene
-        if phone.endswith('@s.whatsapp.net'):
-            phone = phone.replace('@s.whatsapp.net', '')
+            # 7-9 dígitos: demasiado corto para determinar área, agregar 57 como intento
+            print(f"[WhatsApp] ⚠️ Número corto ({len(phone)} dígitos). Agregando 57 como intento: {phone}")
+            phone = '57' + phone
         
         base_url = get_evolution_base_url()
         url = f"{base_url}/message/sendText/{instance_name}"
@@ -602,6 +602,41 @@ def notify_admin_new_appointment(appt, shop_name):
         print(f"[WhatsApp] ❌ No hay número de teléfono configurado")
         print(f"[WhatsApp] ========================================")
         return False
+
+def notify_client_new_appointment(appt, shop_name):
+    """Envía confirmación de nueva cita al cliente."""
+    print(f"[WhatsApp] ========================================")
+    print(f"[WhatsApp] Enviando confirmación al cliente: {appt.client_name}")
+    print(f"[WhatsApp] Teléfono: {appt.client_phone}")
+
+    try:
+        clean_total = appt.total.replace('$', '').replace('.', '').replace(',', '').replace(' ', '')
+        total_formatted = f"${int(clean_total):,}".replace(',', '.') if appt.total else "$0"
+    except:
+        total_formatted = appt.total or "$0"
+
+    msg = (
+        f"✅ *CITA CONFIRMADA* 💈\n\n"
+        f"¡Hola *{appt.client_name}*! Tu cita ha sido agendada exitosamente.\n\n"
+        f"✂️ *Servicio:* {appt.service_name}\n"
+        f"👤 *Profesional:* {appt.staff_name}\n"
+        f"📅 *Fecha:* {appt.date}\n"
+        f"🕐 *Hora:* {appt.time}\n"
+        f"💰 *Total:* {total_formatted}\n\n"
+        f"📍 *{shop_name}*\n"
+        f"Te esperamos. ¡Gracias por preferirnos!"
+    )
+
+    success, error = send_whatsapp_message(appt.client_phone, msg)
+
+    if success:
+        print(f"[WhatsApp] ✅ Confirmación enviada al cliente {appt.client_name}")
+    else:
+        print(f"[WhatsApp] ❌ Falló confirmación al cliente {appt.client_name}: {error}")
+
+    print(f"[WhatsApp] ========================================")
+    return success
+
 
 def send_reminder_to_client(appt, shop_name):
     """Envía recordatorio de cita al cliente 20 minutos antes."""

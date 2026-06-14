@@ -272,18 +272,19 @@ def create_appointment():
         db.session.add(appt)
         db.session.commit()
 
-    # ── NOTIFICACIÓN AUTOMÁTICA WHATSAPP (fuera del lock) ──
+    # ── NOTIFICACIONES AUTOMÁTICAS WHATSAPP (fuera del lock) ──
     try:
-        print(f"[WhatsApp] Intentando enviar notificación para cita ID: {appt.id}")
-        from app.whatsapp_service import notify_admin_new_appointment
+        from app.whatsapp_service import notify_admin_new_appointment, notify_client_new_appointment
         from app.models import ShopConfig
         name_row = ShopConfig.query.filter_by(key='shop_name').first()
         s_name = name_row.value if name_row and name_row.value else 'Barbería'
-        print(f"[WhatsApp] Nombre de la tienda: {s_name}")
-        result = notify_admin_new_appointment(appt, s_name)
-        print(f"[WhatsApp] Resultado de notificación: {result}")
+
+        # Notificar al barbero/estilista
+        notify_admin_new_appointment(appt, s_name)
+        # Confirmación al cliente
+        notify_client_new_appointment(appt, s_name)
     except Exception as e:
-        print(f"[WhatsApp] ❌ Error en notificación inicial: {e}")
+        print(f"[WhatsApp] ❌ Error en notificaciones: {e}")
         import traceback
         traceback.print_exc()
     # ----------------------------------------
@@ -378,6 +379,10 @@ def update_appointment_status(appt_id):
         return jsonify({'success': False, 'message': 'Estado inválido'}), 400
     
     appt.status = new_status
+    
+    # Si se revierte a Pendiente, resetear recordatorio para que se re-envíe
+    if new_status == 'Pendiente' and old_status != 'Pendiente':
+        appt.reminder_sent = False
     
     if new_status == 'Completado' and old_status != 'Completado':
         from app.models import process_fidelity_for_appointment
