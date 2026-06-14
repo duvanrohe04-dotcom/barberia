@@ -1,11 +1,10 @@
 #!/bin/sh
 set -e
 
-chmod -R 777 /app/instance /app/app/static/uploads /app/app/static/js /app/app/static/css 2>/dev/null || true
+chmod -R 777 /app/instance /app/app/static/uploads /app/app 2>/dev/null || true
 
-# Sobrescribir archivos estáticos con los de la imagen (para evitar que el volumen monte versiones viejas)
-cp -r /app-static/js/* /app/app/static/js/ 2>/dev/null || true
-cp -r /app-static/css/* /app/app/static/css/ 2>/dev/null || true
+# Sobrescribir código con el de la imagen (para evitar que el volumen monte versiones viejas)
+cp -r /app-code/app/* /app/app/ 2>/dev/null || true
 
 # ── Asegurar que el rol "admin" existe en PostgreSQL ──
 if [ -n "$POSTGRES_HOST" ] || [ -n "$DATABASE_URL" ]; then
