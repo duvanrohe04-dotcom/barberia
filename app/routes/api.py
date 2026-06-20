@@ -34,13 +34,13 @@ def _allowed_time(date_str, time_str, gender, duration_minutes=60):
     
     HORARIOS:
     Hombres:
-      - Lun-Vie: 8am-12pm y 2pm-9pm
-      - Sábado: 8am-1:30pm
-      - Domingo: 8am-12pm
+      - Lun-Vie: 8am-12pm y 2pm-8pm
+      - Sábado: 8am-8pm
+      - Domingo: 8am-12:30pm
     
     Mujeres:
-      - Lun-Vie: 9am-12pm y 2pm-9pm
-      - Sábado: 9am-12pm
+      - Lun-Vie: 9am-12pm y 2pm-8pm
+      - Sábado: 9am-8pm
       - Domingo: NO HAY SERVICIO
     """
     try:
@@ -60,17 +60,17 @@ def _allowed_time(date_str, time_str, gender, duration_minutes=60):
         if dow == 6:
             if gender == 'female':
                 return False  # Mujeres: no hay servicio los domingos
-            # Hombres: 8am-12pm (el servicio debe TERMINAR antes de las 12pm)
-            return 8*60 <= start_minutes and end_minutes <= 12*60
+            # Hombres: 8am-12:30pm (el servicio debe TERMINAR antes de las 12:30pm)
+            return 8*60 <= start_minutes and end_minutes <= 12*60 + 30
         
         # Sábado (dow == 5 en weekday)
         if dow == 5:
             if gender == 'female':
-                # Mujeres: 9am-12pm (el servicio debe TERMINAR antes de las 12pm)
-                return 9*60 <= start_minutes and end_minutes <= 12*60
+                # Mujeres: 9am-8pm (jornada continua)
+                return 9*60 <= start_minutes and end_minutes <= 20*60
             else:
-                # Hombres: 8am-1:30pm (el servicio debe TERMINAR antes de las 1:30pm)
-                return 8*60 <= start_minutes and end_minutes <= 13*60 + 30
+                # Hombres: 8am-8pm (jornada continua)
+                return 8*60 <= start_minutes and end_minutes <= 20*60
         
         # Lunes a Viernes (dow 0-4)
         start_morning = 9*60 if gender == 'female' else 8*60
@@ -78,8 +78,8 @@ def _allowed_time(date_str, time_str, gender, duration_minutes=60):
         # Mañana: 8am/9am - 12pm (el servicio debe TERMINAR antes de las 12pm)
         morning_valid = start_morning <= start_minutes and end_minutes <= 12*60
         
-        # Tarde: 2pm - 9pm (el servicio debe TERMINAR antes de las 9pm)
-        afternoon_valid = 14*60 <= start_minutes and end_minutes <= 21*60
+        # Tarde: 2pm - 8pm (el servicio debe TERMINAR antes de las 8pm)
+        afternoon_valid = 14*60 <= start_minutes and end_minutes <= 20*60
         
         return morning_valid or afternoon_valid
         
