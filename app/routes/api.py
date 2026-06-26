@@ -52,8 +52,9 @@ def _allowed_time(date_str, time_str, gender, duration_minutes=60):
         start_minutes = h * 60 + m
         end_minutes = start_minutes + duration_minutes
         
-        # Validar que sea un slot válido de 15 minutos
-        if m % 15 != 0:
+        # Validar que sea un slot válido: 30 min para hombres, 15 min para mujeres
+        slot_interval = 15 if gender == 'female' else 30
+        if m % slot_interval != 0:
             return False
         
         # Domingo (dow == 6 en weekday)
@@ -585,19 +586,23 @@ def taken_slots():
             query = query.filter(Appointment.staff_name == staff_name)
         appts = query.all()
     
+    # Determinar el género del staff para saber el intervalo de slots
+    gender = request.args.get('gender', 'male')
+    slot_interval = 15 if gender == 'female' else 30
+    
     # Calcular todos los slots bloqueados por cada cita pendiente
     blocked = set()
     for a in appts:
         h, m = map(int, a.time.split(':'))
         start_min = h * 60 + m
         dur = a.duration_minutes or 60
-        # Bloquear cada slot de 15 min que ocupa esta cita
+        # Bloquear cada slot que ocupa esta cita según el intervalo
         slot = start_min
         while slot < start_min + dur:
             hh = slot // 60
             mm = slot % 60
             blocked.add(f"{hh:02d}:{mm:02d}")
-            slot += 15
+            slot += slot_interval
     return jsonify(sorted(blocked))
 
 

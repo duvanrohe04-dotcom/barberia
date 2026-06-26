@@ -461,7 +461,8 @@ async function buildTimeGrid(){
   const list = isFemale ? servicesF : services;
   const srv = list.find(s=>s.id===selSrv);
   const durMin = srv ? (srv.duration_minutes || 60) : 60;
-  const durSlots = Math.ceil(durMin / 15); // cuántos slots de 15 min ocupa
+  const slotStep = isFemale ? 15 : 30; // hombres cada 30 min, mujeres cada 15 min
+  const durSlots = Math.ceil(durMin / slotStep); // cuántos slots ocupa
 
   // Obtener slots tomados para el staff seleccionado
   const staffMember = (isFemale?stylists:barbers).find(p=>p.id===selStaff);
@@ -469,7 +470,8 @@ async function buildTimeGrid(){
   
   let taken = [];
   try {
-    const res = await fetch(`/api/appointments/taken?date=${date}${staffParam}`);
+    const genderParam = `&gender=${isFemale ? 'female' : 'male'}`;
+    const res = await fetch(`/api/appointments/taken?date=${date}${staffParam}${genderParam}`);
     if(res.ok) {
       taken = await res.json();
     }
@@ -529,19 +531,20 @@ async function buildTimeGrid(){
 function getTimes(dateStr, isFemale){
   if(!dateStr) return [];
   const dow = new Date(dateStr+'T00:00:00').getDay(); // 0=domingo, 1=lunes, ..., 6=sábado
+  const step = isFemale ? 15 : 30; // hombres cada 30 min, mujeres cada 15 min
   
   // Domingo: hombres 8am-12:30pm, mujeres no hay servicio
   if(dow === 0){
     if(isFemale) return [];
-    return generateSlots(8, 12.5);
+    return generateSlots(8, 12.5, step);
   }
   
   // Sábado (dow === 6): hombres 8am-8pm, mujeres 9am-8pm
   if(dow === 6){
     if(isFemale){
-      return generateSlots(9, 20);
+      return generateSlots(9, 20, step);
     } else {
-      return generateSlots(8, 20);
+      return generateSlots(8, 20, step);
     }
   }
   
@@ -550,21 +553,22 @@ function getTimes(dateStr, isFemale){
   const startMorning = isFemale ? 9 : 8;
   
   // Mañana: 8am/9am - 11:30am
-  slots.push(...generateSlots(startMorning, 11.5));
+  slots.push(...generateSlots(startMorning, 11.5, step));
   
   // Tarde: 1:30pm - 8pm
-  slots.push(...generateSlots(13.5, 20));
+  slots.push(...generateSlots(13.5, 20, step));
   
   return slots;
 }
 
-// Función auxiliar para generar slots de 15 minutos
+// Función auxiliar para generar slots de tiempo
 // endH es la hora de cierre (ej: 20 para 8pm)
+// step: intervalo en minutos (30 para hombres, 15 para mujeres)
 // Los slots generados deben permitir que el servicio termine ANTES de endH
-function generateSlots(startH, endH){
+function generateSlots(startH, endH, step=15){
   const slots = [];
   // Generar slots hasta endH (sin incluir endH mismo)
-  for(let m = startH*60; m < endH*60; m+=15){
+  for(let m = startH*60; m < endH*60; m+=step){
     const h = Math.floor(m/60);
     const mm = m%60;
     slots.push(`${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}`);
