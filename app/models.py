@@ -119,53 +119,6 @@ class InactiveDay(BaseModel):
     )
 
 
-class FidelityProgress(BaseModel):
-    __tablename__ = 'fidelity_progress'
-    id           = db.Column(db.Integer, primary_key=True)
-    client_name  = db.Column(db.String(100), nullable=False, index=True)
-    client_phone = db.Column(db.String(20), nullable=False, index=True)
-    staff_name   = db.Column(db.String(100), nullable=False, index=True)
-    current_cuts = db.Column(db.Integer, nullable=False, default=0)
-    last_visit   = db.Column(db.String(10))  # formato YYYY-MM-DD
-    created_at   = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at   = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    __table_args__ = (
-        db.UniqueConstraint('client_name', 'client_phone', 'staff_name', name='uq_fidelity_client_staff'),
-        db.Index('ix_fidelity_lookup', 'client_name', 'client_phone', 'staff_name'),
-    )
-
-
-def process_fidelity_for_appointment(appt):
-    """Actualiza el progreso de fidelidad cuando una cita se completa."""
-    if appt.gender != 'male':
-        return
-
-    progress = FidelityProgress.query.filter(
-        db.func.lower(FidelityProgress.client_name) == appt.client_name.lower(),
-        FidelityProgress.client_phone == appt.client_phone,
-        FidelityProgress.staff_name == appt.staff_name
-    ).first()
-
-    if appt.is_free_cut:
-        if progress:
-            db.session.delete(progress)
-    else:
-        if not progress:
-            progress = FidelityProgress(
-                client_name=appt.client_name,
-                client_phone=appt.client_phone,
-                staff_name=appt.staff_name,
-                current_cuts=1,
-                last_visit=appt.date
-            )
-            db.session.add(progress)
-        else:
-            progress.current_cuts += 1
-            progress.last_visit = appt.date
-            progress.updated_at = datetime.utcnow()
-
-
 def seed_data():
     import os
     import secrets

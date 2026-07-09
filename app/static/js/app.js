@@ -737,15 +737,6 @@ async function submitBooking(){
   showToast('✅ ¡Reserva confirmada!', 'ok');
   
   // PASO 3: Ahora sí, preparar los datos del modal (en segundo plano)
-  // Verificar fidelidad SOLO para barberos (género masculino)
-  let fidelityData = { count: 0 };
-  if (!isFemale) {
-    const fidelityRes = await fetch(`/api/appointments/fidelity?name=${encodeURIComponent(name.toLowerCase())}&phone=${encodeURIComponent(phone)}&staff=${encodeURIComponent(staffMember.name)}`);
-    fidelityData = await fidelityRes.json();
-  }
-  const currentCount = fidelityData.count || 0;
-  const newCount = currentCount + 1;
-  const nextFreeCut = 10 - newCount; // cuántos faltan DESPUÉS de esta reserva
 
   document.getElementById('okDets').innerHTML = (()=>{
     const abono = isFemale ? Math.round(srv.price*0.20) : 0;
@@ -760,24 +751,6 @@ async function submitBooking(){
       <div class="mdr"><span>Precio del servicio</span><span>$${srv.price.toLocaleString()}</span></div>`;
     if(isFemale) rows += `<div class="mdr" style="color:var(--pink)"><span>💅 Abono (20%)</span><span>$${abono.toLocaleString()}</span></div>`;
     rows += `<div class="mdr" style="font-weight:700"><span>Total</span><span>$${total.toLocaleString()}</span></div>`;
-    
-    // Tarjeta de fidelidad SOLO para barberos (género masculino)
-    if (!isFemale) {
-      const isReady = newCount >= 10;
-      rows += `<div style="background:rgba(212,175,55,0.1);border:1px solid var(--gold);border-radius:8px;padding:12px;margin-top:10px">
-        <div style="font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">💳 Tarjeta de Fidelidad</div>
-        <div style="font-size:14px;color:var(--text-light);margin-bottom:6px">
-          Llevas <span style="color:var(--gold);font-weight:700">${newCount}</span> de <span style="color:var(--gold);font-weight:700">10</span> cortes
-        </div>
-        <div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:8px">
-          ${Array.from({length:10},(_,i)=>`<span style="font-size:18px">${i < newCount ? '✂️' : '⬜'}</span>`).join('')}
-        </div>
-        ${isReady
-          ? `<div style="color:var(--green);font-weight:700;font-size:13px;background:rgba(39,174,96,0.15);padding:8px;border-radius:6px;text-align:center">🎉 ¡Tienes un corte gratis! Díselo al barbero.</div>`
-          : `<div style="font-size:12px;color:var(--text-muted)">Faltan <span style="color:var(--gold);font-weight:700">${nextFreeCut}</span> corte${nextFreeCut===1?'':'s'} para el siguiente gratis</div>`
-        }
-      </div>`;
-    }
     
     return rows;
   })();
@@ -872,7 +845,7 @@ async function doCancel(id, btn){
 }
 
 // ══ ADMIN TABS ═════════════════════════════════════════════════
-const TAB_IDS=['dash','citas','servicios','barberos','estilistas','srvmujer','inactivos','marca','resenas','fidelidad','config'];
+const TAB_IDS=['dash','citas','servicios','barberos','estilistas','srvmujer','inactivos','marca','resenas','config'];
 function setTab(id){
   document.querySelectorAll('.atab').forEach((b,i)=>b.classList.toggle('on', TAB_IDS[i]===id));
   document.querySelectorAll('.acontent').forEach(c=>c.classList.remove('on'));
@@ -886,7 +859,6 @@ function setTab(id){
   if(id==='inactivos'){ setupInactiveDateInput(); renderInactiveStaffSelect(); renderInactiveDaysList(); }
   if(id==='marca') renderMarca();
   if(id==='resenas') renderAdminReviews();
-  if(id==='fidelidad') renderFidelityCards();
   if(id==='config') renderConfig();
 }
 
@@ -971,42 +943,18 @@ async function renderTable(){
     return (a.date+a.time)<(b.date+b.time)?-1:1;
   });
   
-  // Verificar fidelidad para cada cita pendiente (solo barberos - género masculino)
-  const fidelityChecks = {};
-  const fidelityInfo = {};
-  for(const a of list.filter(appt => appt.status === 'Pendiente' && appt.gender === 'male')) {
-    const key = `${a.name.toLowerCase()}-${a.phone}-${a.staff}`;
-    if (!fidelityChecks[key]) {
-      try {
-        const fRes = await fetch(`/api/appointments/fidelity?name=${encodeURIComponent(a.name.toLowerCase())}&phone=${encodeURIComponent(a.phone)}&staff=${encodeURIComponent(a.staff)}`);
-        const fData = await fRes.json();
-        const count = fData.count || 0;
-        fidelityChecks[key] = count === 10; // Elegible para corte gratis
-        fidelityInfo[key] = count; // Guardar el número de cortes para mostrar
-      } catch(e) {
-        fidelityChecks[key] = false;
-        fidelityInfo[key] = 0;
-      }
-    }
-  }
-  
   const tb=document.getElementById('tBody'), nd=document.getElementById('noData');
   if(!list.length){ tb.innerHTML=''; nd.style.display='block'; return; }
   nd.style.display='none';
   tb.innerHTML=list.map(a=>{
-    const fidelityKey = `${a.name.toLowerCase()}-${a.phone}-${a.staff}`;
-    const isEligibleForFree = fidelityChecks[fidelityKey] || false;
-    const currentCuts = fidelityInfo[fidelityKey] || 0;
     const isFreecut = a.is_free_cut || false;
     
     return `
-    <tr ${a.status==='Pendiente' && a.gender==='male' && isEligibleForFree ? 'style="background:rgba(46,204,113,0.1);border-left:4px solid var(--green)"' : ''}>
+    <tr>
       <td style="color:var(--text-muted)">#${a.id}</td>
       <td>
         <strong>${escHtml(a.name)}</strong>
         ${isFreecut ? ' <span style="color:var(--green);font-size:11px">🎁 GRATIS</span>' : ''}
-        ${a.status==='Pendiente' && a.gender==='male' && isEligibleForFree ? ' <span style="color:var(--green);font-size:11px;font-weight:700">⭐ LISTO PARA GRATIS</span>' : ''}
-        ${a.status==='Pendiente' && a.gender==='male' && currentCuts > 0 && currentCuts < 10 ? ` <span style="color:var(--gold);font-size:10px">(${currentCuts}/10)</span>` : ''}
       </td>
       <td>${escHtml(a.phone)}</td>
       <td><span style="font-size:14px">${a.gender==='female'?'💁‍♀️':'🧔'}</span> ${a.gender==='female'?'Mujer':'Hombre'}</td>
@@ -1018,7 +966,6 @@ async function renderTable(){
       <td style="color:var(--gold)">${escHtml(a.total)}</td>
       <td><span class="sbadge ${a.status==='Pendiente'?'sb-pend':a.status==='Completado'?'sb-done':'sb-canc'}">${escHtml(a.status)}</span></td>
       <td>
-        ${a.status==='Pendiente' && a.gender==='male' && isEligibleForFree && !isFreecut ?`<button class="del-row-btn" style="background:var(--green);margin-bottom:4px;font-size:11px" onclick="markFreeCut(${a.id})">🎁 Marcar Gratis</button>`:''}
         ${a.status==='Pendiente'?`<button class="del-row-btn" style="background:var(--red);margin-bottom:4px;width:100%" onclick="cancelAppt(${a.id})">❌ Cancelar</button>`:''}
         <button class="del-row-btn" style="width:100%" onclick="delAppt(${a.id})">🗑 Eliminar</button>
       </td>
@@ -1035,24 +982,6 @@ async function delAppt(id){
     renderTable(); renderDash(); buildTimeGrid();
   });
   showToast('✅ Cita eliminada correctamente','ok');
-}
-
-async function markFreeCut(id){
-  if(!confirm('¿Marcar esta cita como corte gratis?')) return;
-  
-  try {
-    const res = await fetch(`/api/appointments/${id}/mark-free`, {method:'POST'});
-    const data = await res.json();
-    
-    if(res.ok) {
-      showToast('🎁 ¡Cita marcada como gratis!', 'ok');
-      renderTable(); // Refrescar la tabla
-    } else {
-      showToast(`❌ Error: ${data.error}`, 'error');
-    }
-  } catch(e) {
-    showToast('❌ No pudimos marcar la cita como gratis', 'error');
-  }
 }
 
 async function cancelAppt(id){
@@ -1600,8 +1529,7 @@ async function resetDatabase(){
     '• Todas las reseñas\n' +
     '• Días inactivos pasados\n\n' +
     'Se MANTENDRÁN:\n' +
-    '• Citas PENDIENTES\n' +
-    '• Tarjetas de fidelidad\n\n' +
+    '• Citas PENDIENTES\n\n' +
     'Esta acción NO se puede deshacer.\n\n' +
     '¿Estás seguro de que deseas continuar?'
   );
@@ -1612,7 +1540,7 @@ async function resetDatabase(){
   const doubleConfirm = confirm(
     '🚨 ÚLTIMA CONFIRMACIÓN 🚨\n\n' +
     'Vas a reiniciar el dashboard eliminando citas completadas/canceladas y reseñas.\n' +
-    'Las citas pendientes y tarjetas de fidelidad se mantendrán.\n\n' +
+    'Las citas pendientes se mantendrán.\n\n' +
     '¿Realmente deseas continuar?'
   );
   
@@ -1636,7 +1564,6 @@ async function resetDatabase(){
       alert(
         '✅ Dashboard reiniciado exitosamente\n\n' +
         `📋 Citas completadas/canceladas eliminadas: ${details.completed_cancelled_appointments}\n` +
-        `💳 Tarjetas de fidelidad conservadas: ${details.fidelity_cards_kept}\n` +
         `⭐ Reseñas eliminadas: ${details.reviews}\n` +
         `🚫 Días inactivos pasados eliminados: ${details.past_inactive_days}`
       );
@@ -1762,38 +1689,6 @@ function setupNavDots(){
       if(entries[0].isIntersecting) document.querySelectorAll('.ndot').forEach((d,j)=>d.classList.toggle('on',j===idx));
     },{threshold:.4}).observe(el);
   });
-}
-
-// ══ START ══════════════════════════════════════════════════════
-async function renderFidelityCards(){
-  const res = await fetch('/api/appointments/fidelity/cards');
-  const data = await res.json();
-  const el = document.getElementById('fidelityCardsList');
-  if(!data.cards.length){
-    el.innerHTML='<p style="color:var(--text-muted);font-size:13px">No hay tarjetas de fidelidad registradas aún.</p>';
-    return;
-  }
-  el.innerHTML=data.cards.map(c=>`
-    <div style="background:var(--dark-card);border:1px solid ${c.count >= 10 ? 'var(--green)' : 'var(--dark-border)'};border-radius:12px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;${c.count >= 10 ? 'box-shadow:0 0 10px rgba(46,204,113,0.3)' : ''}">
-      <div>
-        <div style="font-family:var(--font-serif);font-weight:700;font-size:15px;margin-bottom:4px">
-          ${c.name}
-          ${c.count >= 10 ? ' <span style="color:var(--green);font-size:12px;font-weight:700">⭐ LISTO PARA GRATIS</span>' : ''}
-        </div>
-        <div style="font-size:13px;color:var(--text-muted)">📞 ${c.phone} · 👤 ${c.staff}</div>
-        <div style="font-size:13px;color:var(--gold);margin-top:3px">📅 Última visita: ${c.last_visit||'—'}</div>
-        <div style="display:flex;gap:2px;flex-wrap:wrap;margin-top:6px">
-          ${Array.from({length:10},(_,i)=>`<span style="font-size:14px">${i < c.count ? '✂️' : '⬜'}</span>`).join('')}
-        </div>
-      </div>
-      <div style="text-align:right">
-        <div style="font-size:28px;font-family:var(--font-display);color:${c.count >= 10 ? 'var(--green)' : 'var(--gold)'}">${c.count}/10</div>
-        <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">Cortes</div>
-        <div style="font-size:12px;margin-top:4px;font-weight:${c.count >= 10 ? '700' : '400'};color:${c.count >= 10 ? 'var(--green)' : 'var(--text-muted)'}">
-          ${c.count >= 10 ? '🎉 ¡CORTE GRATIS!' : `🎁 Faltan ${10-c.count}`}
-        </div>
-      </div>
-    </div>`).join('');
 }
 
 // ══ INACTIVE DAYS ══════════════════════════════════════════════

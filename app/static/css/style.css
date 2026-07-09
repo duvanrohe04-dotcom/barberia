@@ -159,13 +159,6 @@ tr:hover td{background:rgba(212,175,55,0.03)}
 .ig-btn{background:linear-gradient(135deg,#E1306C,#833AB4,#FD1D1D,#FCAF45);color:#fff}
 .social-btn svg{width:16px;height:16px;fill:currentColor;flex-shrink:0}
 .hero-visual{position:relative;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:30px}
-.hero-fidelity{display:flex;align-items:center;gap:16px;background:rgba(212,175,55,0.08);border:1px solid rgba(212,175,55,0.25);border-radius:16px;padding:16px 20px;max-width:520px;transition:all .3s}
-.hero-fidelity:hover{background:rgba(212,175,55,0.12);border-color:rgba(212,175,55,0.4);transform:translateY(-4px);box-shadow:0 12px 30px rgba(212,175,55,0.15)}
-.fidelity-icon{font-size:32px;flex-shrink:0;animation:fidelityPulse 2s infinite}
-.fidelity-content{display:flex;flex-direction:column;gap:4px}
-.fidelity-title{font-family:var(--font-display);font-size:20px;color:var(--gold);letter-spacing:1px}
-.fidelity-text{font-size:13px;color:var(--text-muted);line-height:1.5}
-@keyframes fidelityPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
 .hero-circle{width:340px;height:340px;border-radius:50%;background:linear-gradient(135deg,rgba(212,175,55,0.12),rgba(192,57,43,0.08));border:2px solid rgba(212,175,55,0.3);display:flex;align-items:center;justify-content:center;position:relative;animation:pulse 3s ease-in-out infinite;overflow:hidden}
 @keyframes toastSlideIn{from{transform:translateY(100px);opacity:0}to{transform:translateY(0);opacity:1}}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(212,175,55,0.2)}50%{box-shadow:0 0 0 18px rgba(212,175,55,0)}}
@@ -408,9 +401,6 @@ footer{background:#0A0A0A;border-top:1px solid var(--dark-border);text-align:cen
   .hero-content{grid-template-columns:1fr;gap:30px;padding:50px 20px}
   .hero-visual{display:flex;flex-direction:column}
   .hero-circle{width:220px;height:220px}
-  .hero-fidelity{max-width:100%;padding:12px 16px}
-  .fidelity-title{font-size:18px}
-  .fidelity-text{font-size:12px}
 }
   .section{padding:50px 20px}
   .frow{grid-template-columns:1fr}

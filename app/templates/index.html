@@ -90,14 +90,6 @@
               {% endif %}
             </div>
           </div>
-          <!-- FIDELITY MESSAGE -->
-          <div class="hero-fidelity">
-            <div class="fidelity-icon">🎁</div>
-            <div class="fidelity-content">
-              <div class="fidelity-title">¡Corte número 11 gratis!</div>
-              <div class="fidelity-text">Solicita tu tarjeta de fidelidad y canjea un corte gratis cada vez que completes 10.</div>
-            </div>
-          </div>
           <div class="hero-stats">
             <div class="stat-card"><div class="stat-n" id="heroClients">100+</div><div class="stat-l">Clientes felices</div></div>
             <div class="stat-card"><div class="stat-n" id="heroStaff">9+</div><div class="stat-l">Profesionales</div></div>
@@ -420,7 +412,6 @@
       <button class="atab" onclick="setTab('inactivos')">🚫 Días Inactivos</button>
       <button class="atab" onclick="setTab('marca')">🏷 Marca</button>
       <button class="atab" onclick="setTab('resenas')">⭐ Reseñas</button>
-      <button class="atab" onclick="setTab('fidelidad')">💳 Tarjetas Fidelidad</button>
       <button class="atab" onclick="setTab('config')">⚙ Config</button>
     </div>
 
@@ -740,18 +731,10 @@
         <h3 style="color:var(--red-bright)">⚠️ Reiniciar Dashboard</h3>
         <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">
           Esta acción eliminará las citas <strong>completadas y canceladas</strong>, las reseñas y los días inactivos pasados.<br>
-          <strong style="color:var(--green)">Se mantienen:</strong> Citas pendientes y tarjetas de fidelidad.<br>
+          <strong style="color:var(--green)">Se mantienen:</strong> Citas pendientes.<br>
           <strong style="color:var(--red-bright)">Esta acción NO se puede deshacer.</strong>
         </p>
         <button class="save-btn" style="background:var(--red-bright)" onclick="resetDatabase()">🔄 Reiniciar Dashboard</button>
-      </div>
-    </div>
-
-    <!-- TARJETAS DE FIDELIDAD -->
-    <div class="acontent" id="tab-fidelidad">
-      <div class="brand-editor">
-        <h3>💳 Tarjetas de Fidelidad</h3>
-        <div id="fidelityCardsList" style="display:flex;flex-direction:column;gap:12px"></div>
       </div>
     </div>
   </div>

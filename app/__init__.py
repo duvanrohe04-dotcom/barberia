@@ -10,7 +10,7 @@ import pytz
 import urllib.parse
 
 from app.extensions import db, login_manager, limiter
-from app.models import Admin, ShopConfig, Appointment, seed_data, process_fidelity_for_appointment
+from app.models import Admin, ShopConfig, Appointment, seed_data
 from app.routes.main import main_bp
 from app.routes.auth import auth_bp
 from app.routes.admin import admin_bp
@@ -162,7 +162,6 @@ def _init_scheduler(app):
 
                         if now >= appt_end:
                             a.status = 'Completado'
-                            process_fidelity_for_appointment(a)
                             changed = True
                     except Exception:
                         pass

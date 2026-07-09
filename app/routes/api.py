@@ -112,54 +112,10 @@ def upload_image():
 
 # ── APPOINTMENTS ──────────────────────────────────────────────
 
-@api_bp.route('/appointments/fidelity', methods=['GET'])
-def get_fidelity_count():
-    """Obtiene el conteo de reservas acumuladas para fidelidad (solo barberos)."""
-    name  = _safe_str(request.args.get('name', ''), 100).lower()
-    phone = _safe_str(request.args.get('phone', ''), 20)
-    staff_name = _safe_str(request.args.get('staff', ''), 100)
-    
-    if not name or not phone or not staff_name:
-        return jsonify({'count': 0, 'message': 'Faltan datos'})
-    
-    # Buscar en la tabla de progreso de fidelidad
-    from app.models import FidelityProgress
-    progress = FidelityProgress.query.filter(
-        db.func.lower(FidelityProgress.client_name) == name,
-        FidelityProgress.client_phone == phone,
-        FidelityProgress.staff_name == staff_name
-    ).first()
-    
-    count = progress.current_cuts if progress else 0
-    
-    return jsonify({
-        'count': count, 
-        'message': 'ok'
-    })
 
 
-@api_bp.route('/appointments/fidelity/cards', methods=['GET'])
-@login_required
-def get_fidelity_cards():
-    """Obtiene todas las tarjetas de fidelidad activas (solo barberos)."""
-    from app.models import FidelityProgress
-    
-    # Mostrar todos los clientes con al menos 1 corte, ordenados por número de cortes (mayor a menor)
-    progress_records = FidelityProgress.query.filter(
-        FidelityProgress.current_cuts >= 1
-    ).order_by(FidelityProgress.current_cuts.desc()).all()    
-    # Convertir a formato esperado por el frontend
-    result = []
-    for record in progress_records:
-        result.append({
-            'name': record.client_name,
-            'phone': record.client_phone,
-            'staff': record.staff_name,
-            'count': record.current_cuts,
-            'last_visit': record.last_visit
-        })
-    
-    return jsonify({'cards': result, 'total': len(result)})
+
+
 
 
 @api_bp.route('/appointments', methods=['GET'])
@@ -325,46 +281,8 @@ def complete_appointment(appt_id):
     
     appt.status = 'Completado'
     
-    # Actualizar progreso de fidelidad solo para barbería (género masculino)
-    from app.models import process_fidelity_for_appointment
-    process_fidelity_for_appointment(appt)
-    
     db.session.commit()
     return jsonify({'success': True})
-
-
-@api_bp.route('/appointments/<int:appt_id>/mark-free', methods=['POST'])
-@login_required
-def mark_free_cut(appt_id):
-    """Marcar una cita como corte gratis (solo admin y solo barberos)."""
-    appt = Appointment.query.get_or_404(appt_id)
-    
-    # Solo funciona para citas de género masculino (barberos)
-    if appt.gender != 'male':
-        return jsonify({'error': 'La tarjeta de fidelidad solo aplica para servicios de barbería (hombres)'}), 400
-    
-    # Solo se puede marcar como gratis si está pendiente
-    if appt.status != 'Pendiente':
-        return jsonify({'error': 'Solo se pueden marcar como gratis las citas pendientes'}), 400
-    
-    # Verificar progreso en la tabla de fidelidad
-    from app.models import FidelityProgress
-    progress = FidelityProgress.query.filter(
-        db.func.lower(FidelityProgress.client_name) == appt.client_name.lower(),
-        FidelityProgress.client_phone == appt.client_phone,
-        FidelityProgress.staff_name == appt.staff_name
-    ).first()
-    
-    current_cuts = progress.current_cuts if progress else 0
-    
-    if current_cuts != 10:  # Debe tener exactamente 10 cortes completados (el 11 es gratis)
-        return jsonify({'error': f'Cliente tiene {current_cuts} cortes, necesita 10 para el corte gratis'}), 400
-    
-    appt.is_free_cut = True
-    appt.total = '$0'  # Marcar como gratis
-    db.session.commit()
-    
-    return jsonify({'success': True, 'message': 'Cita marcada como corte gratis'})
 
 
 @api_bp.route('/appointments/<int:appt_id>/status', methods=['PATCH'])
@@ -384,10 +302,6 @@ def update_appointment_status(appt_id):
     # Si se revierte a Pendiente, resetear recordatorio para que se re-envíe
     if new_status == 'Pendiente' and old_status != 'Pendiente':
         appt.reminder_sent = False
-    
-    if new_status == 'Completado' and old_status != 'Completado':
-        from app.models import process_fidelity_for_appointment
-        process_fidelity_for_appointment(appt)
     
     # Si el admin cancela, notificar al cliente
     if new_status == 'Cancelado' and old_status != 'Cancelado':
@@ -569,8 +483,6 @@ def taken_slots():
             if now >= appt_end:
                 if a.status != 'Completado':
                     a.status = 'Completado'
-                    from app.models import process_fidelity_for_appointment
-                    process_fidelity_for_appointment(a)
                     changed = True
         except:
             pass
@@ -1067,18 +979,15 @@ def delete_inactive_day(day_id):
 @login_required
 def reset_appointments():
     """Admin: Reiniciar dashboard - Elimina citas completadas/canceladas, reseñas y días inactivos pasados.
-    Mantiene citas pendientes y tarjetas de fidelidad."""
+    Mantiene citas pendientes."""
     try:
-        from app.models import FidelityProgress, InactiveDay
+        from app.models import InactiveDay
         from datetime import date as dt_date
         
         # Eliminar solo citas completadas y canceladas (mantener pendientes)
         deleted_appointments = Appointment.query.filter(
             Appointment.status.in_(['Completado', 'Cancelado'])
         ).delete(synchronize_session=False)
-        
-        # NO eliminar tarjetas de fidelidad (se mantienen)
-        fidelity_count = 0
         
         # Eliminar todas las reseñas
         review_count = Review.query.delete(synchronize_session=False)
@@ -1096,7 +1005,6 @@ def reset_appointments():
             'message': f'✅ Dashboard reiniciado correctamente',
             'deleted': {
                 'completed_cancelled_appointments': deleted_appointments,
-                'fidelity_cards_kept': FidelityProgress.query.count(),
                 'reviews': review_count,
                 'past_inactive_days': inactive_count
             }
