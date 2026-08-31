@@ -51,8 +51,6 @@ def login():
         return jsonify({'success': False, 'message': 'Credenciales requeridas'}), 400
 
     admin = Admin.query.filter(func.lower(Admin.username) == username.casefold()).first()
-    if not admin:
-        admin = Admin.query.order_by(Admin.id).first()
 
     if admin and admin.check_password(password):
         from flask import session
@@ -60,19 +58,6 @@ def login():
         login_user(admin, remember=True)
         print(f"[Auth] ✅ Login exitoso para '{username}'")
         return jsonify({'success': True})
-
-    # Si falló la autenticación, intentar reparar admin automáticamente
-    # (por si el seed de inicio no funcionó o la DB fue recreada)
-    try:
-        fixed_admin = _ensure_admin(password)
-        if fixed_admin and fixed_admin.check_password(password):
-            from flask import session
-            session.permanent = True
-            login_user(fixed_admin, remember=True)
-            print(f"[Auth] ✅ Login exitoso (reparado) para '{username}'")
-            return jsonify({'success': True})
-    except Exception as e:
-        print(f"[Auth] ❌ Error en reparación automática: {e}")
 
     if not admin:
         print(f"[Auth] ❌ Login fallido: usuario '{username}' no encontrado en BD")

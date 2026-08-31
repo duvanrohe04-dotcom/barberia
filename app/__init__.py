@@ -196,6 +196,8 @@ def _init_scheduler(app):
                 ).all()
 
                 now_minutes = now.hour * 60 + now.minute
+                attempted_count = 0
+                sent_count = 0
 
                 for appt in pending:
                     try:
@@ -204,20 +206,26 @@ def _init_scheduler(app):
                         diff = appt_minutes - now_minutes
 
                         if 15 <= diff <= 30:
+                            attempted_count += 1
+                            # Marcar como procesado primero para evitar bucle de reintentos en cada ciclo si WhatsApp falla
+                            appt.reminder_sent = True
+                            db.session.commit()
+
                             from app.whatsapp_service import send_reminder_to_client
                             name_row = ShopConfig.query.filter_by(key='shop_name').first()
                             s_name = name_row.value if name_row and name_row.value else 'Barbería'
                             result = send_reminder_to_client(appt, s_name)
                             if result:
-                                appt.reminder_sent = True
-                                db.session.commit()
-                                print(f"[WhatsApp] ✅ Recordatorio enviado a {appt.client_name} para las {appt.time}")
-                            else:
-                                print(f"[WhatsApp] ❌ Falló recordatorio a {appt.client_name} para las {appt.time}")
+                                sent_count += 1
+                        elif diff < 15:
+                            # Cita próxima o pasada sin recordatorio: marcar como procesado
+                            appt.reminder_sent = True
+                            db.session.commit()
                     except Exception as e:
-                        print(f"[WhatsApp] ❌ Error en recordatorio para {appt.client_name}: {e}")
+                        print(f"[WhatsApp] ❌ Error procesando recordatorio para {appt.client_name}: {e}")
 
-                print(f"[Scheduler] OK - Recordatorios verificados a las {now.strftime('%H:%M')}")
+                if attempted_count > 0:
+                    print(f"[Scheduler] Recordatorios de hoy a las {now.strftime('%H:%M')}: {sent_count}/{attempted_count} enviados exitosamente")
             except Exception as e:
                 print(f"[Scheduler] Error en job de recordatorios: {e}")
 

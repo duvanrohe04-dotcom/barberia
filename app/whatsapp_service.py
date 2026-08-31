@@ -137,42 +137,22 @@ def send_whatsapp_message(to_number, message):
         # Limpiar y formatear el número: quitar todo lo que no sea dígito
         phone = ''.join(c for c in str(to_number).strip() if c.isdigit())
         
-        print(f"[WhatsApp] Número original: {to_number}")
-        print(f"[WhatsApp] Número limpio: {phone}")
-        
         if not phone:
-            print(f"[WhatsApp] ❌ Número vacío después de limpiar. No se puede enviar.")
+            print(f"[WhatsApp] ❌ Número de teléfono vacío. No se puede enviar.")
             return False, "Número de teléfono vacío"
         
         # Normalizar números colombianos a formato 57XXXXXXXXXX (12 dígitos)
         if len(phone) == 10:
-            # 10 dígitos: móvil (3XX) o fijo con indicativo — agregar código Colombia
             phone = '57' + phone
-            print(f"[WhatsApp] Agregado código de país (10 dígitos): {phone}")
-        elif len(phone) == 11 and phone.startswith('57'):
-            # 57 + 9 dígitos (fijo sin indicativo completo) — dejar como está
-            print(f"[WhatsApp] Número con código de país (11 dígitos): {phone}")
-        elif len(phone) == 12 and phone.startswith('57'):
-            print(f"[WhatsApp] Número ya tiene código de país: {phone}")
         elif len(phone) == 13 and phone.startswith('57'):
-            # Algunos guardan con un dígito extra, tomar los 12 primeros
             phone = phone[:12]
-            print(f"[WhatsApp] Número recortado a 12 dígitos: {phone}")
-        elif len(phone) >= 10:
-            # Otro formato internacional, dejarlo tal cual
-            print(f"[WhatsApp] Número internacional o formato distinto: longitud={len(phone)}, valor={phone}")
-        else:
-            # 7-9 dígitos: demasiado corto para determinar área, agregar 57 como intento
-            print(f"[WhatsApp] ⚠️ Número corto ({len(phone)} dígitos). Agregando 57 como intento: {phone}")
+        elif len(phone) < 10:
             phone = '57' + phone
         
         base_url = get_evolution_base_url()
         url = f"{base_url}/message/sendText/{instance_name}"
         
-        print(f"[WhatsApp] Enviando mensaje a: {phone}")
-        print(f"[WhatsApp] Instancia: {instance_name}")
-        print(f"[WhatsApp] URL base: {base_url}")
-        print(f"[WhatsApp] URL completa: {url}")
+        print(f"[WhatsApp] Enviando mensaje a: {phone} (Instancia: {instance_name})")
         
         headers = {
             'Content-Type': 'application/json',
@@ -190,34 +170,47 @@ def send_whatsapp_message(to_number, message):
         
         try:
             status, body, resp_json = _http_request('POST', url, payload=payload, headers=headers, timeout=15)
-            print(f"[WhatsApp] Status: {status}")
-            print(f"[WhatsApp] Respuesta: {body[:500] if body else 'Sin respuesta'}")
 
             if status in [200, 201]:
                 if isinstance(resp_json, dict) and (resp_json.get('error') or resp_json.get('status') == 'error'):
-                    print(f"[WhatsApp] ❌ API devolvió error: {resp_json}")
-                    return False, resp_json.get('error', str(resp_json))
-                print(f"[WhatsApp] ✅ Mensaje enviado exitosamente")
+                    err_msg = resp_json.get('error', str(resp_json))
+                    print(f"[WhatsApp] ❌ API devolvió error al enviar a {phone}: {err_msg}")
+                    return False, err_msg
+                print(f"[WhatsApp] ✅ Mensaje enviado exitosamente a {phone}")
                 return True, None
 
-            error_detail = body[:300] if body else f"HTTP {status}"
-            print(f"[WhatsApp] ❌ Error al enviar mensaje: {error_detail}")
+            # Formatear detalle de error de forma clara
+            error_detail = f"HTTP {status}"
+            if isinstance(resp_json, dict):
+                resp_inner = resp_json.get('response')
+                if isinstance(resp_inner, dict) and resp_inner.get('message'):
+                    inner_msg = resp_inner.get('message')
+                    if inner_msg == "Connection Closed":
+                        error_detail = "Conexión cerrada (WhatsApp desconectado en Evolution API)"
+                    else:
+                        error_detail = f"{resp_json.get('error', 'Error')}: {inner_msg}"
+                elif resp_json.get('message'):
+                    error_detail = resp_json.get('message')
+                elif resp_json.get('error'):
+                    error_detail = str(resp_json.get('error'))
+            elif body:
+                error_detail = body[:200].strip()
+
+            print(f"[WhatsApp] ❌ Error al enviar mensaje a {phone}: {error_detail}")
             return False, error_detail
 
         except TimeoutError:
-            msg = f"Tiempo de espera agotado. Evolution API en {base_url or 'servidor'} no responde."
+            msg = f"Tiempo de espera agotado ({base_url or 'servidor'})"
             print(f"[WhatsApp] ❌ {msg}")
             return False, msg
         except ConnectionError as e:
-            msg = f"No se puede conectar a Evolution API en {base_url or 'servidor'}: {e}"
+            msg = f"No se puede conectar a Evolution API ({base_url or 'servidor'}): {e}"
             print(f"[WhatsApp] ❌ {msg}")
             return False, msg
 
     except Exception as e:
         msg = str(e)
         print(f"[WhatsApp] ❌ Error enviando mensaje: {e}")
-        import traceback
-        traceback.print_exc()
         return False, msg
 
 def disconnect_whatsapp():
@@ -456,13 +449,6 @@ def get_whatsapp_qr():
 
 def notify_staff_cancelled(appt, shop_name):
     """Envía notificación al barbero/estilista cuando el cliente cancela una cita."""
-    print(f"[WhatsApp] ========================================")
-    print(f"[WhatsApp] Iniciando notificación de cancelación al empleado")
-    print(f"[WhatsApp] Cliente: {appt.client_name}")
-    print(f"[WhatsApp] Empleado: {appt.staff_name}")
-    print(f"[WhatsApp] Servicio: {appt.service_name}")
-    print(f"[WhatsApp] Fecha: {appt.date} - Hora: {appt.time}")
-    
     try:
         clean_total = appt.total.replace('$', '').replace('.', '').replace(',', '').replace(' ', '')
         total_formatted = f"${int(clean_total):,}".replace(',', '.') if appt.total else "$0"
@@ -486,32 +472,23 @@ def notify_staff_cancelled(appt, shop_name):
     
     if staff and staff.phone:
         to = staff.phone
-        print(f"[WhatsApp] ✅ Enviando notificación al empleado: {staff.name} - {to}")
     else:
         admin_wa = ShopConfig.query.filter_by(key='wa').first()
         to = admin_wa.value if admin_wa and admin_wa.value else None
-        print(f"[WhatsApp] ⚠️ Empleado sin teléfono, enviando a admin: {to}")
     
     if to:
         success, error = send_whatsapp_message(to, msg)
         if success:
-            print(f"[WhatsApp] ✅ Notificación de cancelación enviada al empleado")
+            print(f"[WhatsApp] ✅ Notificación de cancelación enviada al empleado ({appt.staff_name})")
         else:
-            print(f"[WhatsApp] ❌ Falló el envío de notificación de cancelación: {error}")
-        print(f"[WhatsApp] ========================================")
+            print(f"[WhatsApp] ❌ Falló notificación de cancelación a empleado ({appt.staff_name}): {error}")
         return success
     else:
-        print(f"[WhatsApp] ❌ No hay número de teléfono configurado")
-        print(f"[WhatsApp] ========================================")
+        print(f"[WhatsApp] ⚠️ Sin teléfono para notificar cancelación a empleado ({appt.staff_name})")
         return False
 
 def notify_client_cancelled(appt, shop_name):
     """Envía notificación al cliente cuando el administrador cancela su cita."""
-    print(f"[WhatsApp] ========================================")
-    print(f"[WhatsApp] Iniciando notificación de cancelación al cliente")
-    print(f"[WhatsApp] Cliente: {appt.client_name}")
-    print(f"[WhatsApp] Teléfono: {appt.client_phone}")
-    
     try:
         clean_total = appt.total.replace('$', '').replace('.', '').replace(',', '').replace(' ', '')
         total_formatted = f"${int(clean_total):,}".replace(',', '.') if appt.total else "$0"
@@ -531,32 +508,19 @@ def notify_client_cancelled(appt, shop_name):
     )
     
     success, error = send_whatsapp_message(appt.client_phone, msg)
-    
     if success:
-        print(f"[WhatsApp] ✅ Notificación de cancelación enviada al cliente {appt.client_name}")
+        print(f"[WhatsApp] ✅ Notificación de cancelación enviada a cliente ({appt.client_name})")
     else:
-        print(f"[WhatsApp] ❌ Falló el envío de notificación al cliente {appt.client_name}: {error}")
-    
-    print(f"[WhatsApp] ========================================")
+        print(f"[WhatsApp] ❌ Falló notificación de cancelación a cliente ({appt.client_name}): {error}")
     return success
 
 def notify_admin_new_appointment(appt, shop_name):
     """Envía notificación de nueva cita al empleado o admin."""
-    print(f"[WhatsApp] ========================================")
-    print(f"[WhatsApp] Iniciando notificación de nueva cita")
-    print(f"[WhatsApp] Cliente: {appt.client_name}")
-    print(f"[WhatsApp] Empleado: {appt.staff_name}")
-    print(f"[WhatsApp] Servicio: {appt.service_name}")
-    print(f"[WhatsApp] Fecha: {appt.date} - Hora: {appt.time}")
-    
-    # Formatear el total correctamente
     try:
         clean_total = appt.total.replace('$', '').replace('.', '').replace(',', '').replace(' ', '')
         total_formatted = f"${int(clean_total):,}".replace(',', '.') if appt.total else "$0"
     except:
         total_formatted = appt.total or "$0"
-    
-    print(f"[WhatsApp] Total formateado: {total_formatted}")
     
     msg = (
         f"🚨 *NUEVA RESERVACIÓN* 💈\n\n"
@@ -569,46 +533,29 @@ def notify_admin_new_appointment(appt, shop_name):
         f"Te han agendado una cita en *{shop_name}*."
     )
     
-    print(f"[WhatsApp] Mensaje preparado (primeros 100 chars): {msg[:100]}")
-    
     from app.models import Staff, ShopConfig
     to = None
     staff = Staff.query.filter_by(name=appt.staff_name).first()
     
-    if staff:
-        print(f"[WhatsApp] Empleado encontrado en BD: {staff.name}")
-        print(f"[WhatsApp] Teléfono del empleado: {staff.phone if staff.phone else 'NO CONFIGURADO'}")
-    else:
-        print(f"[WhatsApp] ⚠️ Empleado NO encontrado en BD: {appt.staff_name}")
-    
     if staff and staff.phone:
         to = staff.phone
-        print(f"[WhatsApp] ✅ Enviando a empleado: {staff.name} - {to}")
     else:
         admin_wa = ShopConfig.query.filter_by(key='wa').first()
         to = admin_wa.value if admin_wa and admin_wa.value else os.environ.get('ADMIN_PHONE')
-        print(f"[WhatsApp] ⚠️ Empleado sin teléfono, enviando a admin: {to}")
     
     if to:
-        print(f"[WhatsApp] Número destino final: {to}")
         success, error = send_whatsapp_message(to, msg)
         if success:
-            print(f"[WhatsApp] ✅ Notificación enviada exitosamente")
+            print(f"[WhatsApp] ✅ Notificación de nueva cita enviada al empleado ({appt.staff_name})")
         else:
-            print(f"[WhatsApp] ❌ Falló el envío de notificación: {error}")
-        print(f"[WhatsApp] ========================================")
+            print(f"[WhatsApp] ❌ Falló notificación de nueva cita al empleado ({appt.staff_name}): {error}")
         return success
     else:
-        print(f"[WhatsApp] ❌ No hay número de teléfono configurado")
-        print(f"[WhatsApp] ========================================")
+        print(f"[WhatsApp] ⚠️ Sin teléfono para notificar nueva cita al empleado ({appt.staff_name})")
         return False
 
 def notify_client_new_appointment(appt, shop_name):
     """Envía confirmación de nueva cita al cliente."""
-    print(f"[WhatsApp] ========================================")
-    print(f"[WhatsApp] Enviando confirmación al cliente: {appt.client_name}")
-    print(f"[WhatsApp] Teléfono: {appt.client_phone}")
-
     try:
         clean_total = appt.total.replace('$', '').replace('.', '').replace(',', '').replace(' ', '')
         total_formatted = f"${int(clean_total):,}".replace(',', '.') if appt.total else "$0"
@@ -628,20 +575,15 @@ def notify_client_new_appointment(appt, shop_name):
     )
 
     success, error = send_whatsapp_message(appt.client_phone, msg)
-
     if success:
-        print(f"[WhatsApp] ✅ Confirmación enviada al cliente {appt.client_name}")
+        print(f"[WhatsApp] ✅ Confirmación de nueva cita enviada a cliente ({appt.client_name})")
     else:
-        print(f"[WhatsApp] ❌ Falló confirmación al cliente {appt.client_name}: {error}")
-
-    print(f"[WhatsApp] ========================================")
+        print(f"[WhatsApp] ❌ Falló confirmación de nueva cita a cliente ({appt.client_name}): {error}")
     return success
 
 
 def send_reminder_to_client(appt, shop_name):
     """Envía recordatorio de cita al cliente 20 minutos antes."""
-    print(f"[WhatsApp] Enviando recordatorio a cliente: {appt.client_name}")
-    
     msg = (
         f"⏰ *RECORDATORIO DE CITA* 💈\n\n"
         f"Hola *{appt.client_name}*, te recordamos tu cita en *{shop_name}* en 20 minutos.\n\n"
@@ -652,10 +594,8 @@ def send_reminder_to_client(appt, shop_name):
     )
     
     success, error = send_whatsapp_message(appt.client_phone, msg)
-    
     if success:
-        print(f"[WhatsApp] ✅ Recordatorio enviado a {appt.client_name}")
+        print(f"[WhatsApp] ✅ Recordatorio enviado a {appt.client_name} para las {appt.time}")
     else:
-        print(f"[WhatsApp] ❌ Falló el envío de recordatorio a {appt.client_name}: {error}")
-    
+        print(f"[WhatsApp] ❌ Falló recordatorio a {appt.client_name} para las {appt.time}: {error}")
     return success
