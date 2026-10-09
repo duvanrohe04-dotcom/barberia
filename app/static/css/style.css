@@ -799,3 +799,7 @@ footer,.wave,.sep{position:relative;z-index:1}
 
 /* ✅ Actualización v35: Mejoras visuales en toast - bordes más gruesos, mejor contraste, animación suave */
 
+
+/* Date inputs: keep native picker working on mobile/Safari/Android */
+input[type="date"].fc,input[type="date"].ei{-webkit-appearance:auto;appearance:auto;color-scheme:dark;min-height:46px;cursor:pointer;display:block}
+input[type="date"]::-webkit-calendar-picker-indicator{cursor:pointer;opacity:.8;filter:invert(1)}

@@ -57,6 +57,13 @@ async function init(){
     document.getElementById('bDate').min = `${y}-${m}-${d}`;
   }
   
+  // Abrir el calendario al tocar cualquier parte del campo (algunos móviles solo lo abren con el icono)
+  document.querySelectorAll('input[type="date"]').forEach(inp => {
+    inp.addEventListener('click', () => {
+      try { if(inp.showPicker) inp.showPicker(); } catch(e) {}
+    });
+  });
+
   setupNavDots();
 }
 
