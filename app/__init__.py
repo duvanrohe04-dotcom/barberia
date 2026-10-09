@@ -71,6 +71,11 @@ def create_app():
             database_url = f'postgresql://{urllib.parse.quote_plus(pg_user)}:{urllib.parse.quote_plus(pg_pass)}@{pg_host}:{pg_port}/{pg_db}'
             print(f"[DB] Using POSTGRES_USER={pg_user} POSTGRES_HOST={pg_host} POSTGRES_DB={pg_db}")
     
+    # Forzar el driver psycopg2 (el instalado en requirements.txt); evita "No module named 'psycopg'"
+    # cuando la URL viene como postgres://, postgresql:// o postgresql+psycopg://
+    if database_url.startswith(('postgres://', 'postgresql://', 'postgresql+psycopg://')):
+        database_url = 'postgresql+psycopg2://' + database_url.split('://', 1)[1]
+
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
